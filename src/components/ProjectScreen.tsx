@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useStore, type ProjectDocument } from '../state/store';
 import { SAMPLES } from '../lib/samples';
@@ -23,6 +23,8 @@ import {
 } from '../lib/projectFolders';
 
 import { ChromeIcon } from './chromeIcons';
+import { isSeed, sampleThumb } from '../lib/startScreen';
+import { FAMILY_TINT_DARK } from '../theme';
 export function ProjectScreen() {
   const projects = useStore((s) => s.projects);
   const [showArchived, setShowArchived] = useState(false);
@@ -112,6 +114,15 @@ export function ProjectScreen() {
   const isDropTarget = (target: string | null) => dropTarget === (target ?? '');
 
   type Package = { meta: ProjectMeta; document: ProjectDocument; vault?: unknown };
+
+  // Nothing yet, not even archived: the screen is a way in, not a list.
+  const firstRun = projects.length === 0;
+  const [seed, setSeed] = useState('');
+  const openSample = (s: (typeof SAMPLES)[number]) =>
+    void useStore.getState().createProject(
+      { name: s.name, customer: 'Example Customer', site: 'Example site', engineer: '' },
+      s.build(),
+    );
 
   const openImported = (pkg: Package) =>
     useStore.getState().createProject(
@@ -206,6 +217,81 @@ export function ProjectScreen() {
           </p>
         </header>
 
+        {!isDesktop && (
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".coreview,.livetopo,application/json"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void importPackage(f);
+              e.target.value = '';
+            }}
+          />
+        )}
+
+        {/* Before the first project: three ways in, and the samples drawn
+            from their own devices. */}
+        {firstRun && (
+          <>
+            <div className="cv-start" data-region="start-cards">
+              <form
+                className="cv-start-card is-map"
+                data-region="start-map"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (isDesktop && isSeed(seed)) void useStore.getState().mapNetwork(seed.trim());
+                }}
+              >
+                <h2 className="cv-start-title">{t('start.mapTitle')}</h2>
+                <p className="cv-start-blurb">{t('start.mapBlurb')}</p>
+                <div className="cv-start-seed">
+                  <input
+                    className="cv-input cv-mono"
+                    value={seed}
+                    placeholder="192.0.2.1"
+                    aria-label={t('start.seed')}
+                    disabled={!isDesktop}
+                    onChange={(e) => setSeed(e.target.value)}
+                  />
+                  <button type="submit" className="cv-btn cv-btn-primary" disabled={!isDesktop || !isSeed(seed)}>
+                    {t('start.startDiscovery')}
+                  </button>
+                </div>
+                {!isDesktop && <p className="cv-start-note">{t('start.mapNeedsApp')}</p>}
+              </form>
+              <button type="button" className="cv-start-card" data-region="start-blank" onClick={() => setCreating(true)}>
+                <span className="cv-start-title">{t('start.blankTitle')}</span>
+                <span className="cv-start-blurb">{t('start.blankBlurb')}</span>
+              </button>
+              <button
+                type="button"
+                className="cv-start-card"
+                data-region="start-import"
+                onClick={() => (isDesktop ? void importFromDialog() : fileRef.current?.click())}
+              >
+                <span className="cv-start-title">{t('start.importTitle')}</span>
+                <span className="cv-start-blurb">{t('start.importBlurb')}</span>
+              </button>
+            </div>
+            <section className="cv-welcome-section cv-start-samples">
+              <h2>{t('projectScreen.startFromASample')}</h2>
+              <p className="cv-help">{t('projectScreen.samplesUseDocumentationAddress')}</p>
+              <div className="cv-sample-grid">
+                {SAMPLES.map((s, i) => (
+                  <button key={s.name} type="button" className="cv-sample" onClick={() => openSample(s)}>
+                    <SampleThumbnail index={i} />
+                    <span className="cv-sample-title">{s.name.replace('Sample — ', '')}</span>
+                    <span className="cv-sample-desc">{s.description}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+
+        {!firstRun && (
         <div className="cv-welcome-actions">
           <button type="button" className="cv-btn cv-btn-start" onClick={() => setCreating(true)}>
             {t('projectScreen.createProject')}
@@ -217,19 +303,6 @@ export function ProjectScreen() {
           >
             {t('projectScreen.importProject')}
           </button>
-          {!isDesktop && (
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".coreview,.livetopo,application/json"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void importPackage(f);
-                e.target.value = '';
-              }}
-            />
-          )}
           <label className="cv-check cv-check-inline">
             <input
               type="checkbox"
@@ -239,6 +312,7 @@ export function ProjectScreen() {
             {t('projectScreen.showArchived')}
           </label>
         </div>
+        )}
 
         {error && <p className="cv-error">{error}</p>}
 
@@ -280,6 +354,7 @@ export function ProjectScreen() {
         {/* Folders down the left, the projects as cards, the samples
             on the right. The crumbs, drag-and-drop, rename and delete of
             Are as they were, inside the middle column. */}
+        {!firstRun && (
         <div className="cv-proj">
         <aside className="cv-proj-side" aria-label={t('projectScreen.folders')} data-region="project-folders">
           <button type="button" className={`cv-proj-side-item${!showArchived && here === null ? ' is-current' : ''}`}
@@ -495,33 +570,22 @@ export function ProjectScreen() {
         </section>
         </div>
 
+        {/* Once there are projects of your own, the samples step back to a
+            short row of names. */}
         <aside className="cv-proj-samples">
         <section className="cv-welcome-section">
           <h2>{t('projectScreen.startFromASample')}</h2>
-          <p className="cv-help">
-            {t('projectScreen.samplesUseDocumentationAddress')}
-          </p>
-          <div className="cv-sample-grid">
+          <div className="cv-sample-chips">
             {SAMPLES.map((s) => (
-              <button
-                key={s.name}
-                type="button"
-                className="cv-sample"
-                onClick={() =>
-                  void useStore.getState().createProject(
-                    { name: s.name, customer: 'Example Customer', site: 'Example site', engineer: '' },
-                    s.build(),
-                  )
-                }
-              >
+              <button key={s.name} type="button" className="cv-sample is-chip" title={s.description} onClick={() => openSample(s)}>
                 <span className="cv-sample-title">{s.name.replace('Sample — ', '')}</span>
-                <span className="cv-sample-desc">{s.description}</span>
               </button>
             ))}
           </div>
         </section>
         </aside>
         </div>
+        )}
 
         <FolderSettings />
 
@@ -692,5 +756,21 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** A sample's picture, drawn from its own devices and links: a dot per
+ *  device in its family's colour, a line per link. No artwork. */
+function SampleThumbnail({ index }: { index: number }) {
+  const thumb = useMemo(() => sampleThumb(SAMPLES[index]!.build()), [index]);
+  return (
+    <svg className="cv-sample-thumb" viewBox={`0 0 ${thumb.width} ${thumb.height}`} aria-hidden="true" data-region="sample-thumb">
+      {thumb.lines.map((l, i) => (
+        <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} />
+      ))}
+      {thumb.dots.map((d, i) => (
+        <circle key={i} cx={d.x} cy={d.y} r={4} fill={FAMILY_TINT_DARK[d.family]} />
+      ))}
+    </svg>
   );
 }

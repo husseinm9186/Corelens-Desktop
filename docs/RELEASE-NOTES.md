@@ -4,6 +4,14 @@ Newest first.
 
 ## Unreleased
 
+**The start screen**
+- Before the first project, three ways in: **Map a network** from one
+  address or name — a project is made, named after that address's /24 and
+  the date, and opens on Discover with the seed already in — a blank
+  project, or an import. The samples show the network each one draws,
+  from its own devices. Once there are projects, the list comes first and
+  the samples are a row of names beside it.
+
 **Accessibility, built in**
 - The rail is one stop for Tab: the arrow keys, Home and End move along
   it and Enter opens the item; **Ctrl+1** to **Ctrl+9** go straight to its

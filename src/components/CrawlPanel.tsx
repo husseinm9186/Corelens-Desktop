@@ -326,6 +326,14 @@ export function CrawlPanel({
   // referenced by id. Loaded once on mount; `restored` keeps the save effect
   // below from writing empty defaults over what was just read.
   const [restored, setRestored] = useState(false);
+  // A seed handed over by the start screen's "Map a network" wins over the
+  // one remembered from the last scan — once it has been read.
+  const requestedSeed = useStore((s) => s.requestedSeed);
+  useEffect(() => {
+    if (!restored || !requestedSeed) return;
+    setSeed(requestedSeed);
+    useStore.getState().requestSeed(null);
+  }, [restored, requestedSeed]);
   useEffect(() => {
     let cancelled = false;
     void ipc

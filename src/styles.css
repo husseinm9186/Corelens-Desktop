@@ -1196,6 +1196,29 @@ details.cv-discover-advanced[open] > summary::after { content: '▾'; }
 .cv-sample:hover { border-color: var(--accent); }
 .cv-sample-title { font-weight: 600; font-size: var(--text-md); }
 .cv-sample-desc { color: var(--text-faint); font-size: var(--text-sm); line-height: 1.5; }
+/* The start screen before the first project: three ways in, in a row. */
+.cv-start { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.92307692rem; margin-top: 2rem; }
+.cv-start-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.46153846rem;
+  min-height: 9.84615385rem; padding: 1.07692308rem 1.23076923rem; text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--text); font: inherit; cursor: pointer;
+}
+button.cv-start-card:hover { border-color: var(--accent); }
+.cv-start-card.is-map { cursor: default; border-color: var(--line-strong); }
+.cv-start-title { font-size: var(--text-lg); font-weight: 600; margin: 0; }
+.cv-start-blurb { color: var(--text-dim); font-size: var(--text-sm); line-height: 1.5; margin: 0; }
+.cv-start-seed { display: flex; gap: 0.46153846rem; width: 100%; margin-top: auto; }
+.cv-start-seed .cv-input { flex: 1; }
+.cv-start-note { color: var(--text-faint); font-size: var(--text-sm); margin: 0; }
+.cv-start-samples .cv-sample-grid { grid-template-columns: repeat(auto-fill, minmax(18.46153846rem, 1fr)); }
+/* A sample drawn from its own devices: dots in family colours, links in the line tone. */
+.cv-sample-thumb { width: 100%; height: auto; aspect-ratio: 280 / 120; background: var(--bg-raised); border: 1px solid var(--line); border-radius: 4px; }
+.cv-sample-thumb line { stroke: var(--line-strong); stroke-width: 1.5; }
+/* Once there are projects, the samples are a short row of names. */
+.cv-sample-chips { display: flex; flex-wrap: wrap; gap: 0.46153846rem; margin-top: 0.61538462rem; }
+.cv-sample.is-chip { display: inline-flex; align-items: center; min-height: 2.46153846rem; padding: 0 0.92307692rem; }
+@media (max-width: 900px) { .cv-start { grid-template-columns: 1fr; } }
 
 .cv-modal-backdrop {
   position: fixed; inset: 0; z-index: 200;

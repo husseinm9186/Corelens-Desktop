@@ -1,4 +1,5 @@
 import { EMPTY_TREE, type FolderTree } from '../lib/projectFolders';
+import { mapProjectName } from '../lib/startScreen';
 import { create } from 'zustand';
 import type { Edge, Node } from '@xyflow/react';
 import { applyEdgeChanges, applyNodeChanges, type EdgeChange, type NodeChange } from '@xyflow/react';
@@ -698,6 +699,12 @@ interface Store {
   removeInkStroke: (id: string) => void;
   setFocus: (f: { ids: string[]; hops: number } | null) => void;
   requestPanelTab: (tab: string | null) => void;
+  /** A seed for Discover to start from, handed over once and then cleared. */
+  requestedSeed: string | null;
+  requestSeed: (seed: string | null) => void;
+  /** A new project for the network behind `seed`, opened on Discover with
+   *  the seed already filled in. */
+  mapNetwork: (seed: string) => Promise<void>;
   /** A filter the Monitored objects table should take — set from the top
    *  bar's health counts, so a count is a way into the list it stands for. */
   dockFilterRequest: 'all' | 'problems' | 'down' | null;
@@ -1328,6 +1335,7 @@ export const useStore = create<Store>((set, get) => ({
   editingNodeId: null,
   canvasHighlight: null,
   canvasPath: null,
+  requestedSeed: null,
   fitRequest: 0,
   recovery: null,
   selectedEdgeId: null,
@@ -1759,6 +1767,16 @@ export const useStore = create<Store>((set, get) => ({
   },
   requestDockFilter(f) {
     set({ dockFilterRequest: f });
+  },
+
+  requestSeed(seed) {
+    set({ requestedSeed: seed });
+  },
+
+  async mapNetwork(seed) {
+    await get().createProject({ name: mapProjectName(seed, new Date()) });
+    set({ requestedSeed: seed.trim() });
+    get().requestPanelTab('crawl');
   },
 
   requestPanelTab(tab) {

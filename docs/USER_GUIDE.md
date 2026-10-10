@@ -2,15 +2,27 @@
 
 ## Create a project
 
-Open Coreview and choose **Create project**. Fill in the name, and — because
-these end up in the exported report — the customer, site, change ticket and
-engineer. You can edit all of it later: click empty canvas and the inspector
-shows project fields.
+The first time Coreview opens there are three ways in:
 
-To see the app working immediately, pick one of the three samples instead. They
-use documentation address ranges plus loopback, so one node comes up healthy and
-the rest go down. That is the point: you get both states without touching a live
-network.
+- **Map a network.** Type the address or name of one switch or router and
+  choose **Start discovery**. A project is made for it — named after that
+  address's /24 and the date, which you can change — and it opens on
+  **Discover** with the address already in the seeds, ready for a login
+  and a run. (It needs the installed app; a browser cannot reach devices.)
+- **Create a blank project.** Fill in the name, and — because these end up
+  in the exported report — the customer, site, change ticket and engineer.
+  You can edit all of it later: click empty canvas and the inspector shows
+  project fields.
+- **Import a project** someone exported.
+
+Once you have projects of your own the screen lists them instead, with
+**Create project** and **Import project** above the list.
+
+To see the app working immediately, pick one of the four samples — each card
+shows the network it draws. They use documentation address ranges plus
+loopback, so one node comes up healthy and the rest go down. That is the
+point: you get both states without touching a live network. With projects of
+your own the samples are a row of names beside the list.
 
 ## Draw
 

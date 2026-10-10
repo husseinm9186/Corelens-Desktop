@@ -1,10 +1,11 @@
 # Installing Corelens Desktop on Windows
 
 Corelens Desktop's Windows installer is signed with the app's own
-certificate — `CN=COREVIEW-APP Code Signing`, issued by its own root,
-`CN=COREVIEW-APP-Root-CA` (valid to August 2036). The certificates were
-issued when the app was called Coreview and keep that name; a machine that
-already trusts them trusts Corelens Desktop's installer unchanged. It is not a certificate
+certificate — `CN=corelens.us Code Signing`, issued by its own root,
+`CN=corelens.us-Root-CA` (valid to October 2036). Builds up to 2.12.0 were
+signed under the earlier name, by `CN=COREVIEW-APP Code Signing` from
+`CN=COREVIEW-APP-Root-CA`; a machine that trusted that root needs the new
+one imported as well before a newer installer validates. It is not a certificate
 from a public authority, so a Windows machine does not trust it until the
 root is added. This page is how a customer's administrator does that, what
 it changes, and what it does not.
@@ -12,14 +13,14 @@ it changes, and what it does not.
 ## What comes with each build
 
 From a green CI run's `corelens-windows-v<version>` artifact (for example
-`corelens-windows-v2.7.1`):
+`corelens-windows-v2.12.1`):
 
 | File | What it is |
 | --- | --- |
 | `Corelens-Desktop_<version>_x64-setup.exe` | The installer. Signed, timestamped. |
 | `SHA256SUMS.txt` | The installer's SHA-256, recorded after the VirusTotal scan passed. |
-| `coreview-root-ca.crt` | The root's **public** certificate (also in the repository at `brand/`). |
-| `coreview-code-signing.cer` | The signing certificate's **public** half. |
+| `corelens-root-ca.crt` | The root's **public** certificate — also in the repository at `brand/`, and installed beside the app as `corelens-root-ca.crt` in its folder. |
+| `corelens-desktop-codesign.crt` | The signing certificate's **public** half. |
 | `sbom/*.cdx.json` | CycloneDX software bills of materials: the Rust executable, the collector sidecar's Python, the page's npm packages. |
 
 No private key is ever in any of these.
@@ -27,15 +28,15 @@ No private key is ever in any of these.
 ## 1. Check the file is the one that was built
 
 ```powershell
-(Get-FileHash .\Corelens_2.7.1_x64-setup.exe -Algorithm SHA256).Hash.ToLower()
+(Get-FileHash .\Corelens-Desktop_2.12.1_x64-setup.exe -Algorithm SHA256).Hash.ToLower()
 Get-Content .\SHA256SUMS.txt
 ```
 
 The two must be equal. Compare the root's thumbprint too before trusting it:
 
 ```powershell
-(Get-PfxCertificate .\coreview-root-ca.crt).Thumbprint
-# 4D50912F3C816E30DAC9E3C7178CFF97B0FB431D
+(Get-PfxCertificate .\corelens-root-ca.crt).Thumbprint
+# 876586A112CBBDDA42E9016BFC6B49468B13F173
 ```
 
 ## 2. Trust the certificate
@@ -50,15 +51,15 @@ Both stores, on the machine (not the user):
 On one machine, as administrator:
 
 ```powershell
-Import-Certificate -FilePath .\coreview-root-ca.crt       -CertStoreLocation Cert:\LocalMachine\Root
-Import-Certificate -FilePath .\coreview-code-signing.cer  -CertStoreLocation Cert:\LocalMachine\TrustedPublisher
+Import-Certificate -FilePath .\corelens-root-ca.crt           -CertStoreLocation Cert:\LocalMachine\Root
+Import-Certificate -FilePath .\corelens-desktop-codesign.crt -CertStoreLocation Cert:\LocalMachine\TrustedPublisher
 ```
 
 or with `certutil`:
 
 ```bat
-certutil -addstore -f Root coreview-root-ca.crt
-certutil -addstore -f TrustedPublisher coreview-code-signing.cer
+certutil -addstore -f Root corelens-root-ca.crt
+certutil -addstore -f TrustedPublisher corelens-desktop-codesign.crt
 ```
 
 Across an estate, Group Policy: *Computer Configuration → Policies →
@@ -69,17 +70,17 @@ certificate under **Trusted Publishers**.
 Check it took:
 
 ```powershell
-Get-AuthenticodeSignature .\Corelens_2.7.1_x64-setup.exe | Format-List Status, SignerCertificate
+Get-AuthenticodeSignature .\Corelens-Desktop_2.12.1_x64-setup.exe | Format-List Status, SignerCertificate
 ```
 
-`Status : Valid`, signer `CN=COREVIEW-APP Code Signing`. Before step 2 the
+`Status : Valid`, signer `CN=corelens.us Code Signing`. Before step 2 the
 same command says `UnknownError` — expected, not a broken build.
 
 ## 3. SmartScreen and Microsoft Defender — what trusting the certificate does and does not do
 
 Being plain about this, because it is the question every administrator asks:
 
-- **User Account Control** shows *Verified publisher: COREVIEW-APP* instead
+- **User Account Control** shows *Verified publisher: corelens.us* instead
   of *Unknown*. That is what the two stores above change.
 - **Defender SmartScreen**'s "Windows protected your PC" prompt is decided
   by *reputation*, which Microsoft keeps for certificates from public
@@ -88,7 +89,7 @@ Being plain about this, because it is the question every administrator asks:
   looks at files that carry the *Mark of the Web* — files downloaded through
   a browser. So:
   - on one machine, clear the mark before running it:
-    `Unblock-File .\Corelens_2.7.1_x64-setup.exe` (or *Properties →
+    `Unblock-File .\Corelens-Desktop_2.12.1_x64-setup.exe` (or *Properties →
     Unblock*);
   - across an estate, deploy the installer the way managed software is
     deployed — Intune, Configuration Manager, a file share, a GPO software
@@ -98,7 +99,7 @@ Being plain about this, because it is the question every administrator asks:
   was published (the build fails otherwise). Organisations on **Defender for
   Endpoint** can add an *Allow* indicator for the signing certificate
   (*Settings → Endpoints → Indicators → Certificates*, upload
-  `coreview-code-signing.cer`), which tells Defender to allow files signed
+  `corelens-desktop-codesign.crt`), which tells Defender to allow files signed
   with it.
 - **App Control for Business / WDAC** estates add a publisher rule for the
   signing certificate in their policy.

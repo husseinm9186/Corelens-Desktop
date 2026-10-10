@@ -1,23 +1,26 @@
 # Signing the Windows installer
 
 The root certificate that signs these builds is published as
-`brand/coreview-root-ca.crt`. It is the **public** certificate — there is no
+`brand/corelens-root-ca.crt`, with the signing certificate's public half
+beside it as `brand/corelens-desktop-codesign.crt`. Each is a **public** certificate — there is no
 private key in it, and there must never be one in this repository. Installing
 it as a trusted root is what makes a signed Corelens installer show
-"COREVIEW-APP" as the publisher instead of "Unknown Publisher"; it does nothing
+"corelens.us" as the publisher instead of "Unknown Publisher"; it does nothing
 about SmartScreen, for the reasons below.
 
 ## What the current certificate does, and does not, do
 
-The certificate in hand is issued by **COREVIEW-APP-Root-CA** — an internal
+The certificate in hand is issued by **corelens.us-Root-CA** — an internal
 CA, not one in the Microsoft Trusted Root Program. Its extended key usage is
-`Code Signing` (critical) and it runs to August 2036, so it signs correctly.
+`Code Signing` (critical) and it runs to October 2036, so it signs correctly.
+It replaced the COREVIEW-APP chain on 2026-10-10 with the rename; builds up
+to 2.12.0 are signed by the old chain, and the old root stays valid for them.
 What that is worth depends entirely on who is running the installer.
 
-| | Machine that trusts COREVIEW-APP-Root-CA | Any other machine |
+| | Machine that trusts corelens.us-Root-CA | Any other machine |
 | --- | --- | --- |
 | Signature validates | Yes | No |
-| Publisher shown | CORELENS | "Unknown Publisher" |
+| Publisher shown | corelens.us | "Unknown Publisher" |
 | Tamper-evident | Yes | Yes — the hash is still checked |
 | SmartScreen warning | Still possible on a new file | **Yes, unchanged** |
 
@@ -40,12 +43,16 @@ Two repository secrets, at **Settings → Secrets and variables → Actions**:
 
 | Secret | Value |
 | --- | --- |
-| `WINDOWS_CERTIFICATE` | `base64 -w0 coreview-codesign.pfx` |
+| `WINDOWS_CERTIFICATE` | `base64 -w0 corelens-desktop-codesign.pfx` — the PFX exported with the root inside it (`-certfile`) |
 | `WINDOWS_CERTIFICATE_PASSWORD` | the PFX password |
 
 The thumbprint is read back from the certificate after it is imported
-rather than kept as a constant here, so replacing the certificate needs no
-change to the repository.
+rather than kept as a constant here. Replacing the certificate means
+replacing the two public files under `brand/` as well: the bundle step
+fails when the secret's certificate is not the one `brand/` publishes, so
+the notes beside an installer can never describe a different signer. The
+root also ships inside the installer (`bundle.resources`), so every
+installed copy has it to hand.
 
 A third secret belongs to the in-app updater rather than to Authenticode:
 
@@ -85,7 +92,7 @@ into `SHA256SUMS.txt`, and CycloneDX SBOMs into `sbom/`.
 On Windows:
 
 ```powershell
-Get-AuthenticodeSignature .\Corelens_2.7.1_x64-setup.exe | Format-List
+Get-AuthenticodeSignature .\Corelens-Desktop_2.12.1_x64-setup.exe | Format-List
 ```
 
 `Status` reads `Valid` on a machine that trusts the root, and

@@ -84,6 +84,7 @@
     "resources": {
       "../LICENSE": "LICENSE.txt",
       "../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md",
+      "../brand/corelens-root-ca.crt": "corelens-root-ca.crt",
       "../resources/catalog/*.yaml": "catalog/",
       "../resources/catalog/NOTICE": "catalog/NOTICE",
       "../resources/catalog/LICENSE-scrapli": "catalog/LICENSE-scrapli",

@@ -298,10 +298,18 @@ jobs:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
         run: |
           # The public halves of the certificates, beside the installer, for the
-          # install notes (docs/INSTALL-WINDOWS.md). Never a private key.
-          Copy-Item brand/coreview-root-ca.crt target/release/bundle/nsis/coreview-root-ca.crt
+          # install notes (docs/INSTALL-WINDOWS.md). Never a private key. The
+          # root also travels inside the installer (bundle.resources).
+          Copy-Item brand/corelens-root-ca.crt target/release/bundle/nsis/corelens-root-ca.crt
+          Copy-Item brand/corelens-desktop-codesign.crt target/release/bundle/nsis/corelens-desktop-codesign.crt
+          # The certificate the secret holds must be the one the repository
+          # publishes, or the notes beside the installer describe another signer.
           if ($env:CORELENS_SIGN_THUMBPRINT) {
-            Export-Certificate -Cert "Cert:\CurrentUser\My\$env:CORELENS_SIGN_THUMBPRINT" -FilePath target/release/bundle/nsis/coreview-code-signing.cer -Type CERT | Out-Null
+            $published = (Get-PfxCertificate brand/corelens-desktop-codesign.crt).Thumbprint
+            if ($published -ne $env:CORELENS_SIGN_THUMBPRINT) {
+              Write-Host "::error title=Code signing::the installer was signed with $env:CORELENS_SIGN_THUMBPRINT but brand/corelens-desktop-codesign.crt is $published"
+              exit 1
+            }
           }
           foreach ($exe in Get-ChildItem target/release/bundle/nsis/*.exe) {
             ./.github/actions/virustotal/scan.ps1 -Path $exe.FullName
@@ -550,7 +558,7 @@ jobs:
           if (-not $exe) { Fail "corelens.exe is not installed anywhere expected" }
           $dir = $exe.DirectoryName
           # The paths src-tauri/src/collection.rs resolves under the resource directory.
-          foreach ($need in @("sidecar\python.exe", "sidecar\python312._pth", "sidecar\Lib\site-packages\corelens_sidecar\__main__.py", "sidecar\Lib\site-packages\scrapli", "sidecar\Lib\site-packages\paramiko", "catalog\cisco_ios.yaml", "catalog\fortios.yaml", "templates\ntc\index", "templates\ntc\cisco_ios_show_version.textfsm", "templates\LICENSE", "THIRD-PARTY-NOTICES.md")) {
+          foreach ($need in @("sidecar\python.exe", "sidecar\python312._pth", "sidecar\Lib\site-packages\corelens_sidecar\__main__.py", "sidecar\Lib\site-packages\scrapli", "sidecar\Lib\site-packages\paramiko", "catalog\cisco_ios.yaml", "catalog\fortios.yaml", "templates\ntc\index", "templates\ntc\cisco_ios_show_version.textfsm", "templates\LICENSE", "THIRD-PARTY-NOTICES.md", "corelens-root-ca.crt")) {
             if (-not (Test-Path (Join-Path $dir $need))) { Fail "installed tree lacks $need (under $dir)" }
           }
           $sig = Get-AuthenticodeSignature $exe.FullName

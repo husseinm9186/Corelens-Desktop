@@ -2,6 +2,22 @@
 
 Newest first.
 
+## 2.12.1 — 2026-10-10
+
+**A new signing certificate, under the new name**
+- The Windows installer is now signed by `corelens.us Code Signing`, issued
+  by the app's own root, `corelens.us-Root-CA` (valid to October 2036).
+  Builds up to 2.12.0 were signed by the Coreview-era certificate; a machine
+  that trusted that root must import the new one as well before this
+  installer, and every one after it, validates. The steps are in
+  `docs/INSTALL-WINDOWS.md`.
+- The root's public certificate ships inside the installer, as
+  `corelens-root-ca.crt` in the application's folder, as well as beside it
+  on the release page, so it is to hand on every machine the app is on.
+- The build fails if the certificate in the repository's secret is not the
+  one published in `brand/`, so the install notes always describe the
+  certificate that actually signed the file.
+
 ## 2.12.0 — 2026-10-10
 
 **Coreview is now Corelens Desktop**

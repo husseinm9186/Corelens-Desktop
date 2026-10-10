@@ -2,7 +2,7 @@
 
 Newest first.
 
-## Unreleased
+## 2.12.0 — 2026-10-10
 
 **Tools, dissolved**
 - The Tools screen is gone, and what it held lives where it is looked

@@ -368,12 +368,14 @@ const l3 = await page.evaluate(() => {
   const pg = window.__cvStore.getState().doc.pages[0];
   const logical = pg.canvas.layers.find((l) => l.name === "Logical").id;
   const name = (id) => pg.nodes.find((n) => n.id === id)?.data.label;
-  return pg.edges.filter((e) => e.data.layer3).map((e) => ({ from: name(e.source), to: name(e.target), onLogical: e.data.layers?.[0] === logical, dashed: e.data.lineStyle }));
+  // Dotted because it is a logical hop: read off the line as drawn.
+  const drawn = (id) => document.querySelector(`.react-flow__edge[data-id="${id}"] .react-flow__edge-path`)?.style.strokeDasharray ?? null;
+  return pg.edges.filter((e) => e.data.layer3).map((e) => ({ from: name(e.source), to: name(e.target), onLogical: e.data.layers?.[0] === logical, dash: drawn(e.id) }));
 });
 check("a layer-3 hop between crawled devices is drawn on the Logical view",
   // CORE-SW1's default route and EDGE-RTR1's static route point at each
   // other; EDGE-RTR1 answers on 192.0.2.1, which is the EDGE-FW already drawn.
-  JSON.stringify(l3) === JSON.stringify([{ from: "CORE-SW1", to: "EDGE-FW", onLogical: true, dashed: "dashed" }]), JSON.stringify(l3));
+  JSON.stringify(l3) === JSON.stringify([{ from: "CORE-SW1", to: "EDGE-FW", onLogical: true, dash: "1.5, 3" }]), JSON.stringify(l3));
 await page.evaluate(() => {
   const s = window.__cvStore.getState();
   const n = s.doc.pages[0].nodes.find((n) => n.data.label === "CORE-SW1");

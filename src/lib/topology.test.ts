@@ -14,6 +14,7 @@ import {
 import type { CrawledDevice, DeviceClassName, Neighbor } from './ipc';
 import type { DeviceNodeData, LinkData } from '../types/domain';
 import { drawsStacked } from './stacked';
+import { strokeFor } from './linkStyle';
 import { ROLE_TYPE } from './roles';
 
 const neighbor = (
@@ -243,7 +244,7 @@ describe('buildTopology', () => {
     expect(t.edges).toHaveLength(1);
   });
 
-  it('draws a tunnel as a dotted overlay edge on the logical view, once per pair', () => {
+  it('draws a tunnel as a dashed overlay edge on the logical view, once per pair', () => {
     const tunnel = (peer: string, remote: string) => ({ kind: 'ipsec', name: 'Tunnel10', local: null, remote, peer });
     const src = {
       devices: [
@@ -261,7 +262,9 @@ describe('buildTopology', () => {
     expect(overlays.map((e) => (e.data as LinkData).label).sort()).toEqual(['IPsec Tunnel10', 'VXLAN VNI 10010']);
     for (const e of overlays) {
       const d = e.data as LinkData;
-      expect(d.lineStyle).toBe('dotted');
+      // Dashed because it is a tunnel, whatever its health.
+      expect(d.lineStyle).toBeUndefined();
+      expect(strokeFor(d, 'healthy').dash).toBe('6 4');
       expect(d.layers).toEqual(['logi']);
     }
     // Drawn again onto the same diagram: nothing doubled.
@@ -286,7 +289,9 @@ describe('buildTopology', () => {
     const d = l3[0]!.data as LinkData;
     expect(d.layers).toEqual(['logi']);
     expect(d.direction).toBe('both');
-    expect(d.lineStyle).toBe('dashed');
+    // Dotted because it is a logical hop, not a cable.
+    expect(d.lineStyle).toBeUndefined();
+    expect(strokeFor(d, 'healthy').dash).toBe('1.5 3');
     expect(d.notes).toMatch(/via this device/);
 
     // Found again, the hop is not drawn twice; with no Logical view, not at all.

@@ -61,6 +61,8 @@ export function TraceFade() {
   return createElement(
     'style',
     null,
-    `.react-flow__edge:not(.selected) .cv-link-body:not([data-edge=${quoted}]) { opacity: 0.2; }`,
+    `.react-flow__edge:not(.selected) .cv-link-body:not([data-edge=${quoted}]) { opacity: 0.2; }` +
+      // A crowded device's port chips show for the link being pointed at.
+      `.cv-edge-port.is-crowded[data-edge=${quoted}] { visibility: visible !important; }`,
   );
 }

@@ -36,10 +36,10 @@ import { MAX_EDGES_FOR_JUMPS } from '../components/edges/pathRegistry';
 import { drawsStacked } from './stacked';
 import { centreLabel } from './cables';
 import { printFriendly } from './printTheme';
-import { laneAmong, laneOffset, laneShift, obstaclesFor, routeAround, routePath, type Side as RouteSide } from './avoidRoute';
+import { CORNER_RADIUS, laneAmong, laneOffset, laneShift, obstaclesFor, routeAround, routePath, type Side as RouteSide } from './avoidRoute';
 import { alignedX, safeColour, sizeOf as textSizeOf, svgTextAttrs } from './textStyle';
 import { BOUNDARIES, boundaryChip, isBoundaryKind } from './boundaries';
-import { capPath, capsFor, dashFor } from './linkStyle';
+import { capPath, capsFor, doubleWidths, strokeFor } from './linkStyle';
 import { fitOnSheet } from './paper';
 import {
   anchorPoint,
@@ -239,7 +239,7 @@ function pathFor(type: LinkData['pathType'], p: Parameters<typeof getBezierPath>
     case 'step':
       return getSmoothStepPath({ ...p, borderRadius: 0 });
     case 'smoothstep':
-      return getSmoothStepPath({ ...p, borderRadius: 12 });
+      return getSmoothStepPath({ ...p, borderRadius: CORNER_RADIUS });
     default:
       return getBezierPath(p);
   }
@@ -577,8 +577,10 @@ function edgeMarkup(
   // ground needs — the same rule the canvas applies.
   const lineColor =
     data.colorMode === 'fixed' && data.color ? readableOn(data.color, sheet.ground) : color;
-  const width = data.width ?? 2;
-  const dash = dashFor(data.lineStyle, status);
+  // What the link is, in the stroke, as on the canvas.
+  const stroke = strokeFor(data, status);
+  const width = stroke.width;
+  const dash = stroke.dash;
   const caps = capsFor(data);
   const capId = (which: 'start' | 'end') => `cv-cap-${cssId(e.id)}-${which}`;
   const startShape = capPath(caps.start);
@@ -595,13 +597,26 @@ function edgeMarkup(
       shape.filled ? lineColor : 'none'
     }" stroke="${lineColor}" stroke-width="${shape.filled ? 0 : 1.4}"/></marker>`;
 
+  // A bundle is two thin lines: the line drawn wide with its middle masked
+  // out, and its arrowheads on a path of their own the mask cannot cut.
+  const maskId = `cv-double-${cssId(e.id)}`;
+  const doubled = stroke.double
+    ? `<mask id="${maskId}" maskUnits="userSpaceOnUse" x="-1000000" y="-1000000" width="2000000" height="2000000">` +
+      `<path d="${drawn}" fill="none" stroke="white" stroke-width="${doubleWidths(width).outer + 4}"/>` +
+      `<path d="${drawn}" fill="none" stroke="black" stroke-width="${doubleWidths(width).gap}"/></mask>`
+    : '';
+  const opacity = status === 'disabled' ? ' opacity="0.55"' : '';
+  const dashAttr = dash ? ` stroke-dasharray="${dash}"` : '';
   const parts = [
-    startShape || endShape
+    startShape || endShape || doubled
       ? `<defs>${startShape ? marker('start', startShape) : ''}${
           endShape ? marker('end', endShape) : ''
-        }</defs>`
+        }${doubled}</defs>`
       : '',
-    `<path d="${drawn}" fill="none" stroke="${lineColor}" stroke-width="${width}"${dash ? ` stroke-dasharray="${dash}"` : ''}${status === 'disabled' ? ' opacity="0.55"' : ''}${arrowEnd}${arrowStart}/>`,
+    stroke.double
+      ? `<path d="${drawn}" fill="none" stroke="${lineColor}" stroke-width="${doubleWidths(width).outer}"${dashAttr}${opacity} mask="url(#${maskId})"/>` +
+        (arrowEnd || arrowStart ? `<path d="${drawn}" fill="none" stroke="none" stroke-width="${width}"${arrowEnd}${arrowStart}/>` : '')
+      : `<path d="${drawn}" fill="none" stroke="${lineColor}" stroke-width="${width}"${dashAttr}${opacity}${arrowEnd}${arrowStart}/>`,
   ];
 
   // The centre label's box is worked out first because the port labels are

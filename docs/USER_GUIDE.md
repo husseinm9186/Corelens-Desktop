@@ -558,6 +558,22 @@ A warning or a failure has a pattern as well as a colour, so nothing depends
 on colour alone; a device nobody has checked carries no mark at all, because
 a question mark on every node is what teaches an eye to ignore the cross
 that matters.
+
+**What a link is** is drawn into its line, so it still reads when the labels
+are hidden: a **bundle** (a port-channel) is a double line, a **tunnel** is
+dashed, a **logical** layer-3 hop is dotted, and a **transit** circuit — a
+WAN cable — is heavier. Coreview works the kind out from what a crawl found
+or the cable type; **Kind** in the link's inspector sets it by hand, and
+a dashed, dotted or dash-dot **Line style** chosen on the link still wins.
+Orthogonal links turn with a small rounded corner.
+
+**Port names on a busy device.** A device with more than three links shows
+how many under its name (*5 links*) and keeps its port names until you
+select the link or the device, point at the link, or zoom in past 120 %.
+Port names that would land on each other slide apart along their own links.
+A link carries an arrow only where someone said which way it runs — its
+**Direction**, or a route the crawl read — and along a path traced with
+**Path-Trace**, pointing the way the packet goes.
 Turn on **Reduce motion** under **Settings ▸ Display** (the cog at the foot of
 the rail) to stop all animation.
 

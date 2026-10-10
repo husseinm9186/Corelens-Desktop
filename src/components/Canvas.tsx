@@ -32,6 +32,7 @@ import { CommandPalette, type PaletteCommand } from './CommandPalette';
 import { hidingUnmatched, litNodes } from '../lib/canvasFilter';
 import { branchFolder, collapseLabel, hiddenByAll, worthCollapsing } from '../lib/collapseBranch';
 import { AUTO_FOLD_ZOOM, holdersBelow, lowestHolders } from '../lib/clusters';
+import { CLOSE_ZOOM } from '../lib/linkCounts';
 import { CanvasCrumbs, ClusterChips, type ChipSpec, type Crumb } from './ClusterChips';
 import { nearestInDirection, nearestTo, type Direction } from '../lib/spatialNav';
 import { edgeAriaLabel, nodeAriaLabel } from '../lib/ariaLabels';
@@ -201,6 +202,8 @@ export function Canvas() {
   // nothing re-renders. Only on a large page: an ordinary diagram fitted to the
   // window is often below 40% too, and has nothing to gain from losing them.
   const far = useFlowStore((s) => s.transform[2] < FAR_ZOOM && s.nodeLookup.size >= FAR_MIN_DEVICES);
+  // Close up there is room for every port chip, crowded device or not.
+  const close = useFlowStore((s) => s.transform[2] > CLOSE_ZOOM);
   const [finding, setFinding] = useState(false);
   const [help, setHelp] = useState(false);
   // The command palette.
@@ -1732,7 +1735,7 @@ export function Canvas() {
 
   return (
     <div
-      className={`cv-canvas${panning ? ' is-panning' : ''}${far ? ' is-far' : ''}`}
+      className={`cv-canvas${panning ? ' is-panning' : ''}${far ? ' is-far' : ''}${close ? ' is-close' : ''}`}
       ref={wrapper}
       onPointerDownCapture={(e) => {
         if (e.button === 0) pointerHeld.current = { x: e.clientX, y: e.clientY };

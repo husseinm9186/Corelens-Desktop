@@ -1197,7 +1197,8 @@ export function buildTopology(
           label: 'L3',
           notes: `Routes ${shown} via this device${back ? `; it routes ${back.prefixes.length} prefix${back.prefixes.length === 1 ? '' : 'es'} back` : ''}.`,
           direction: back ? 'both' : 'forward',
-          lineStyle: 'dashed',
+          // No line style of its own: being a layer-3 hop is what draws it
+          // dotted, and a style here would stand in the way of that.
           layer3: true,
           layers: [logicalView],
           enabled: true,
@@ -1210,7 +1211,7 @@ export function buildTopology(
   // ---------------------------------------------------------------- 
   //
   // Tunnels: a VXLAN, IPsec, GRE or DMVPN overlay between two devices is not
-  // a cable and not a route, so it is its own dotted edge, labelled with its
+  // a cable and not a route, so it is its own dashed edge, labelled with its
   // kind and name, one per pair and kind. The far end is the device the
   // collection named, else the one owning the far address.
   {
@@ -1261,7 +1262,7 @@ export function buildTopology(
           label,
           notes: `A ${kind} tunnel, not a cable: what carries it is the routed path between the two ends.`,
           direction: 'both',
-          lineStyle: 'dotted',
+          // Dashed because it is a tunnel; no line style of its own.
           overlay: true,
           ...(logicalView ? { layers: [logicalView] } : {}),
           enabled: true,

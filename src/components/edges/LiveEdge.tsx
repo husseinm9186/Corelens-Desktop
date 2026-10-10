@@ -17,11 +17,11 @@ import { STATUS_LABEL } from '../../types/domain';
 import { useStore } from '../../state/store';
 import { describeRule, shouldAnimate } from '../../health/evaluate';
 import { STATUS_COLOR_DARK, canvasPalette, readableOn, statusColors } from '../../theme';
-import { capPath, capsFor, dashFor } from '../../lib/linkStyle';
+import { capPath, capsFor, doubleWidths, stepAlong, strokeFor } from '../../lib/linkStyle';
 import { jumpsFor, withJumps } from '../../lib/lineJumps';
 import { cableTag, centreLabel } from '../../lib/cables';
 import { cssOf } from '../../lib/textStyle';
-import { laneAmong, laneOffset, laneShift, obstaclesFor, routeAround, routePath, type Side as RouteSide } from '../../lib/avoidRoute';
+import { CORNER_RADIUS, laneAmong, laneOffset, laneShift, obstaclesFor, routeAround, routePath, type Side as RouteSide } from '../../lib/avoidRoute';
 import { useDragOverlay } from '../../state/dragOverlay';
 import { segmentMidpoints, waypointRoute } from '../../lib/waypointRoute';
 import { activePage, pageNodeById } from '../../lib/pages';
@@ -37,6 +37,8 @@ import {
 } from '../../lib/floatingAnchor';
 import { glyphOutlineAnchor } from '../../lib/glyphExtents';
 import { centreLabelFraction, chipWidthOf, nameBlockHeight, placePortChip } from '../../lib/portLabels';
+import { chipPush, chipVersion, forgetChip, registerChip, subscribeChips } from './chipRegistry';
+import { CROWDED_LINKS, linkCountsOf } from '../../lib/linkCounts';
 import { anchorSide, labelledPortAnchor, nearestPort, portCountOf, portedOf, portsAlong, sideToward } from '../../lib/portPoints';
 import { dragSegment, pathVertices, segmentGrips } from '../../lib/elbowRoute';
 import {
@@ -137,11 +139,19 @@ export function nearestFractionOnPath(edgePath: string, x: number, y: number): n
  *  the way along is the middle of the room, not the port. On the
  *  drawn path the lanes have separated, and a fixed distance from each end
  *  keeps the chip beside its own device at any link length. */
+/** A chip's resting place, and the way along its link away from its device. */
+interface ChipAt { x: number; y: number; ux: number; uy: number }
+
+/** A port chip's height on the canvas: the 11 px mono line and its padding. */
+const CHIP_H = 18;
+
+const noSubscribe = () => () => {};
+
 function portAnchors(
   edgePath: string,
   rank: number,
   ends: { source: { nameBottom: number | null; chipW: number }; target: { nameBottom: number | null; chipW: number }; centreW: number },
-): { s: { x: number; y: number }; t: { x: number; y: number } } | null {
+): { s: ChipAt; t: ChipAt } | null {
   try {
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     p.setAttribute('d', edgePath);
@@ -170,7 +180,7 @@ function portAnchors(
       // The direction of travel away from this end, and the chip to its left
       // — which puts the two ends' chips on opposite sides of the line.
       const u = end === 'source' ? chord : { x: -chord.x, y: -chord.y };
-      return { x: pt.x + -u.y * off, y: pt.y + u.x * off };
+      return { x: pt.x + -u.y * off, y: pt.y + u.x * off, ux: u.x, uy: u.y };
     };
     return { s: place('source'), t: place('target') };
   } catch {
@@ -222,7 +232,7 @@ function pathFor(
     case 'step':
       return getSmoothStepPath({ ...p, borderRadius: 0, stepPosition: laneStep(lane) });
     case 'smoothstep':
-      return getSmoothStepPath({ ...p, borderRadius: 12, stepPosition: laneStep(lane) });
+      return getSmoothStepPath({ ...p, borderRadius: CORNER_RADIUS, stepPosition: laneStep(lane) });
     default:
       // Our own cubic, because React Flow's getBezierPath ignores the
       // `curvature` option in this version — every value drew the identical
@@ -435,7 +445,14 @@ function LiveEdgeInner(props: EdgeProps) {
   const animate = !isLeader && shouldAnimate(status, reduceMotion);
   const duration = SPEED_SECONDS[status] ?? 3;
   const direction = data.direction ?? 'forward';
-  const width = data.width ?? 2;
+  // What the link is goes into the stroke — a bundle doubled, a tunnel
+  // dashed, a logical hop dotted, a transit circuit heavier — so it still
+  // reads when every label is hidden.
+  const stroke = strokeFor(data, status);
+  const width = isLeader ? (data.width ?? 2) : stroke.width;
+  const double = !isLeader && stroke.double;
+  // A traced path points its links the way the packet goes.
+  const along = useStore((s) => (isLeader ? 0 : stepAlong(s.canvasPath, source, target)));
 
   // Register the plain path and read the others', so a crossing can be found.
   // What is registered is never the hopped path, or an edge redrawing itself
@@ -474,6 +491,48 @@ function LiveEdgeInner(props: EdgeProps) {
       : null),
     [wantsPortChips, edgePath, rank, sourceNameBottom, targetNameBottom, centreW, data.sourcePortLabel, data.targetPortLabel],
   );
+  // Each chip is registered where it would rest, and pushed clear of every
+  // other link's chips in one pass. A chip dragged into place is registered
+  // as fixed: it stays, and the others move round it.
+  const pushVersion = useSyncExternalStore(wantsPortChips ? subscribeChips : noSubscribe, chipVersion, chipVersion);
+  void pushVersion;
+  const chipBox = (end: 's' | 't', label: string | undefined, at: number | undefined) => {
+    if (!label || !anchors) return null;
+    const a = anchors[end];
+    if (at === undefined) return { key: `${id}:${end}`, x: a.x, y: a.y, w: chipWidthOf(label), h: CHIP_H, ux: a.ux, uy: a.uy };
+    const p = pointAt(edgePath, at);
+    return p ? { key: `${id}:${end}`, x: p.x, y: p.y, w: chipWidthOf(label), h: CHIP_H, ux: 0, uy: 0, fixed: true } : null;
+  };
+  const sourceChip = chipBox('s', data.sourcePortLabel, data.sourcePortAt);
+  const targetChip = chipBox('t', data.targetPortLabel, data.targetPortAt);
+  const sourceChipKey = sourceChip && `${sourceChip.x},${sourceChip.y},${sourceChip.w},${sourceChip.ux},${sourceChip.uy},${sourceChip.fixed ?? false}`;
+  const targetChipKey = targetChip && `${targetChip.x},${targetChip.y},${targetChip.w},${targetChip.ux},${targetChip.uy},${targetChip.fixed ?? false}`;
+  useEffect(() => {
+    if (sourceChip) registerChip(sourceChip);
+    else forgetChip(`${id}:s`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the key is the chip
+  }, [id, sourceChipKey]);
+  useEffect(() => {
+    if (targetChip) registerChip(targetChip);
+    else forgetChip(`${id}:t`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the key is the chip
+  }, [id, targetChipKey]);
+  useEffect(() => () => {
+    forgetChip(`${id}:s`);
+    forgetChip(`${id}:t`);
+  }, [id]);
+  // A device with more links than this has too many chips round it to read:
+  // its chips show when the link or the device is selected or pointed at, or
+  // close up (the stylesheet's part), and the device says how many it has.
+  const sourceCrowded = useStore((s) => (wantsPortChips ? (linkCountsOf(activePage(s.doc).edges).get(source) ?? 0) > CROWDED_LINKS : false));
+  const targetCrowded = useStore((s) => (wantsPortChips ? (linkCountsOf(activePage(s.doc).edges).get(target) ?? 0) > CROWDED_LINKS : false));
+  // Selected here means either way it can be: on the canvas, or through the
+  // store from a table row or the inspector.
+  const picked = useStore((s) => (s.selectedEdgeId === id ? 'link' : s.selectedNodeId === source ? 'source' : s.selectedNodeId === target ? 'target' : null));
+  const chipClass = (crowded: boolean, end: 'source' | 'target', endNode: TopoNode | undefined) =>
+    `cv-edge-label cv-edge-port nodrag nopan${crowded && !selected && !endNode?.selected && picked !== 'link' && picked !== end ? ' is-crowded' : ''}`;
+  const sourcePush = chipPush(`${id}:s`);
+  const targetPush = chipPush(`${id}:t`);
 
   // The centre label and any flat text slide along the link and
   // never leave it. While a drag is live the fraction is local state; the
@@ -782,12 +841,12 @@ function LiveEdgeInner(props: EdgeProps) {
   // actually dragged switches to a stored fraction along the path.
   const sourcePortFraction = dragAt?.key === 'sourcePort' ? dragAt.at : data.sourcePortAt;
   const sourcePortPoint = sourcePortFraction === undefined ? null : pointAt(edgePath, sourcePortFraction);
-  const sourcePortAnchorX = anchors ? anchors.s.x : sourceX + (targetX - sourceX) * PORT_LABEL_AT;
-  const sourcePortAnchorY = anchors ? anchors.s.y : sourceY + (targetY - sourceY) * PORT_LABEL_AT;
+  const sourcePortAnchorX = anchors ? anchors.s.x + sourcePush.dx : sourceX + (targetX - sourceX) * PORT_LABEL_AT;
+  const sourcePortAnchorY = anchors ? anchors.s.y + sourcePush.dy : sourceY + (targetY - sourceY) * PORT_LABEL_AT;
   const targetPortFraction = dragAt?.key === 'targetPort' ? dragAt.at : data.targetPortAt;
   const targetPortPoint = targetPortFraction === undefined ? null : pointAt(edgePath, targetPortFraction);
-  const targetPortAnchorX = anchors ? anchors.t.x : targetX + (sourceX - targetX) * PORT_LABEL_AT;
-  const targetPortAnchorY = anchors ? anchors.t.y : targetY + (sourceY - targetY) * PORT_LABEL_AT;
+  const targetPortAnchorX = anchors ? anchors.t.x + targetPush.dx : targetX + (sourceX - targetX) * PORT_LABEL_AT;
+  const targetPortAnchorY = anchors ? anchors.t.y + targetPush.dy : targetY + (sourceY - targetY) * PORT_LABEL_AT;
   const livePath = wpDrag
     ? waypointRoute({ x: sourceX, y: sourceY }, wpDrag.points, { x: targetX, y: targetY }).path
     : edgePath;
@@ -805,10 +864,10 @@ function LiveEdgeInner(props: EdgeProps) {
     return withJumps(edgePath, jumpsFor(id, edgePath, others, radius * 2), radius);
   }, [id, edgePath, livePath, wps.length, wpDrag, jumpsEnabled, isLeader, version, data.width]);
 
-  const dash = isLeader ? (data.lineStyle === 'solid' ? undefined : '4 4') : dashFor(data.lineStyle, status);
+  const dash = isLeader ? (data.lineStyle === 'solid' ? undefined : '4 4') : stroke.dash;
   const caps = isLeader
     ? { start: data.startCap ?? 'none', end: data.endCap ?? 'none' }
-    : capsFor(data);
+    : capsFor(data, along);
 
   const dotCount = 3;
   /** Each dot gets one trailing companion: smaller, dimmer and slightly behind.
@@ -946,12 +1005,23 @@ function LiveEdgeInner(props: EdgeProps) {
           animateMotion which the compositor handles. The dots already carry
           direction, so it bought very little. */}
 
+      {/* A bundle is two thin lines with the ground between them: the line
+          drawn wide, and its middle cut out by a mask, so whatever is under
+          the link shows through — the page, the desk, a zone. */}
+      {double && (
+        <mask id={`cv-double-${id}`} maskUnits="userSpaceOnUse" x={-1e6} y={-1e6} width={2e6} height={2e6}>
+          <path d={drawnPath} fill="none" stroke="white" strokeWidth={doubleWidths(width).outer + 4} />
+          <path d={drawnPath} fill="none" stroke="black" strokeWidth={doubleWidths(width).gap} />
+        </mask>
+      )}
       <BaseEdge
         id={id}
         path={drawnPath}
+        mask={double ? `url(#cv-double-${id})` : undefined}
+        data-kind={double ? 'bundle' : undefined}
         style={{
           stroke: lineColor,
-          strokeWidth: isLeader ? 1 : selected ? width + 1.5 : width,
+          strokeWidth: isLeader ? 1 : double ? doubleWidths(selected ? width + 1 : width).outer : selected ? width + 1.5 : width,
           strokeDasharray: dash,
           opacity: isLeader ? 0.85 : status === 'disabled' ? 0.55 : 1,
           filter: selected ? `drop-shadow(0 0 6px ${lineColor})` : undefined,
@@ -959,9 +1029,14 @@ function LiveEdgeInner(props: EdgeProps) {
           // a transition instead of a jump cut.
           transition: 'stroke 350ms ease, stroke-width 150ms ease',
         }}
-        markerEnd={markerEnd}
-        markerStart={markerStart}
+        markerEnd={double ? undefined : markerEnd}
+        markerStart={double ? undefined : markerStart}
       />
+      {/* The arrowheads of a double line go on a path of their own, outside
+          the mask that would cut them in half and at the line's own scale. */}
+      {double && (markerEnd || markerStart) && (
+        <path d={drawnPath} fill="none" stroke="none" strokeWidth={width} markerEnd={markerEnd} markerStart={markerStart} />
+      )}
       {/* Invisible wide path so hovering the thin line is practical. */}
       <path d={drawnPath} fill="none" stroke="transparent" strokeWidth={18}>
         <title>{tooltip}</title>
@@ -1029,7 +1104,8 @@ function LiveEdgeInner(props: EdgeProps) {
 
         {data.sourcePortLabel ? (
           <div
-            className="cv-edge-label cv-edge-port nodrag nopan"
+            className={chipClass(sourceCrowded, 'source', sourceNode)}
+            data-edge={id}
             style={{
               transform: `translate(-50%, -50%) translate(${
                 sourcePortPoint ? sourcePortPoint.x : sourcePortAnchorX
@@ -1231,7 +1307,8 @@ function LiveEdgeInner(props: EdgeProps) {
 
         {data.targetPortLabel ? (
           <div
-            className="cv-edge-label cv-edge-port nodrag nopan"
+            className={chipClass(targetCrowded, 'target', targetNode)}
+            data-edge={id}
             style={{
               transform: `translate(-50%, -50%) translate(${
                 targetPortPoint ? targetPortPoint.x : targetPortAnchorX

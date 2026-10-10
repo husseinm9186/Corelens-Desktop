@@ -30,7 +30,7 @@ import { describeRule, linkStatus } from '../../health/evaluate';
 import { describeSelection, shared, withTag, withoutTag } from '../../lib/bulkEdit';
 import type { Shared } from '../../lib/bulkEdit';
 import { buildTimeline, shortDuration, totals } from '../../lib/statusHistory';
-import { capsFor } from '../../lib/linkStyle';
+import { capsFor, kindOf } from '../../lib/linkStyle';
 import { layersOf, toggleOn, type Layer } from '../../lib/layers';
 import { activePage } from '../../lib/pages';
 import type {
@@ -2496,6 +2496,22 @@ function LinkInspector({ edgeId }: { edgeId: string }) {
           <option value="leader">{tr('inspector.aLeaderPointingAt')}</option>
         </select>
       </Field>
+
+      {d.kind !== 'leader' && (
+        <Field label={tr('inspector.linkKind')} hint={tr('inspector.linkKindHint')}>
+          <select
+            className="cv-input"
+            aria-label={tr('inspector.linkKind')}
+            value={d.linkKind ?? 'auto'}
+            onChange={(e) => update(edgeId, { linkKind: e.target.value as LinkData['linkKind'] })}
+          >
+            <option value="auto">{tr('inspector.linkKindAuto', { kind: tr(`inspector.linkKind.${kindOf({ ...d, linkKind: 'auto' })}`) })}</option>
+            {(['cable', 'bundle', 'tunnel', 'logical', 'transit'] as const).map((k) => (
+              <option key={k} value={k}>{tr(`inspector.linkKind.${k}`)}</option>
+            ))}
+          </select>
+        </Field>
+      )}
 
       <div className="cv-row">
         <Field label="Line style" hint="Auto follows health">

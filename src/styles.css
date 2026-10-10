@@ -2079,6 +2079,13 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 .cv-glyph-label { font-weight: 600; font-size: var(--canvas-text-md); color: var(--ink); }
 .cv-glyph-addr { font-family: var(--mono); font-size: var(--canvas-text-xs); color: var(--ink-muted); }
 .cv-glyph-status { font-size: var(--canvas-text-xs); font-weight: 600; }
+/* A device with more links than its port chips can be read round: how many,
+   under its name, and the chips wait until the link or the device is
+   selected or pointed at. Close up there is room for all of them, and the
+   count goes. */
+.cv-node-links { font-size: var(--canvas-text-xs); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.cv-canvas.is-close .cv-node-links { display: none; }
+.cv-canvas:not(.is-close) .cv-edge-port.is-crowded { visibility: hidden; }
 
 /* Typing on the diagram itself. Sized and coloured to match the text it
    replaces, so committing a rename does not make the label jump. */

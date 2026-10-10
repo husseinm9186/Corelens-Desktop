@@ -225,9 +225,12 @@ export function simplify(points: readonly Pt[]): Pt[] {
   return out;
 }
 
+/** How round an orthogonal link's corners are, everywhere one is drawn. */
+export const CORNER_RADIUS = 8;
+
 /** The route as an SVG path with rounded corners, and the point halfway along
  *  it for the label. */
-export function routePath(points: readonly Pt[], radius = 10): { path: string; labelAt: Pt } {
+export function routePath(points: readonly Pt[], radius = CORNER_RADIUS): { path: string; labelAt: Pt } {
   if (points.length < 2) return { path: '', labelAt: points[0] ?? { x: 0, y: 0 } };
   let d = `M${points[0]!.x},${points[0]!.y}`;
   for (let i = 1; i < points.length - 1; i++) {

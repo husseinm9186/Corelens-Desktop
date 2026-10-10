@@ -81,6 +81,10 @@ describe('routing round devices', () => {
     expect(labelAt).toEqual({ x: 100, y: 0 });
   });
 
+  it('rounds its corners at 8 px unless told otherwise', () => {
+    expect(routePath([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }]).path).toBe('M0,0L92,0Q100,0 100,8L100,100');
+  });
+
   it('simplifies away straight-through points', () => {
     expect(simplify([{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 80 }])).toEqual([
       { x: 0, y: 0 },

@@ -2,6 +2,26 @@
 
 Newest first.
 
+## Unreleased
+
+**What a link is, in its line**
+- A bundle is drawn as a double line, a tunnel dashed, a logical (layer-3)
+  hop dotted and a transit circuit heavier, so what a link is still reads
+  when its labels are hidden. Coreview works the kind out from what a
+  crawl found — a port-channel's members, a tunnel, a routed hop — or from
+  a WAN cable type; **Kind** in the link's inspector sets it by hand. A
+  line style chosen on the link still wins. The export draws the same.
+  Discovered tunnels used to be dotted and layer-3 hops dashed; they now
+  follow the kinds.
+- Orthogonal links turn with an 8 px corner.
+- Port chips that would land on each other — two neighbouring devices'
+  chips, say — are slid apart along their own links. A device with more
+  than three links shows *5 links* under its name and keeps its chips
+  until the link or the device is selected or pointed at, or you zoom in
+  past 120 %.
+- A traced path puts an arrow on each link along it, pointing the way the
+  packet goes, and takes them away again when the trace is cleared.
+
 ## 2.11.0 — 2026-10-10
 
 **Arrange by layer**

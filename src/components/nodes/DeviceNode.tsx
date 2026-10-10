@@ -13,6 +13,7 @@ import { openThreads } from '../../lib/comments';
 import { timeAgo } from '../../lib/timeAgo';
 import { ipc } from '../../lib/ipc';
 import { activePage } from '../../lib/pages';
+import { CROWDED_LINKS, linkCountsOf } from '../../lib/linkCounts';
 import type { DeviceNodeData, HealthStatus, ProbeRuntime } from '../../types/domain';
 import { SHAPE_DEVICE_TYPES, STATUS_GLYPH, STATUS_LABEL } from '../../types/domain';
 import { t } from '../../i18n';
@@ -238,6 +239,10 @@ function DeviceNodeInner({ id, data, selected }: NodeProps) {
   const dimmed = useStore((s) => (s.canvasHighlight ? !s.canvasHighlight.has(id) : false));
   const beginEditing = useStore((s) => s.beginEditing);
   const colourBy = useStore((s) => activePage(s.doc).canvas.colourBy ?? 'health');
+  // A device with more links than its chips can be read round says how many
+  // it has; the chips wait to be asked for. Close up the stylesheet hides
+  // this again, because there every chip is shown.
+  const links = useStore((s) => linkCountsOf(activePage(s.doc).edges).get(id) ?? 0);
   const rename = useStore((s) => s.updateNodeData);
   const openLink = () => {
     if (d.link) ipc.openExternalUrl(d.link).catch((err: unknown) => console.error(err));
@@ -415,6 +420,9 @@ function DeviceNodeInner({ id, data, selected }: NodeProps) {
             startEditing={editingNow}
             onStarted={() => beginEditing(null)}
           />
+          {links > CROWDED_LINKS && !isText && (
+            <div className="cv-node-links" data-region="node-links">{t('deviceNode.links', { count: links })}</div>
+          )}
           {d.showDetails && (
             <>
               {primaryAddress && <div className="cv-glyph-addr">{primaryAddress}</div>}
@@ -579,6 +587,9 @@ function DeviceNodeInner({ id, data, selected }: NodeProps) {
             startEditing={editingNow}
             onStarted={() => beginEditing(null)}
           />
+          {links > CROWDED_LINKS && !isText && !isShape && !isZone && (
+            <div className="cv-node-links" data-region="node-links">{t('deviceNode.links', { count: links })}</div>
+          )}
           {d.showDetails && !isText && (
             <div className="cv-node-detail">
               {primaryAddress && <div className="cv-mono">{primaryAddress}</div>}

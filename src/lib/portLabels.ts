@@ -82,3 +82,74 @@ export function centreLabelFraction(c: { len: number; endY: number; dirY: number
   const f = clear / c.len;
   return f > 0.5 ? Math.min(0.75, f) : 0.5;
 }
+
+/** A placed chip, for pushing apart. `ux`/`uy` is the way along its link
+ *  away from its own device: the one direction it may move without leaving
+ *  the line it labels. */
+export interface ChipBox {
+  key: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  ux: number;
+  uy: number;
+  /** Put there by hand: it stays, and the others move round it. */
+  fixed?: boolean;
+}
+
+/** How far a chip may be pushed, and in what steps. */
+const PUSH_STEP = 6;
+const PUSH_STEPS = 16;
+const CHIP_GAP = 2;
+const CELL = 96;
+
+/**
+ * Pushes overlapping port chips apart, in one greedy pass.
+ *
+ * Ranking parallel cables keeps the chips of links leaving the same point
+ * apart, but two links leaving one device from neighbouring ports, or a
+ * chip of one device reaching the chip of the next, still landed on each
+ * other. Each chip in turn — the ones placed by hand first, then by key, so
+ * every link works out the same answer — is slid along its own link, away
+ * from its device, until it clears the chips already placed. Bounded: a chip
+ * that cannot be cleared within a short distance stays at the last place
+ * tried rather than wandering off to the far end.
+ */
+export function pushChips(chips: readonly ChipBox[]): Map<string, { x: number; y: number }> {
+  const order = [...chips].sort((a, b) => (a.fixed === b.fixed ? (a.key < b.key ? -1 : a.key > b.key ? 1 : 0) : a.fixed ? -1 : 1));
+  const grid = new Map<string, { x: number; y: number; w: number; h: number }[]>();
+  const cellsOf = (x: number, y: number, w: number, h: number) => {
+    const out: string[] = [];
+    for (let cx = Math.floor((x - w / 2) / CELL); cx <= Math.floor((x + w / 2) / CELL); cx += 1) {
+      for (let cy = Math.floor((y - h / 2) / CELL); cy <= Math.floor((y + h / 2) / CELL); cy += 1) out.push(`${cx},${cy}`);
+    }
+    return out;
+  };
+  const hits = (x: number, y: number, w: number, h: number) => {
+    for (const cell of cellsOf(x, y, w, h)) {
+      for (const o of grid.get(cell) ?? []) {
+        if (Math.abs(o.x - x) * 2 < o.w + w + CHIP_GAP * 2 && Math.abs(o.y - y) * 2 < o.h + h + CHIP_GAP * 2) return true;
+      }
+    }
+    return false;
+  };
+  const out = new Map<string, { x: number; y: number }>();
+  for (const c of order) {
+    let { x, y } = c;
+    if (!c.fixed) {
+      for (let i = 0; i < PUSH_STEPS && hits(x, y, c.w, c.h); i += 1) {
+        x += c.ux * PUSH_STEP;
+        y += c.uy * PUSH_STEP;
+      }
+    }
+    const placed = { x, y, w: c.w, h: c.h };
+    for (const cell of cellsOf(x, y, c.w, c.h)) {
+      const list = grid.get(cell);
+      if (list) list.push(placed);
+      else grid.set(cell, [placed]);
+    }
+    out.set(c.key, { x, y });
+  }
+  return out;
+}

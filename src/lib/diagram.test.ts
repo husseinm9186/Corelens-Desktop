@@ -98,6 +98,26 @@ describe('renderDiagramSvg', () => {
     expect(svg).toContain(`<marker id="${ref![1]}"`);
   });
 
+  it('draws what a link is into its stroke, as the canvas does', () => {
+    const pair = [device('n1', 0, 0), device('n2', 400, 0)];
+    const as = (over: Record<string, unknown>) => ({ ...link, data: { ...link.data, ...over } }) as TopoEdge;
+    // A bundle: the line drawn wide with its middle masked out, and its
+    // arrowhead kept off the mask.
+    const bundle = render(pair, [as({ linkKind: 'bundle' })]);
+    expect(bundle).toMatch(/<mask id="cv-double-e1"/);
+    expect(bundle).toMatch(/mask="url\(#cv-double-e1\)"/);
+    expect(bundle).not.toMatch(/mask="url\(#cv-double-e1\)"[^>]*marker-end/);
+    expect(bundle).toMatch(/marker-end="url\(#cv-cap-e1-end\)"/);
+    // A tunnel dashed, a logical hop dotted, a transit circuit heavier.
+    expect(render(pair, [as({ overlay: true })])).toContain('stroke-dasharray="6 4"');
+    expect(render(pair, [as({ layer3: true })])).toContain('stroke-dasharray="1.5 3"');
+    expect(render(pair, [as({ cableType: 'wan' })])).toMatch(/stroke-width="3\.25"/);
+    // A plain cable is none of those.
+    const plain = render(pair, [link]);
+    expect(plain).not.toContain('cv-double-');
+    expect(plain).not.toContain('stroke-dasharray');
+  });
+
   it('paints the arrowhead in the link own colour', () => {
     // Markers used to be shared per status, and a marker in a shared defs
     // cannot see the colour of the path using it — every arrowhead stayed the

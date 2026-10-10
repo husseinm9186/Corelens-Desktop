@@ -12,7 +12,7 @@
  * a device whose table was never collected, a named VRF, or anything VXLAN
  * stops with "insufficient", named and explained.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { t } from '../i18n';
 import {
@@ -119,6 +119,7 @@ export function PathTracePanel() {
   const page = useStore((s) => activePage(s.doc));
   const meta = useStore((s) => s.meta);
   const setHighlight = useStore((s) => s.setCanvasHighlight);
+  const setCanvasPath = useStore((s) => s.setCanvasPath);
 
   // `seed` was fetched and dropped. With two runs a minute apart the
   // date alone cannot say which part of the network each one covered.
@@ -186,18 +187,33 @@ export function PathTracePanel() {
   const withRoutes = devices.filter((d) => d.routes !== undefined).length;
 
   /** Hostname on the diagram, so a path can be lit up on it. */
-  const nodeIdsFor = (names: string[]) => {
-    const want = new Set(names.map((n) => n.trim().toLowerCase()));
-    return new Set(
-      page.nodes
-        .filter((n) => {
-          const d = n.data as DeviceNodeData;
-          const label = (d.hostname || d.label || '').trim().toLowerCase();
-          return want.has(label) || want.has(label.split('.')[0] ?? '');
-        })
-        .map((n) => n.id),
-    );
+  // The devices named, in the order the path meets them.
+  const pathIdsFor = (names: string[]) => {
+    const idOf = new Map<string, string>();
+    for (const n of page.nodes) {
+      const d = n.data as DeviceNodeData;
+      const label = (d.hostname || d.label || '').trim().toLowerCase();
+      if (!label) continue;
+      if (!idOf.has(label)) idOf.set(label, n.id);
+      const short = label.split('.')[0] ?? '';
+      if (short && !idOf.has(short)) idOf.set(short, n.id);
+    }
+    const ids: string[] = [];
+    for (const name of names) {
+      const id = idOf.get(name.trim().toLowerCase());
+      if (id && !ids.includes(id)) ids.push(id);
+    }
+    return ids;
   };
+  const light = (names: string[]) => {
+    const ids = pathIdsFor(names);
+    setHighlight(ids.length > 0 ? new Set(ids) : null);
+    setCanvasPath(ids.length > 0 ? ids : null);
+  };
+  const unlight = useCallback(() => {
+    setHighlight(null);
+    setCanvasPath(null);
+  }, [setHighlight, setCanvasPath]);
 
   /** What the Rust builder is asked. */
   const pathRequest = (without: string[] = [], traceroute?: (string | null)[]): PathRequest => ({
@@ -219,7 +235,7 @@ export function PathTracePanel() {
         setTraced(asTraceResult(out.forward));
         const names = devicesIn(out);
         setCandidates((was) => [...new Set([...was, ...names])]);
-        setHighlight(names.length > 0 ? nodeIdsFor(names) : null);
+        light(names);
       })
       .catch((e: unknown) => setProblem(e instanceof Error ? e.message : String(e)));
   };
@@ -241,7 +257,7 @@ export function PathTracePanel() {
     setTraced(out);
     const names = devicesOnPath(out);
     setCandidates((was) => [...new Set([...was, ...names])]);
-    setHighlight(names.length > 0 ? nodeIdsFor(names) : null);
+    light(names);
   };
 
   const clear = () => {
@@ -249,7 +265,7 @@ export function PathTracePanel() {
     setOutcome(null);
     setDown(new Set());
     setCandidates([]);
-    setHighlight(null);
+    unlight();
     setMeasured(null);
     setLegs({});
   };
@@ -320,7 +336,7 @@ export function PathTracePanel() {
 
   // A path left lit on the diagram after the panel has gone is a diagram
   // nobody can read.
-  useEffect(() => () => setHighlight(null), [setHighlight]);
+  useEffect(() => unlight, [unlight]);
 
   const hops = traced?.paths ?? [];
 
@@ -357,7 +373,7 @@ export function PathTracePanel() {
     });
     // The new page is now in front; a highlight belonging to the old one is
     // not about anything there.
-    setHighlight(null);
+    unlight();
     useStore.getState().requestFit();
     setNote(t('trace.pageMade', { name: applicationPageName(app) }));
   };

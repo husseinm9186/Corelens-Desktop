@@ -365,6 +365,11 @@ export type LinkCap = 'none' | 'arrow' | 'open-arrow' | 'circle' | 'square' | 'd
  *  someone needs a dashed line to mean a tunnel instead. */
 export type LinkLineStyle = 'auto' | 'solid' | 'dashed' | 'dotted' | 'dash-dot';
 
+/** What a link is, drawn into the stroke itself so it still reads when the
+ *  labels are hidden: a cable solid, a bundle a double line, a tunnel
+ *  dashed, a logical adjacency dotted, a transit circuit heavier. */
+export type LinkKind = 'cable' | 'bundle' | 'tunnel' | 'logical' | 'transit';
+
 export type LinkHealthRuleType =
   | 'manual'
   | 'follow-source'
@@ -426,6 +431,10 @@ export interface LinkData extends Record<string, unknown> {
   notes?: string;
   healthRule: LinkHealthRule;
   lineStyle?: LinkLineStyle;
+  /** What the link is. Unset or 'auto' works it out from what is known —
+   *  a tunnel, a layer-3 hop, a bundle a crawl found, a WAN circuit — and a
+   *  choice here wins over all of that. */
+  linkKind?: LinkKind | 'auto';
   /** What the link is physically made of, shown as a tag in its
    *  centre label and listed in the cable schedule. */
   cableType?: 'copper' | 'fiber-sm' | 'fiber-mm' | 'coax' | 'wireless' | 'wan' | 'trunk';

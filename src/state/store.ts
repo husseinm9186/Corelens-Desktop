@@ -439,6 +439,9 @@ interface Store {
   /** Devices the panel filter currently matches, lit up on the canvas so the
    *  table and the drawing answer the same question at the same time. */
   canvasHighlight: Set<string> | null;
+  /** The devices of a traced path in the order a packet meets them, so the
+   *  links along it can carry arrows the way it goes. */
+  canvasPath: string[] | null;
   /** Bumped to ask the canvas to fit what is on the page. A counter
    *  rather than a flag, so two requests in a row both take effect. Landing on
    *  a generated page showing one corner of it is a poor way to arrive. */
@@ -583,6 +586,7 @@ interface Store {
   selectNone: () => void;
   beginEditing: (id: string | null) => void;
   setCanvasHighlight: (ids: Set<string> | null) => void;
+  setCanvasPath: (ids: string[] | null) => void;
   requestFit: () => void;
   /** Presentation mode: the chrome hidden, the diagram alone. A way
    *  of looking, not part of the project, so never saved. */
@@ -1323,6 +1327,7 @@ export const useStore = create<Store>((set, get) => ({
   selectedNodeId: null,
   editingNodeId: null,
   canvasHighlight: null,
+  canvasPath: null,
   fitRequest: 0,
   recovery: null,
   selectedEdgeId: null,
@@ -3419,6 +3424,10 @@ export const useStore = create<Store>((set, get) => ({
 
   setCanvasHighlight(ids) {
     set({ canvasHighlight: ids });
+  },
+
+  setCanvasPath(ids) {
+    set({ canvasPath: ids && ids.length > 1 ? ids : null });
   },
 
   beginEditing(id) {

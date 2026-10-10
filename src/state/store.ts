@@ -231,7 +231,7 @@ export interface ProjectDocument {
 /** The dock's tabs. */
 export type PathQuestion = { to: string; app: string; protocol: string; port: string; vrf: string };
 export type InspectorTab = 'status' | 'identity' | 'ports' | 'checks' | 'notes';
-export type DockTab = 'objects' | 'events' | 'discover' | 'crawl' | 'collect' | 'backup' | 'path' | 'trace' | 'tracert' | 'whereis' | 'ssh';
+export type DockTab = 'objects' | 'events' | 'compare' | 'discover' | 'crawl' | 'collect' | 'backup' | 'path' | 'trace' | 'tracert' | 'whereis' | 'ssh';
 
 /** A trace's state, kept outside the Tracert panel. */
 export interface TracertRun {
@@ -642,7 +642,14 @@ interface Store {
    *  bottom panel does not have. A way of looking, so never saved. */
   toolsOpen: boolean;
   toolsView: 'compare' | 'racks' | 'csv' | 'visio' | 'lifecycle' | 'settings';
-  setToolsOpen: (on: boolean, view?: 'compare' | 'racks' | 'csv' | 'visio' | 'settings') => void;
+  /** Opens one of the screens the rail names — Racks, Inventory
+   *  ('lifecycle'), Settings. The views that used to share a Tools screen
+   *  go where they live now: Compare to the dock's Monitor group, the two
+   *  imports to the Import dialog. */
+  setToolsOpen: (on: boolean, view?: 'compare' | 'racks' | 'csv' | 'visio' | 'lifecycle' | 'settings') => void;
+  /** The Import dialog: choosing a source, or one of the two open. */
+  importOpen: 'choose' | 'csv' | 'visio' | null;
+  setImportOpen: (open: 'choose' | 'csv' | 'visio' | null) => void;
   setToolsView: (view: 'compare' | 'racks' | 'csv' | 'visio' | 'lifecycle' | 'settings') => void;
   /** True while the canvas is being printed, so views set not to
    *  print are left off the page. Not part of the document. */
@@ -1321,7 +1328,8 @@ export const useStore = create<Store>((set, get) => ({
   registerOpen: false,
   helpOpen: false,
   toolsOpen: false,
-  toolsView: 'compare',
+  toolsView: 'settings',
+  importOpen: null,
   sshSessions: [],
   sshActive: null,
   jobs: [],
@@ -1912,7 +1920,20 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   setToolsOpen(on, view) {
+    if (on && view === 'compare') {
+      set({ toolsOpen: false });
+      get().requestPanelTab('compare');
+      return;
+    }
+    if (on && (view === 'csv' || view === 'visio')) {
+      set({ toolsOpen: false, importOpen: view });
+      return;
+    }
     set({ toolsOpen: on, ...(view ? { toolsView: view } : {}), ...(on ? { registerOpen: false, helpOpen: false } : {}) });
+  },
+
+  setImportOpen(open) {
+    set({ importOpen: open });
   },
 
   setToolsView(view) {

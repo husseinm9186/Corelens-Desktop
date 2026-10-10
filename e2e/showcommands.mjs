@@ -397,7 +397,7 @@ await page.locator('input[aria-label="Back up LAB-SW-A"]').check();
 await snmpTick().check();
 await page.waitForTimeout(300);
 check("ticked with no SFTP server named, it says to name one in Settings",
-  /Name the SFTP server under Tools → Settings first/.test(await snmpHint().innerText()), await snmpHint().innerText());
+  /Name the SFTP server under Settings first/.test(await snmpHint().innerText()), await snmpHint().innerText());
 check("and the run cannot start", await backUp().isDisabled());
 
 await page.evaluate(() => {

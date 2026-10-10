@@ -129,7 +129,9 @@ function toDraft(pages: ImportedPage[]): DraftPage[] {
   }));
 }
 
-export function VisioImportPanel() {
+/** `onImported` is told once the drawing is on the diagram — the Import
+ *  dialog closes then, since the status line says what came in. */
+export function VisioImportPanel({ onImported }: { onImported?: () => void } = {}) {
   const doc = useStore((s) => s.doc);
   const meta = useStore((s) => s.meta);
   const [busy, setBusy] = useState(false);
@@ -312,6 +314,7 @@ export function VisioImportPanel() {
     );
     setDraft(null);
     setWarnings([]);
+    onImported?.();
   };
 
   const totals = useMemo(() => {

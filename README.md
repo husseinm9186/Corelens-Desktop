@@ -47,7 +47,7 @@ Analytics") or a line of the app's own text promising there is none.
   No Sentry, PostHog, Segment, Datadog, Google Analytics — none of them are
   dependencies, and there is no home-grown equivalent.
 - **No update check unless you ask for one.** The app never contacts a
-  server for a new version on its own. Tools → Settings has a **Check for
+  server for a new version on its own. Settings, on the rail, has a **Check for
   updates** button, and a tick to check automatically when the app starts
   that is **off until you turn it on**. Either sends one request for the
   newest release's manifest on this repository's GitHub Releases page — it
@@ -130,7 +130,7 @@ more useful than a blanket "nothing leaves the machine", which would be false:
 | SNMP write (one row in Cisco's configuration-copy table) | Only when a backup's **Ask Cisco devices to send their configuration over SNMP** tick is on, with a read-write credential you chose | Only the devices you selected; the device then sends the file to the SFTP server you named in Settings |
 | SFTP (read one file) | Same tick, after the device reports the copy done | Only that SFTP server |
 | Telnet | Only when you explicitly choose it for a run | Only the devices you listed |
-| HTTPS to GitHub (one GET of `latest.json`, then the installer if you press **Install**) | Only when you press **Check for updates** under Tools → Settings, or at start if you have switched on the automatic check there, which is off by default | `github.com`, this repository's Releases page, nothing else |
+| HTTPS to GitHub (one GET of `latest.json`, then the installer if you press **Install**) | Only when you press **Check for updates** under Settings, or at start if you have switched on the automatic check there, which is off by default | `github.com`, this repository's Releases page, nothing else |
 | Opening a link | Only when you click a hyperlink you added | Your OS browser, `http(s)` only — the Rust command rejects `file://`, `javascript:` and anything else, with tests covering it |
 
 **On Telnet:** every credential and every byte of output crosses the network in
@@ -246,7 +246,7 @@ whenever a push to `main` carries a version that has none yet. The same
 installers are also kept as build artifacts on every push: the **Actions**
 tab → a green run → **Artifacts**.
 
-An installed copy can fetch the next version itself — Tools → Settings →
+An installed copy can fetch the next version itself — Settings →
 **Check for updates** — and it verifies the download's signature against the
 key built into the app before running the installer. Nothing is checked
 unless you press the button or switch on the automatic check, which is off
@@ -400,7 +400,7 @@ pass/fail checks over the output. **Optionally over SNMP** for Cisco IOS,
 IOS-XE and NX-OS: tick *Ask Cisco devices to send their configuration over
 SNMP* on the Backups tab, choose a read-write SNMP credential, and each
 device is asked — through Cisco's configuration-copy table — to send its
-configuration to an SFTP server of yours, named with its login under Tools →
+configuration to an SFTP server of yours, named with its login under
 Settings. Coreview waits for the device to report the copy done, collects
 the file from your server and files it like any SSH capture, so history and
 before/after work the same. It is the one SNMP write Coreview ever sends,

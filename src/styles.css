@@ -387,6 +387,7 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; padding: 1px 3px;
 }
 .cv-nav-space { flex: 1; }
+.cv-nav-rule { display: block; height: 1px; margin: 0.30769231rem 0.61538462rem; background: var(--line); flex: none; }
 /* The floating toolbar on the canvas; the ink strip sits under it. */
 .cv-canvas-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .cv-canvas-col > .cv-canvas { flex: 1; min-height: 0; }
@@ -1593,6 +1594,36 @@ button.cv-start-card:hover { border-color: var(--accent); }
    scrolls, and two nested scrollbars is how the split review ended up
    clipped in the bottom panel. */
 .cv-register-body .cv-ipam-scroll { overflow-x: auto; }
+
+/* One frame for every full screen: a 36 px sub-header with the breadcrumb,
+   the screen's tabs underlined on the same row and its own controls at the
+   right; a 240 px tree down the left where there is one; content held to
+   1120 px unless it is a drawing. */
+.cv-screen-head {
+  display: flex; align-items: center; gap: 1.23076923rem; min-height: 2.76923077rem;
+  padding: 0 1.07692308rem; border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.cv-screen-crumbs { display: flex; align-items: center; gap: 0.46153846rem; min-width: 0; }
+.cv-crumb-home { background: none; border: 0; padding: 0.15384615rem 0.30769231rem; color: var(--accent); font: inherit; font-size: var(--text-md); cursor: pointer; border-radius: 4px; }
+.cv-crumb-home:hover { background: var(--hover); }
+.cv-crumb-sep { color: var(--text-faint); }
+.cv-screen-title { margin: 0; font-size: var(--text-md); font-weight: 600; white-space: nowrap; }
+.cv-screen-tabs { align-self: stretch; }
+.cv-screen-tabs button { border-bottom: 2px solid transparent; }
+.cv-screen-tabs button.is-active { border-bottom-color: var(--accent); }
+.cv-screen-actions { margin-left: auto; display: flex; align-items: center; gap: 0.46153846rem; }
+.cv-screen-body.has-tree { display: grid; grid-template-columns: 18.46153846rem minmax(0, 1fr); gap: 1.23076923rem; align-items: start; }
+.cv-screen-content { min-width: 0; max-width: 86.15384615rem; }
+.cv-screen-body.is-wide .cv-screen-content { max-width: none; height: 100%; }
+@media (max-width: 900px) { .cv-screen-body.has-tree { grid-template-columns: 1fr; } }
+
+/* Import…: the two sources side by side, then the one chosen. */
+.cv-import-dialog { max-width: 52rem; }
+.cv-import-dialog.is-open { max-width: 86.15384615rem; max-height: calc(100vh - 4rem); display: flex; flex-direction: column; }
+.cv-import-head { display: flex; align-items: center; gap: 0.92307692rem; }
+.cv-import-head h2 { margin: 0; flex: 1; }
+.cv-import-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 0.92307692rem; margin-top: 1.23076923rem; }
+.cv-import-body { overflow: auto; margin-top: 0.92307692rem; min-height: 0; }
 
 /* The workbench: the subnet tree down the left, the chosen subnet's
    addresses — or the tool working on it — on the right, capped at a width

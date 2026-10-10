@@ -10,7 +10,7 @@ import { useStore } from '../state/store';
 import { TIME_FORMATS, isLocalFormat, zoneLabel, type TimeFormat } from '../lib/timeFormat';
 
 /**
- * Settings, on the Tools screen.
+ * Settings, a screen of its own on the rail.
  *
  * Global SSH and SNMP logins have a settings tab under Tools and Settings in
  * the top menu, and the reason is plain from where those things lived before: the vault was on the

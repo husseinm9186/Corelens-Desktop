@@ -418,7 +418,7 @@ check("one undo puts the merge back",
     .includes("198.51.100.64/26"));
 
 // And the way back.
-await page.locator(".cv-register-back").click();
+await page.locator(".cv-register .cv-crumb-home").click();
 await page.waitForTimeout(500);
 check("leaving comes back to the diagram", (await page.locator(".cv-register").count()) === 0);
 check("with the bottom panel where it was", (await page.locator(".cv-panel").count()) === 1);
@@ -450,7 +450,7 @@ await page.waitForTimeout(400);
 check("a search that finds nothing says so",
   (await page.locator(".cv-help-body").innerText()).includes("Nothing in the guide matches"));
 
-await page.locator(".cv-helpscreen .cv-register-back").click();
+await page.locator(".cv-helpscreen .cv-crumb-home").click();
 await page.waitForTimeout(500);
 check("and it gives the diagram back", (await page.locator(".cv-helpscreen").count()) === 0);
 check("with the bottom panel where it was", (await page.locator(".cv-panel").count()) === 1);

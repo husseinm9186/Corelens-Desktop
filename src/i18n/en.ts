@@ -28,7 +28,7 @@ export const en = {
   'ssh.closeOne': 'Close the session to {name}',
   'ssh.connect': 'SSH to this device',
   'ssh.noAddress': 'This device has no address to connect to.',
-  'ssh.noCredential': 'No login for this device, and none saved for the project. Set one under Tools ▸ Settings, or give this device its own in the inspector.',
+  'ssh.noCredential': 'No login for this device, and none saved for the project. Set one under Settings, or give this device its own in the inspector.',
   'ssh.opening': 'Connecting to {name}…',
   'ssh.stage.connecting': 'Connecting to {name}…',
   'ssh.stage.hostKey': 'Checking {name}’s host key…',
@@ -137,9 +137,9 @@ export const en = {
   'commandPalette.commandPalette': 'Command palette',
   // Every SSH login the project keeps is tried, not only the first.
   'credentialPicker.useAllProjectLogins': { one: 'Use this project’s saved login — {first}', other: 'Use all {count} of this project’s saved logins — starting with {first}' },
-  'credentialPicker.allTriedHint': 'A device that refuses one login is tried with the next, each saved login of this project once, then any second login typed for the run. Saved under Tools ▸ Settings.',
+  'credentialPicker.allTriedHint': 'A device that refuses one login is tried with the next, each saved login of this project once, then any second login typed for the run. Saved under Settings.',
   'credentialPicker.othersTried': 'If the device refuses it, every other saved login of this project is tried.',
-  'credentialPicker.triedBeforeAnythingTyped': 'Tried before anything typed here. Saved under Tools ▸ Settings.',
+  'credentialPicker.triedBeforeAnythingTyped': 'Tried before anything typed here. Saved under Settings.',
   'credentialPicker.theVaultIsShared': 'The vault is shared by every project on this computer. This project does not use these.',
   'credentialPicker.typeANewUsername': 'Type a new username and password over this saved credential. Every project using it follows.',
   'credentialPicker.thisProjectStopsUsing': 'This project stops using it. The credential stays in the vault.',
@@ -756,7 +756,6 @@ export const en = {
   'banner.browser': 'Browser preview — projects stay in this browser; discovery, checks and backups need the installed app.',
   'banner.getApp': 'Get the desktop app',
   // The lifecycle table.
-  'tools.lifecycle': 'Lifecycle',
   'lifecycle.help': 'A table you keep — model, end of sale, end of support — read from a CSV. Nothing is fetched from a vendor. Every drawn device is matched by its model, exactly or by the longest prefix, and a model the table does not know is reported as unknown, never as fine.',
   'lifecycle.choose': 'Read a CSV…',
   'lifecycle.clear': 'Forget the table',
@@ -848,13 +847,13 @@ export const en = {
   'vaultSettings.deletedProject': 'A deleted project',
   'vaultSettings.handed': 'Moved.',
   // Where a project's folders are chosen.
-  'folderSettings.perProject': 'Backup and export folders are chosen for each project, so one customer\'s configurations never land in another\'s folder. Open a project, then choose them under Tools → Settings — or in Backups, which asks when it needs one.',
+  'folderSettings.perProject': 'Backup and export folders are chosen for each project, so one customer\'s configurations never land in another\'s folder. Open a project, then choose them under Settings — or in Backups, which asks when it needs one.',
   'folderSettings.notKept': 'Not kept: {reason}',
   'backup.snmp': 'Ask Cisco devices to send their configuration over SNMP',
   'backup.snmpWith': 'Read-write SNMP',
   'backup.snmpHint': 'One SNMP write — a row in Cisco’s configuration-copy table — asks the device to send the file to the project’s SFTP server. A device without that table, or that refuses the write, is read over SSH as usual.',
   'backup.snmpCost': 'The device logs in to {server} itself, so it is given that login inside the SNMP write: encrypted under v3 with privacy, in clear under v2c. The file lands on your server and stays there; Coreview reads a copy. A device without Cisco’s copy table is read over SSH instead.',
-  'backup.snmpNoServer': 'Name the SFTP server under Tools → Settings first.',
+  'backup.snmpNoServer': 'Name the SFTP server under Settings first.',
   'backup.needFolder': 'Choose where this project\'s configurations are written first. They are written there and nowhere else.',
   // Folders on the project screen.
   'folders.new': 'New folder',
@@ -1283,7 +1282,7 @@ export const en = {
   'ssh.aliveAt': 'Last confirmed {time}',
   'ssh.systemFont': 'System monospace',
 
-  // Settings, on the Tools screen.
+  // Settings, a screen on the rail.
   'settings.title': 'Settings',
   'settings.globalLogins': 'This project’s logins',
   'settings.globalHint': 'What every device in this project uses unless it has been given a login of its own. Global to this project and to nothing else — another project never sees it. Saved encrypted in the vault; the project holds only a reference.',
@@ -1321,7 +1320,7 @@ export const en = {
   'nav.backups': 'Backups',
   'nav.addresses': 'Addresses',
   'nav.racks': 'Racks',
-  'nav.tools': 'Tools',
+  'nav.inventory': 'Inventory',
   'nav.terminal': 'Terminal',
   'nav.settings': 'Settings',
   'nav.title': 'Modes',
@@ -1540,12 +1539,14 @@ export const en = {
   'settings.everythingHint': 'The vault is one encrypted store for this computer, shared by every project on it. This is all of it, not just this project’s.',
 
   // The tools that are not about the diagram in front of you.
-  'tools.title': 'Tools',
   'tools.open': 'Tools',
-  'tools.back': 'Back to the diagram',
-  'tools.compare': 'Compare',
-  'tools.racks': 'Racks',
   'tools.csv': 'From a file',
+  'import.title': 'Import',
+  'import.open': 'Import…',
+  'import.close': 'Close',
+  'import.bothSources': 'Both sources',
+  'import.csvBlurb': 'A device or link list as CSV or an Excel workbook, or a NetBox export — each column matched to a field, and shown before anything is added.',
+  'import.visioBlurb': 'A Visio (.vsdx) or draw.io drawing someone already made — its devices, links, addresses and port labels, previewed before anything is added.',
   'tools.visio': 'From a drawing',
 
   // A login typed on the device itself.
@@ -1717,6 +1718,7 @@ export const en = {
   'ipam.bulkWhat.set-purpose': 'Set the purpose on many addresses',
   'ipam.bulkWhat.set-kind': 'Change what many addresses are held as',
   'ipam.tags': 'Tags',
+  'dock.compare': 'Compare runs',
   'dock.filterPlaceholder': 'Name, IP, type… or status:down, type:router, tag:lab, -site:hq',
   'ipam.filterPlaceholder': 'Name, address, MAC… or tag:pci, vlan:14, source:crawled, -tag:old',
   'ipam.noMatch': 'Nothing on this subnet matches that filter.',
@@ -1850,7 +1852,9 @@ export const en = {
   // The register's own screen.
   'register.title': 'Address register',
   'register.open': 'Addresses',
-  'register.back': 'Back to the diagram',
+  'screen.crumbs': 'Where you are',
+  'screen.diagram': 'Diagram',
+  'screen.backHint': 'Back to the diagram (Esc)',
   'register.tree': 'Subnets',
   'register.allSubnets': 'All subnets',
   'register.noSubnets': 'No subnets yet. Add one, or let a crawl find them.',
@@ -1862,7 +1866,6 @@ export const en = {
   // The user guide, in the app.
   'help.title': 'How to use Coreview',
   'help.open': 'Help',
-  'help.back': 'Back to the diagram',
   'help.search': 'Search the guide',
   'help.contents': 'Sections',
   'help.found': { one: '{count} section', other: '{count} sections' },

@@ -333,11 +333,8 @@ check("SNMP is not offered a login test, because a shell cannot check one",
 
 
 const settings = async () => {
-  if (!(await page.locator(".cv-tools").count())) {
-    await page.locator(".cv-btn-tools").first().click();
-    await page.waitForTimeout(300);
-  }
-  await page.locator(".cv-tools .cv-tabs button", { hasText: "Settings" }).first().click();
+  // Settings is on the rail, at its foot.
+  await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
   await page.waitForTimeout(500);
 };
 
@@ -365,7 +362,7 @@ check("this project's Settings lists the login it uses",
 }
 
 // Now the other project on the same machine and the same vault.
-await page.locator(".cv-tools .cv-register-back").first().click();
+await page.locator(".cv-tools .cv-crumb-home").first().click();
 await page.waitForTimeout(300);
 await page.locator(".cv-more summary").click(); // under More
 await page.locator(".cv-more button", { hasText: "Close project" }).first().click();

@@ -16,7 +16,7 @@ import { useStore } from '../state/store';
 import { MerakiReportView } from './MerakiReport';
 
 /**
- * Meraki, on the Tools › Settings screen.
+ * Meraki, on the Settings screen.
  *
  * "make sure it goes to the settings at the top menu with options to select
  * the customers and networks" — so the customer list and the network list are

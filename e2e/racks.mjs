@@ -94,8 +94,8 @@ const dragInto = async (source, rackName, topU, units) => {
   const rackUnits = await slots(rackName).evaluate((el) => Math.round(el.clientHeight / 14));
   const y = 2 + (rackUnits - topU) * UNIT + UNIT / 2;
   // The screen scrolls: bring the target U into view first, as a person would.
-  // Moved racks from the bottom panel to the Tools screen, so the box
-  // that scrolls is that screen's body.
+  // Racks is a screen of its own, so the box that scrolls is that
+  // screen's body or its stage.
   await slots(rackName).evaluate((el, y) => {
     // The nearest box that actually scrolls: the rack stage once the
     // controls above it leave it shorter than the rack.
@@ -110,11 +110,9 @@ const dragInto = async (source, rackName, topU, units) => {
   await page.waitForTimeout(300);
 };
 
-// Racks are on the Tools screen now, which is where a 42U elevation
-// can have the height it always needed.
-await page.locator(".cv-btn-tools").first().click();
-await page.waitForTimeout(250);
-await page.locator(".cv-tools .cv-tabs button", { hasText: /^Racks$/ }).first().click();
+// Racks is a screen on the rail, which is where a 42U elevation can have
+// the height it always needed.
+await page.locator(".cv-nav-item", { hasText: /^Racks$/ }).click();
 await page.waitForTimeout(300);
 
 // ------------------------------------------------------ from devices
@@ -224,8 +222,8 @@ check("and waits to be placed", (await page.locator(".cv-rack-foot").first().tex
 
 // ------------------------------------------------------------- cables
 // Back to the diagram: the inspector is part of the workspace, which the
-// Tools screen covers.
-await page.locator(".cv-tools .cv-register-back").first().click();
+// Racks screen covers.
+await page.locator(".cv-tools .cv-crumb-home").first().click();
 await page.waitForTimeout(300);
 await page.locator(".cv-panel button", { hasText: /^Monitored objects/ }).first().click();
 await st(() => window.__cvStore.getState().select(null, "e2"));

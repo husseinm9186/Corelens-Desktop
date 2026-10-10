@@ -1,88 +1,47 @@
 /**
- * The four things that are not about the diagram in front of you.
+ * The screens the rail names that are not the register: Racks, Inventory
+ * and Settings, each in the one frame every full screen uses.
  *
- * The bottom panel answers one question — *what is happening to my diagram
- * right now* — and it had grown ten tabs wide, so the answer arrived in a strip
- * a few rows tall. Four of the ten were never that question: comparing two
- * backup runs, laying out rack elevations, and the two imports. None reports on
- * a live diagram, and all four want height.
- *
- * So they get a screen, the same way the register did. The
- * panel keeps Monitored objects, Event timeline, Ping sweep, Discover devices,
- * Backups and Path check, each of which is something running against the
- * diagram while you work.
+ * They used to share a Tools screen with Compare and the two imports, which
+ * made "Tools" a drawer of unrelated things nobody could find by name.
+ * Compare is watching what changed, so it is in the dock's Monitor group;
+ * the imports bring a diagram in, so they are Import… in the top bar. What
+ * is left are places to go, and the rail goes to them.
  *
  * The diagram stays mounted behind, so leaving comes back to the same
  * selection and the same viewport.
  */
 import { t } from '../i18n';
-import { ComparePanel } from './ComparePanel';
-import { CsvImportPanel } from './CsvImportPanel';
 import { RackPanel } from './RackPanel';
 import { SettingsView } from './SettingsView';
-import { VisioImportPanel } from './VisioImportPanel';
 import { useStore } from '../state/store';
 import { LifecyclePanel } from './LifecyclePanel';
+import { ScreenFrame } from './ScreenFrame';
 
 export type ToolsView = 'compare' | 'racks' | 'csv' | 'visio' | 'lifecycle' | 'settings';
-
-const VIEWS: { id: ToolsView; label: () => string }[] = [
-  { id: 'compare', label: () => t('tools.compare') },
-  { id: 'racks', label: () => t('tools.racks') },
-  { id: 'csv', label: () => t('tools.csv') },
-  { id: 'visio', label: () => t('tools.visio') },
-  // Which drawn devices are past their vendor's dates, from a table
-  // the operator supplies.
-  { id: 'lifecycle', label: () => t('tools.lifecycle') },
-  // And Settings, which is a place to go rather than a panel about the
-  // diagram, exactly like the rest of this screen.
-  { id: 'settings', label: () => t('settings.title') },
-];
 
 export function ToolsScreen() {
   const close = useStore((s) => s.setToolsOpen);
   const view = useStore((s) => s.toolsView);
-  const setView = useStore((s) => s.setToolsView);
-  const name = useStore((s) => s.meta?.name ?? '');
+  const done = () => close(false);
 
+  if (view === 'racks') {
+    return (
+      <ScreenFrame title={t('nav.racks')} className="cv-tools" region="tools" wide onClose={done}>
+        <RackPanel />
+      </ScreenFrame>
+    );
+  }
+  if (view === 'lifecycle') {
+    return (
+      <ScreenFrame title={t('nav.inventory')} className="cv-tools" region="tools" onClose={done}>
+        <LifecyclePanel />
+      </ScreenFrame>
+    );
+  }
   return (
-    <div className="cv-register cv-tools" data-region="tools">
-      <div className="cv-register-head">
-        <h1 className="cv-register-title">
-          {t('tools.title')}
-          {name && <span className="cv-register-project"> · {name}</span>}
-        </h1>
-        <div className="cv-tabs cv-register-tabs" role="tablist" aria-label={t('tools.title')}
-          onKeyDown={(e) => {
-            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
-            const tabs = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="tab"]')];
-            const at = tabs.indexOf(document.activeElement as HTMLButtonElement);
-            const next = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1
-              : (at + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
-            e.preventDefault();
-            tabs[next]?.focus();
-            tabs[next]?.click();
-          }}>
-          {VIEWS.map((v) => (
-            <button key={v.id} type="button" role="tab" aria-selected={view === v.id}
-              tabIndex={view === v.id ? 0 : -1}
-              className={view === v.id ? 'is-active' : ''} onClick={() => setView(v.id)}>
-              {v.label()}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="cv-btn cv-register-back" onClick={() => close(false)}>
-          {t('tools.back')}
-        </button>
-      </div>
-      <div className="cv-register-body cv-tools-body">
-        {view === 'compare' ? <ComparePanel />
-          : view === 'racks' ? <RackPanel />
-          : view === 'csv' ? <CsvImportPanel />
-          : view === 'lifecycle' ? <LifecyclePanel />
-          : view === 'settings' ? <SettingsView />
-          : <VisioImportPanel />}
-      </div>
-    </div>
+    <ScreenFrame title={t('settings.title')} className="cv-tools" region="tools" wide onClose={done}>
+      <SettingsView />
+    </ScreenFrame>
   );
 }

@@ -247,11 +247,8 @@ check("and the device's own ping is asked for, by address and credential id", JS
 check("with its result", /Reachable\. SW-A pinged SW-C \(192\.0\.2\.12\): 2 of 3 replies, 2 ms average\./.test(await pathPanel.locator(".cv-path-result").textContent()));
 
 // ------------------------------------------------------- compare
-// Comparing two runs is not a report on the live diagram, so it is on
-// the Tools screen.
-await page.locator(".cv-btn-tools").first().click();
-await page.waitForTimeout(250);
-await page.locator(".cv-tools .cv-tabs button", { hasText: /^Compare$/ }).first().click();
+// Comparing two runs is watching what changed: the dock's Monitor group.
+await page.locator(".cv-panel .cv-tabs button", { hasText: /^Compare runs$/ }).first().click();
 await page.waitForTimeout(400);
 const cmp = page.locator(".cv-compare");
 await cmp.locator("label", { hasText: /^First/ }).locator("select").selectOption({ index: 2 });

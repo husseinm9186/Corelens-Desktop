@@ -13,6 +13,7 @@
  * the thing you are reading about is a dialog you close before you have
  * finished.
  */
+import { ScreenHead } from './ScreenFrame';
 import { useMemo, useState } from 'react';
 
 import { t } from '../i18n';
@@ -125,15 +126,17 @@ export function HelpScreen() {
 
   return (
     <div className="cv-helpscreen" data-region="help">
-      <div className="cv-register-head">
-        <h1 className="cv-register-title">{t('help.title')}</h1>
-        <input className="cv-input cv-help-search" value={query} aria-label={t('help.search')}
-          placeholder={t('help.search')} onChange={(e) => setQuery(e.target.value)} />
-        <span className="cv-help">{t('help.found', { count: found.length })}</span>
-        <button type="button" className="cv-btn cv-register-back" onClick={() => close(false)}>
-          {t('help.back')}
-        </button>
-      </div>
+      <ScreenHead
+        title={t('help.title')}
+        onClose={() => close(false)}
+        actions={(
+          <>
+            <input className="cv-input cv-help-search" value={query} aria-label={t('help.search')}
+              placeholder={t('help.search')} onChange={(e) => setQuery(e.target.value)} />
+            <span className="cv-help">{t('help.found', { count: found.length })}</span>
+          </>
+        )}
+      />
 
       <div className="cv-helpscreen-body">
         <nav className="cv-help-nav" aria-label={t('help.contents')}>

@@ -882,13 +882,13 @@ export function Canvas() {
       tab('discover', 'Ping sweep'),
       tab('crawl', 'Discover devices'),
       tab('path', 'Path check'),
-      // These four are a screen now, so they are named the same and
-      // go straight there. `requestPanelTab` still redirects them for anything
-      // that asks for the old tab.
-      { id: 'tab-racks', label: 'Open Racks', hint: 'Tools', run: () => s().setToolsOpen(true, 'racks') },
-      { id: 'tab-compare', label: 'Open Compare', hint: 'Tools', run: () => s().setToolsOpen(true, 'compare') },
-      { id: 'tab-csv', label: 'Open From a file', hint: 'Tools', run: () => s().setToolsOpen(true, 'csv') },
-      { id: 'tab-visio', label: 'Open From a drawing', hint: 'Tools', run: () => s().setToolsOpen(true, 'visio') },
+      // Where these live now: Racks and Inventory on the rail, Compare in
+      // the dock's Monitor group, the two imports in the Import dialog.
+      { id: 'tab-racks', label: 'Open Racks', hint: 'Rail', run: () => s().setToolsOpen(true, 'racks') },
+      { id: 'tab-inventory', label: 'Open Inventory', hint: 'Rail', run: () => s().setToolsOpen(true, 'lifecycle') },
+      { id: 'tab-compare', label: 'Open Compare runs', hint: 'Monitor', run: () => s().requestPanelTab('compare') },
+      { id: 'tab-csv', label: 'Import from a file', hint: 'Import', run: () => s().setImportOpen('csv') },
+      { id: 'tab-visio', label: 'Import from a drawing', hint: 'Import', run: () => s().setImportOpen('visio') },
       tab('events', 'Event timeline'),
     ];
   }, [fitEverything, zoomToSelection]);

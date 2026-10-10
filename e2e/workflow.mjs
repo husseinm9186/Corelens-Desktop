@@ -117,10 +117,10 @@ await page.waitForTimeout(150);
 check("> lists commands", /Command.*Open Racks/.test(await palette.locator("li").first().textContent()), await palette.locator("li").first().textContent());
 await page.keyboard.press("Enter");
 await page.waitForTimeout(400);
-// The command is named the same and still opens Racks — on the Tools
-// screen, which is where Racks lives now.
-check("and a command runs", (await page.locator(".cv-tools button.is-active", { hasText: /^Racks$/ }).count()) === 1);
-await page.locator(".cv-tools .cv-register-back").first().click();
+// The command is named the same and still opens Racks — the screen on
+// the rail, which is where Racks lives now.
+check("and a command runs", (await page.locator(".cv-racks").count()) === 1 && (await page.locator(".cv-nav-item.is-current").innerText()) === "Racks");
+await page.locator(".cv-tools .cv-crumb-home").first().click();
 await page.waitForTimeout(300);
 
 await blur();
@@ -498,14 +498,23 @@ for (const tab of ["Monitored objects", "Event timeline", "Ping sweep", "Discove
   await page.waitForTimeout(300);
   all.push(...await audit(tab));
 }
-// And the four that moved to the Tools screen, which is still chrome
-// and still has to name every control it shows.
-await page.locator(".cv-btn-tools").first().click().catch(() => {});
-await page.waitForTimeout(300);
-for (const tab of ["Compare", "Racks", "From a file", "From a drawing"]) {
-  await page.locator(".cv-tools .cv-tabs button", { hasText: tab }).first().click().catch(() => {});
+// And the screens on the rail, and the Import dialog's two sources, which
+// are still chrome and still have to name every control they show.
+for (const screen of ["Racks", "Inventory", "Settings"]) {
+  await page.locator(".cv-nav-item", { hasText: new RegExp(`^${screen}$`) }).click().catch(() => {});
   await page.waitForTimeout(300);
-  all.push(...await audit(tab));
+  all.push(...await audit(screen));
+}
+await page.keyboard.press("Escape");
+await page.waitForTimeout(200);
+for (const source of ["csv", "visio"]) {
+  await page.locator('[data-region="import"]').click().catch(() => {});
+  await page.waitForTimeout(200);
+  await page.locator(`[data-region="import-dialog"] [data-source="${source}"]`).click().catch(() => {});
+  await page.waitForTimeout(300);
+  all.push(...await audit(source));
+  await page.locator('[data-region="import-dialog"] .cv-import-close').click().catch(() => {});
+  await page.waitForTimeout(200);
 }
 check("every visible control has an accessible name, in every panel", all.length === 0, JSON.stringify([...new Set(all)].slice(0, 5)));
 

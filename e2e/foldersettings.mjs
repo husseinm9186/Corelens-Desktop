@@ -71,9 +71,7 @@ check("and says where the folders are chosen instead",
 // ------------------------------------------------------ inside a project
 await page.locator(".cv-project-open").first().click();
 await page.waitForTimeout(700);
-await page.locator(".cv-btn-tools").first().click();
-await page.waitForTimeout(300);
-await page.locator(".cv-tools .cv-tabs button", { hasText: "Settings" }).first().click();
+await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
 await page.waitForTimeout(500);
 const inSettings = page.locator('[data-region="project-folders"] .cv-folders');
 check("the project's Settings has its folders", (await inSettings.count()) === 1);
@@ -128,9 +126,7 @@ check("and once one is chosen there, the backup form appears",
 await page.goto(URL, { waitUntil: "networkidle" });
 await page.evaluate(() => window.__cvStore.getState().createProject({ name: "Made just now" }));
 await page.waitForTimeout(700);
-await page.locator(".cv-btn-tools").first().click();
-await page.waitForTimeout(300);
-await page.locator(".cv-tools .cv-tabs button", { hasText: "Settings" }).first().click();
+await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
 await page.waitForTimeout(500);
 const fresh = page.locator('[data-region="project-folders"] .cv-folders');
 await fresh.locator(".cv-folder-row", { hasText: "Configuration backups" }).locator("button", { hasText: "Choose folder" }).click();

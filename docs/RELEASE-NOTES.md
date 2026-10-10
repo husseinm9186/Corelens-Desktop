@@ -4,6 +4,20 @@ Newest first.
 
 ## Unreleased
 
+**Tools, dissolved**
+- The Tools screen is gone, and what it held lives where it is looked
+  for: **Compare runs** in the panel's Monitor group; the two imports
+  behind **Import…** in the top bar, side by side, then the one chosen;
+  **Racks**, **Inventory** and **Settings** on the rail.
+- The rail is two blocks: the modes that keep the diagram — Diagram,
+  Discover, Monitor, Paths, Backups, Terminal — then, after a rule, the
+  screens that take its place — Addresses, Racks, Inventory — with
+  Settings at the foot. Ctrl+1 to Ctrl+9 follow that order.
+- Every full screen has the same frame: *Diagram › its name* along the
+  top with its tabs beside it, a tree down the left where it has one,
+  content held to a readable width. **Esc**, or *Diagram* in that line,
+  goes back to the drawing; there is no separate Back button.
+
 **The address register as a workbench**
 - The subnets down the left as a tree, each with how full it is; the
   chosen subnet's addresses on the right; **Allocate**, **Split & merge**

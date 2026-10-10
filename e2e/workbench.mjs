@@ -105,7 +105,7 @@ await page.waitForTimeout(800);
   await page.locator('[data-region="register-setup"]').click();
   await page.waitForTimeout(300);
   check("the cog opens the sites, tenants and fields", (await page.locator('[data-region="register-setup"][aria-pressed="true"]').count()) === 1 && (await page.locator('[data-region="subnet-tree"]').count()) === 0);
-  await page.locator(".cv-register-back").click();
+  await page.locator(".cv-register .cv-crumb-home").click();
   await page.waitForTimeout(400);
 }
 

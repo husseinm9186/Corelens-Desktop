@@ -138,7 +138,7 @@ SD-WAN, MPLS L3VPN, a wireless survey or two racks. Names and addresses are
 placeholders from the documentation ranges, and nothing is monitored until you
 add checks.
 
-**Racks.** **Racks** on the rail (also **Tools ▸ Racks**) draws the project's
+**Racks.** **Racks** on the rail draws the project's
 racks U by U on a ground of their own: posts with their mounting holes, the U
 numbers down both rails with every fifth marked, a base. Give devices a rack
 name in the inspector (**Rack / room**) and click **Build racks from devices**,
@@ -315,11 +315,14 @@ keys to open it, double-click or press `F2` to rename it, and drag it or press
 each device in the minimap by its status; a device that is down is also outlined
 dashed and a warning one outlined solid, so the colour is not the only cue.
 
-**The window.** A rail down the left names the modes: **Diagram**,
-**Discover**, **Monitor**, **Paths**, **Backups**, **Addresses**, **Tools**,
-**Terminal**, and **Settings** at its foot. The first five open the diagram
-and the matching tab of the panel below it; Addresses and Tools are screens
-of their own, one click back to the diagram. The top bar is one row about
+**The window.** A rail down the left names the modes in two blocks. First
+the ones that keep the diagram: **Diagram**, then **Discover**, **Monitor**,
+**Paths**, **Backups** and **Terminal**, which open the matching tab of the
+panel beside it. After a rule, the screens that take its place:
+**Addresses**, **Racks** and **Inventory**; **Settings** is at the foot.
+Every screen has the same frame — *Diagram › the screen's name* along the
+top, its tabs beside that — and **Esc**, or **Diagram** in that line, goes
+back to the drawing. The top bar is one row about
 the project: its name, customer and site, its saved state with Save, Undo
 and Redo beside it, the health strip in the centre — four dots with their
 counts, dim at zero — and **Start checks**, which becomes a running pill
@@ -989,7 +992,7 @@ tab.
   `exec-timeout` will still close the session on its own schedule — this stops
   the idle timers and the NAT translations in between, not the device itself.
 
-**The project's own login.** **Tools ▸ Settings** holds one SSH and one SNMP
+**The project's own login.** **Settings** holds one SSH and one SNMP
 login for the whole project: **Save** puts it in the encrypted vault, **Replace**
 types a new one over it, and **Wipe** takes it out of the vault altogether.
 **Every device with no login of its own uses it**, so a whole estate needs one
@@ -1084,7 +1087,7 @@ edit, export or delete either without touching the network diagram.
 device list with interfaces and next hops, the routing decisions, and a section
 saying what could not be resolved.
 
-**Compare.** **Tools ▸ Compare** puts two validation sessions, or two crawls,
+**Compare.** **Compare runs**, in the Monitor group of the panel, puts two validation sessions, or two crawls,
 side by side — availability and response times that got worse; firmware, ports,
 neighbours and routes that changed — and saves the comparison as Markdown or CSV.
 
@@ -1166,7 +1169,7 @@ reads out. **?** lists every shortcut.
 **The rail** on the left is one stop for Tab: the arrow keys, Home and End
 move along it and Enter opens the item. From anywhere, **Ctrl+1** to
 **Ctrl+9** go straight to its first nine items — Diagram, Discover, Monitor,
-Paths, Backups, Racks, Addresses, Tools, Terminal — and holding Ctrl shows
+Paths, Backups, Terminal, Addresses, Racks, Inventory — and holding Ctrl shows
 each item's digit.
 
 **Tables.** A row that does something when clicked takes the keyboard too:
@@ -1180,7 +1183,7 @@ the time and status now.
 
 **Interface size.** The interface already follows the screen: its text and
 spacing are 13 px on a laptop and grow to 16 px on a 4K monitor. On top of
-that, **Tools ▸ Settings ▸ Display ▸ Interface size** sets it from 85 % to
+that, **Settings ▸ Display ▸ Interface size** sets it from 85 % to
 140 % for this machine. The diagram keeps its own zoom either way.
 
 **High contrast.** Tick **High contrast** under **Settings ▸ Display**, or
@@ -1201,7 +1204,7 @@ the Backups tab does. Off every run until you tick it, because it is a
 write to the device, small as it is.
 
 **What you need.** An SFTP server the devices can reach, named under
-**Tools ▸ Settings** with its port and the folder to drop into, and the
+**Settings** with its port and the folder to drop into, and the
 login the devices are given for it — typed there, saved in the vault as its
 own kind, and never offered to a device as an SSH login. Then a saved SNMP
 credential the device accepts a write from: a read-write community, or a v3
@@ -1458,9 +1461,9 @@ Changes need two validation sessions or two crawls to compare.
 
 ## Bring in what you already have
 
-These are under **Tools** on the rail.
+These are **Import…** in the top bar, which offers the two side by side.
 
-**A spreadsheet.** **Tools ▸ From a file** reads a CSV or an Excel workbook (`.xlsx`).
+**A spreadsheet.** **Import… ▸ From a file** reads a CSV or an Excel workbook (`.xlsx`).
 Choose the sheet, check the header row, say whether each row is a device or a
 link, and match each field to a column — the guesses come from the column names
 and every one can be changed. Nothing is added until **Add**. An old `.xls` has
@@ -1471,7 +1474,7 @@ output for devices, cables and IP addresses, in one file or several. Devices
 arrive with role, site, rack and position; cables become links. No token is
 needed: nothing is contacted.
 
-**A drawing.** **Tools ▸ From a drawing** reads Visio (`.vsdx`) and draw.io (`.drawio`)
+**A drawing.** **Import… ▸ From a drawing** reads Visio (`.vsdx`) and draw.io (`.drawio`)
 files, every page, with addresses, ports, line colours, routed bends and label
 formatting. Lines that join nothing — a bus drawn as a line — are listed, not
 guessed at.
@@ -1493,7 +1496,7 @@ history does not — it stays with the machine that recorded it.
 ## Keep Coreview up to date
 
 Coreview never looks for a new version on its own. When you want to know,
-open **Tools → Settings → Updates** and press **Check for updates**. That
+open **Settings → Updates** and press **Check for updates**. That
 sends one request to this project's GitHub Releases page for the newest
 release's manifest — it carries this computer's address and the updater's
 name, and nothing about you, your projects or your network — and the line

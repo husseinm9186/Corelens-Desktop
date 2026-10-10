@@ -9,6 +9,7 @@ import { ProjectScreen } from './components/ProjectScreen';
 import { HelpScreen } from './components/HelpScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { ToolsScreen } from './components/ToolsScreen';
+import { ImportDialog } from './components/ImportDialog';
 import { StatusPanel } from './components/StatusPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { DrawerHost } from './components/Drawer';
@@ -181,6 +182,7 @@ export default function App() {
         {/* Compare, Racks and the two imports, out of the bottom panel. */}
         {toolsOpen && <ErrorBoundary what="The tools"><ToolsScreen /></ErrorBoundary>}
         {helpOpen && <ErrorBoundary what="The guide"><HelpScreen /></ErrorBoundary>}
+        <ErrorBoundary what="Import"><ImportDialog /></ErrorBoundary>
         {/* The narrow layouts show the palette or the inspector, not both,
             and which one depends on whether there is something to inspect. */}
         {/* The body holds the canvas and the dock, so the dock can sit

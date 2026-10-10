@@ -29,6 +29,7 @@ import { activePage, allEdges, allNodes } from '../lib/pages';
 import { roleOf } from '../lib/clusters';
 import { buildTree, flattenTree, openForFit, type TreeBranch, type TreeLeafRow } from '../lib/objectTree';
 import { dockRowMatches, parseDockQuery } from '../lib/dockQuery';
+import { ComparePanel } from './ComparePanel';
 import { matchesQuery, plainText } from '../lib/queryGrammar';
 
 type Row = TreeLeafRow & {
@@ -163,7 +164,8 @@ function BranchRow({ branch, open, onToggle }: { branch: TreeBranch<Row>; open: 
 
 /** The dock's tabs by what they answer. Every tab is here once. */
 const DOCK_GROUPS: { key: 'monitor' | 'discover' | 'paths' | 'ops'; tabs: DockTab[] }[] = [
-  { key: 'monitor', tabs: ['objects', 'events'] },
+  // Comparing two runs is watching what changed, so it is Monitor's.
+  { key: 'monitor', tabs: ['objects', 'events', 'compare'] },
   // Collect is Discover devices ▸ Advanced now; the tab id stays so
   // whatever asks for it still lands there.
   { key: 'discover', tabs: ['crawl', 'discover'] },
@@ -210,9 +212,9 @@ export function StatusPanel() {
     // longer here.
     if (panelRequest === 'ipam' || panelRequest === 'lab') {
       useStore.getState().setRegisterOpen(true);
-    } else if (panelRequest === 'compare' || panelRequest === 'racks' || panelRequest === 'csv' || panelRequest === 'visio') {
-      // These four are a screen now. Anything still asking for the tab
-      // gets the screen, opened on the view it asked for.
+    } else if (panelRequest === 'racks' || panelRequest === 'csv' || panelRequest === 'visio') {
+      // Racks is a screen and the imports a dialog. Anything still asking
+      // for the old tab gets where it lives now.
       useStore.getState().setToolsOpen(true, panelRequest);
     } else if (panelRequest === 'collect') {
       // The engine's own view is under Discover devices ▸ Advanced.
@@ -481,6 +483,7 @@ export function StatusPanel() {
     switch (id) {
       case 'objects': return `Monitored objects (${rows.length})`;
       case 'events': return `Event timeline (${events.length})`;
+      case 'compare': return t('dock.compare');
       case 'discover': return 'Ping sweep';
       case 'crawl': return 'Discover devices';
       case 'collect': return 'Collect';
@@ -645,7 +648,9 @@ export function StatusPanel() {
       {statusMessage && <div className="cv-panel-message" role="status" aria-live="polite">{statusMessage}</div>}
 
       <div className="cv-panel-body" ref={bodyRef}>
-        {tab === 'discover' ? (
+        {tab === 'compare' ? (
+          <ComparePanel />
+        ) : tab === 'discover' ? (
           <DiscoverPanel />
         ) : tab === 'crawl' || tab === 'collect' ? (
           <CrawlPanel

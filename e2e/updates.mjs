@@ -1,4 +1,4 @@
-// Checking GitHub for a newer release: a button under Tools → Settings,
+// Checking GitHub for a newer release: a button under Settings,
 // and a tick for doing it at start that is off until somebody ticks it.
 // The stub stands in for the backend and records every message the page
 // sends, which is how this proves the one thing that matters most: with the
@@ -79,14 +79,12 @@ const start = async () => {
   await page.waitForTimeout(500);
 };
 
-/** Into the project, then Tools → Settings; the Updates block. */
+/** Into the project, then Settings on the rail; the Updates block. */
 const openSettings = async () => {
   await start();
   await page.locator(".cv-project-open").first().click();
   await page.waitForTimeout(700);
-  await page.locator(".cv-btn-tools").first().click();
-  await page.waitForTimeout(300);
-  await page.locator(".cv-tools .cv-tabs button", { hasText: "Settings" }).first().click();
+  await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
   await page.waitForTimeout(400);
   return page.locator('[data-region="updates"]');
 };

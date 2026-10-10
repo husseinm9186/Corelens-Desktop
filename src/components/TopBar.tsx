@@ -785,6 +785,9 @@ export function TopBar({ onExit }: { onExit: () => void }) {
         <IconButton icon="search" className="cv-btn-search" label={t('topbar.search')} shortcut="Ctrl+K" region="search"
           onClick={() => useStore.getState().requestCommandPalette(true)} />
 
+        <button type="button" className="cv-btn" data-region="import" onClick={() => useStore.getState().setImportOpen('choose')}>
+          {t('import.open')}
+        </button>
         <details className="cv-dropdown" ref={exportMenu}>
           <summary className="cv-btn">Export</summary>
           <div
@@ -1090,7 +1093,7 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
           Diagrams, notes, probe configuration and results stay on this machine. Coreview has no
           account, no cloud sync and no telemetry. It never contacts a server of its own. The one
           request it can make that you did not point at your own network is a check for a newer
-          release on GitHub, and only when you press the button under Tools → Settings or switch
+          release on GitHub, and only when you press the button under Settings or switch
           on the automatic check there, which is off until you do.
         </p>
         <h3>What a green link actually means</h3>

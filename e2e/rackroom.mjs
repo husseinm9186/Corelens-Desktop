@@ -95,7 +95,7 @@ const racks = () => st(() => window.__cvStore.getState().doc.racks);
 await page.locator(".cv-nav-item", { hasText: /^Racks$/ }).click();
 await page.waitForTimeout(600);
 check("Racks is on the rail and opens the racks screen", (await page.locator(".cv-racks").count()) === 1 && (await page.locator(".cv-nav-item.is-current").innerText()) === "Racks");
-check("Tools still offers it as a tab", (await page.locator(".cv-tools .cv-tabs button", { hasText: /^Racks$/ }).count()) === 1);
+check("a screen of its own, with nothing else in its frame", (await page.locator(".cv-tools .cv-screen-title").innerText()) === "Racks" && (await page.locator(".cv-tools .cv-screen-tabs").count()) === 0);
 
 // ------------------------------------------------------------- a short window
 

@@ -179,10 +179,8 @@ await page.goto(URL, { waitUntil: "networkidle" });
 await page.locator(".cv-project-open").first().click();
 await page.waitForTimeout(700);
 
-// Tools › Settings — where a user would look for it.
-await page.locator("button", { hasText: "Tools" }).first().click();
-await page.waitForTimeout(400);
-await page.locator("button", { hasText: "Settings" }).first().click();
+// Settings, on the rail — where a user would look for it.
+await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
 await page.waitForTimeout(500);
 
 const meraki = page.locator(".cv-meraki");
@@ -301,7 +299,7 @@ const placedNote = await meraki.locator(".cv-saved-note").first().innerText().ca
 check("a Meraki estate can be placed on the diagram",
   /Placed 2 devices/.test(placedNote), placedNote);
 
-await page.locator("button", { hasText: "Back to the diagram" }).first().click();
+await page.locator(".cv-crumb-home").first().click();
 await page.waitForTimeout(700);
 const nodeLabels = await page.locator(".react-flow__node").allTextContents();
 check("the devices are really on the canvas, not just counted",

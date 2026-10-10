@@ -64,8 +64,8 @@ check("named Monitor, Discover, Paths and Ops, in that order",
   JSON.stringify(names) === JSON.stringify(["Monitor", "Discover", "Paths", "Ops"]), names.join(" | "));
 
 const under = async (group) => page.locator(`.cv-tab-group[data-group="${group}"] button[role="tab"]`).allInnerTexts();
-check("Monitor holds the objects and the timeline, with their counts",
-  JSON.stringify(await under("monitor")) === JSON.stringify(["Monitored objects (2)", "Event timeline (0)"]), (await under("monitor")).join(" | "));
+check("Monitor holds the objects, the timeline and Compare runs, with their counts",
+  JSON.stringify(await under("monitor")) === JSON.stringify(["Monitored objects (2)", "Event timeline (0)", "Compare runs"]), (await under("monitor")).join(" | "));
 // Collect is under Discover devices ▸ Advanced now.
 check("Discover holds the crawler and the ping sweep",
   JSON.stringify(await under("discover")) === JSON.stringify(["Discover devices", "Ping sweep"]), (await under("discover")).join(" | "));
@@ -73,13 +73,16 @@ check("Paths holds the four answers to where it goes",
   JSON.stringify(await under("paths")) === JSON.stringify(["Path-Trace", "Path check", "Tracert", "Where is"]), (await under("paths")).join(" | "));
 check("Ops holds Backups and SSH",
   JSON.stringify(await under("ops")) === JSON.stringify(["Backups", "SSH"]), (await under("ops")).join(" | "));
-check("every tab is there exactly once", (await page.locator('.cv-panel button[role="tab"]').count()) === 10);
+check("every tab is there exactly once", (await page.locator('.cv-panel button[role="tab"]').count()) === 11);
 
 // the arrows still walk the tabs, past the group headings.
 await page.locator('.cv-panel button[role="tab"]', { hasText: "Monitored objects" }).focus();
 await page.keyboard.press("ArrowRight");
 await page.waitForTimeout(150);
 check("the right arrow moves to the timeline", (await st(() => window.__cvStore.getState().dockTab)) === "events");
+await page.keyboard.press("ArrowRight");
+await page.waitForTimeout(150);
+check("then to Compare runs", (await st(() => window.__cvStore.getState().dockTab)) === "compare");
 await page.keyboard.press("ArrowRight");
 await page.waitForTimeout(150);
 check("and on into the next group", (await st(() => window.__cvStore.getState().dockTab)) === "crawl");
@@ -113,7 +116,7 @@ check("with what it is and how far it has got", /Backup.*2 of 5/.test(await line
 check("and Cancel", (await line.locator("button", { hasText: "Cancel" }).count()) === 1);
 check("the top bar does not repeat it while the dock is in sight", (await page.locator(".cv-topbar .cv-jobs").count()) === 0);
 
-await page.locator(".cv-nav-item.cv-btn-tools").click();
+await page.locator(".cv-nav-item", { hasText: /^Inventory$/ }).click();
 await page.waitForTimeout(300);
 check("a screen over the dock puts the job line in the top bar instead", (await page.locator(".cv-topbar .cv-jobs .cv-job").count()) === 1);
 await page.locator(".cv-nav-item", { hasText: /^Diagram$/ }).click();
@@ -168,7 +171,7 @@ check("Pop out puts the dock down the right of the window",
 check("the full height of the body", right.panel.height > 800, `${right.panel.height}`);
 check("without the inspector running under it", right.inspector.x + right.inspector.width <= right.panel.x + 1, JSON.stringify(right));
 check("and the button now reads Dock below", (await side.innerText()) === "Dock below");
-check("the tabs still answer", (await page.locator('.cv-panel button[role="tab"]').count()) === 10);
+check("the tabs still answer", (await page.locator('.cv-panel button[role="tab"]').count()) === 11);
 
 // F5 hides the dock wherever it is.
 await page.locator(".react-flow__pane").click({ position: { x: 60, y: 60 } });

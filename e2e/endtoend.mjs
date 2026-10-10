@@ -104,23 +104,42 @@ const calls = (cmd) => st((cmd) => window.__calls.filter((c) => c.cmd === cmd), 
 // Compare, Racks and the two imports left the bottom panel for a
 // screen of their own. Opening one is a button on the toolbar and then a tab,
 // so this says which of the two a name is and goes to the right place.
-const TOOLS = new Set(["From a file", "From a drawing", "Racks", "Compare"]);
+// Racks is a screen on the rail, Compare a tab in the dock's Monitor group,
+// and the two imports the Import dialog's two sources; this goes to the
+// right place for a name.
+const IMPORTS = { "From a file": "csv", "From a drawing": "visio" };
 const openTab = async (name) => {
-  if (TOOLS.has(name)) {
-    if (!(await page.locator(".cv-tools").count())) {
-      await page.locator(".cv-btn-tools").first().click();
+  const dialog = page.locator('[data-region="import-dialog"]');
+  if (IMPORTS[name]) {
+    if (!(await dialog.count())) {
+      await page.locator('[data-region="import"]').first().click();
       await page.waitForTimeout(250);
     }
-    await page.locator(".cv-tools .cv-tabs button", { hasText: name }).first().click();
+    const both = dialog.locator(".cv-import-head .cv-link-btn");
+    if (await both.count()) {
+      await both.click();
+      await page.waitForTimeout(150);
+    }
+    await dialog.locator(`[data-source="${IMPORTS[name]}"]`).click();
+    await page.waitForTimeout(250);
+    return;
+  }
+  if (await dialog.count()) {
+    await dialog.locator(".cv-import-close").click();
+    await page.waitForTimeout(200);
+  }
+  if (name === "Racks") {
+    await page.locator(".cv-nav-item", { hasText: /^Racks$/ }).click();
+    await page.waitForTimeout(250);
     return;
   }
   if (await page.locator(".cv-tools").count()) {
-    await page.locator(".cv-tools .cv-register-back").first().click();
+    await page.locator(".cv-tools .cv-crumb-home").first().click();
     await page.waitForTimeout(250);
   }
-  await page.locator(".cv-panel .cv-tabs button", { hasText: name }).first().click();
+  await page.locator(".cv-panel .cv-tabs button", { hasText: name === "Compare" ? "Compare runs" : name }).first().click();
 };
-const panel = page.locator(".cv-tools-body, .cv-panel").first();
+const panel = page.locator(".cv-import-body, .cv-tools .cv-screen-body, .cv-panel").first();
 const tab = openTab;
 
 // 1. Import the inventory.

@@ -1016,18 +1016,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "coreview"
+name = "corelens"
 version = "2.12.0"
 dependencies = [
  "base64 0.22.1",
- "coreview-catalog",
- "coreview-collect",
- "coreview-discover",
- "coreview-formats",
- "coreview-meraki",
- "coreview-path",
- "coreview-probe",
- "coreview-topology",
+ "corelens-catalog",
+ "corelens-collect",
+ "corelens-discover",
+ "corelens-formats",
+ "corelens-meraki",
+ "corelens-path",
+ "corelens-probe",
+ "corelens-topology",
  "flate2",
  "keyring",
  "open",
@@ -1053,7 +1053,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "coreview-catalog"
+name = "corelens-catalog"
 version = "2.5.0"
 dependencies = [
  "fancy-regex 0.19.2",
@@ -1066,12 +1066,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "coreview-collect"
+name = "corelens-collect"
 version = "2.5.0"
 dependencies = [
  "base64 0.22.1",
- "coreview-catalog",
- "coreview-discover",
+ "corelens-catalog",
+ "corelens-discover",
  "fancy-regex 0.19.2",
  "rand 0.10.2",
  "rcgen",
@@ -1091,13 +1091,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "coreview-discover"
+name = "corelens-discover"
 version = "2.5.0"
 dependencies = [
  "argon2 0.5.3",
  "async-trait",
  "chacha20poly1305",
- "coreview-probe",
+ "corelens-probe",
  "getrandom 0.2.17",
  "proptest",
  "rand 0.10.2",
@@ -1115,7 +1115,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "coreview-formats"
+name = "corelens-formats"
 version = "2.5.0"
 dependencies = [
  "base64 0.22.1",
@@ -1127,7 +1127,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "coreview-meraki"
+name = "corelens-meraki"
 version = "2.5.0"
 dependencies = [
  "rustls",
@@ -1141,19 +1141,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "coreview-path"
+name = "corelens-path"
 version = "2.5.0"
 dependencies = [
- "coreview-catalog",
- "coreview-collect",
- "coreview-topology",
+ "corelens-catalog",
+ "corelens-collect",
+ "corelens-topology",
  "serde",
  "serde_json",
  "tokio",
 ]
 
 [[package]]
-name = "coreview-probe"
+name = "corelens-probe"
 version = "2.5.0"
 dependencies = [
  "dns-lookup",
@@ -1170,12 +1170,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "coreview-topology"
+name = "corelens-topology"
 version = "2.5.0"
 dependencies = [
- "coreview-catalog",
- "coreview-collect",
- "coreview-discover",
+ "corelens-catalog",
+ "corelens-collect",
+ "corelens-discover",
  "serde",
  "serde_json",
 ]

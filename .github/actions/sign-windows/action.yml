@@ -33,7 +33,7 @@ runs:
           exit 0
         }
 
-        $pfx = "$env:RUNNER_TEMP\coreview-signing.pfx"
+        $pfx = "$env:RUNNER_TEMP\corelens-signing.pfx"
         [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
         $password = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
         $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
@@ -45,4 +45,4 @@ runs:
 
         node .github/actions/sign-windows/configure.mjs "$($cert.Thumbprint)"
         # The sidecar's PEs are signed by sidecar/build/sign.ps1 with the same certificate.
-        "COREVIEW_SIGN_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+        "CORELENS_SIGN_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV

@@ -218,10 +218,10 @@ export function rackElevationSvg(
   const places = [...new Set(racks.map(placeOf).filter(Boolean))].join('; ');
   parts.push(
     `<rect x="${tbX}" y="${tbY}" width="${tbW}" height="${tbH}" fill="#ffffff" stroke="#3e4c59" stroke-width="1"/>`,
-    `<text x="${tbX + 8}" y="${tbY + 16}" font-size="12" font-weight="600" fill="#1f2933">${esc(options.project ?? 'Coreview')}</text>`,
+    `<text x="${tbX + 8}" y="${tbY + 16}" font-size="12" font-weight="600" fill="#1f2933">${esc(options.project ?? 'Corelens')}</text>`,
     `<text x="${tbX + 8}" y="${tbY + 30}" font-size="9" fill="#52606d">${esc(racks.map((k) => k.name).join(', '))}${places ? ` · ${esc(places)}` : ''}</text>`,
     `<text x="${tbX + 8}" y="${tbY + 43}" font-size="9" fill="#52606d">${face} elevation · 1 U = 44.45 mm · ${UNIT} px per U</text>`,
-    `<text x="${tbX + 8}" y="${tbY + 56}" font-size="9" fill="#52606d">${date}${options.revision ? ` · rev ${esc(options.revision)}` : ''} · Coreview</text>`,
+    `<text x="${tbX + 8}" y="${tbY + 56}" font-size="9" fill="#52606d">${date}${options.revision ? ` · rev ${esc(options.revision)}` : ''} · Corelens</text>`,
   );
   parts.push('</svg>');
   return parts.join('');

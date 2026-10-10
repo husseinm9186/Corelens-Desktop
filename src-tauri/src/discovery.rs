@@ -11,15 +11,15 @@
 
 use std::sync::Arc;
 
-use coreview_discover::backup::BackupKind;
-use coreview_discover::capture::{run_backups, BackupOptions, BackupTarget};
-use coreview_discover::crawl::{crawl_from, CrawlEvent, CrawlOptions};
-use coreview_discover::filter::DiscoveryFilter;
-use coreview_discover::hostkeys::{host_id, HostKeyStore};
-use coreview_discover::snmp::{AuthKind, PrivKind, SnmpAuth};
-use coreview_discover::ssh::{Credentials, Secret, SshOptions};
-use coreview_discover::types::{AddressPreference, DeviceClass};
-use coreview_probe::sweep::parse_cidr;
+use corelens_discover::backup::BackupKind;
+use corelens_discover::capture::{run_backups, BackupOptions, BackupTarget};
+use corelens_discover::crawl::{crawl_from, CrawlEvent, CrawlOptions};
+use corelens_discover::filter::DiscoveryFilter;
+use corelens_discover::hostkeys::{host_id, HostKeyStore};
+use corelens_discover::snmp::{AuthKind, PrivKind, SnmpAuth};
+use corelens_discover::ssh::{Credentials, Secret, SshOptions};
+use corelens_discover::types::{AddressPreference, DeviceClass};
+use corelens_probe::sweep::parse_cidr;
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, State};
 
@@ -100,7 +100,7 @@ pub struct CrawlInput {
     pub snmp_credential_ids: Vec<String>,
     /// Which extra tables to read. Absent reads all of them.
     #[serde(default)]
-    pub details: coreview_discover::crawl::DetailOptions,
+    pub details: corelens_discover::crawl::DetailOptions,
     /// Saved credentials bound to devices, subnets or vendors.
     #[serde(default)]
     pub bindings: Vec<BindingInput>,
@@ -158,7 +158,7 @@ pub struct BindingInput {
 struct OfferedCredentials {
     ssh: Option<String>,
     snmp: Vec<String>,
-    bound: Vec<(coreview_discover::bindings::Scope, String, String)>,
+    bound: Vec<(corelens_discover::bindings::Scope, String, String)>,
 }
 
 impl OfferedCredentials {
@@ -166,7 +166,7 @@ impl OfferedCredentials {
         let bound = bindings
             .iter()
             .filter_map(|(scope, value, id)| {
-                let scope = coreview_discover::bindings::Scope::parse(scope.trim(), value)?;
+                let scope = corelens_discover::bindings::Scope::parse(scope.trim(), value)?;
                 let kind = crate::vault_commands::credential_kind(state, id).ok()?;
                 Some((scope, id.clone(), kind))
             })
@@ -175,20 +175,20 @@ impl OfferedCredentials {
     }
 
     /// The credentials offered to a device, by how it was reached.
-    fn for_device(&self, d: &coreview_discover::crawl::CrawledDevice) -> Vec<String> {
-        use coreview_discover::crawl::ReachedBy;
+    fn for_device(&self, d: &corelens_discover::crawl::CrawledDevice) -> Vec<String> {
+        use corelens_discover::crawl::ReachedBy;
         let kind = match d.reached_by {
             ReachedBy::Ssh => "ssh",
             ReachedBy::Snmp => "snmp",
             ReachedBy::Reported => return Vec::new(),
         };
-        let target = coreview_discover::bindings::Target { address: &d.address, hostname: Some(&d.hostname), platform: d.platform.as_deref() };
+        let target = corelens_discover::bindings::Target { address: &d.address, hostname: Some(&d.hostname), platform: d.platform.as_deref() };
         let mut ids: Vec<String> = match kind {
             "ssh" => self.ssh.iter().cloned().collect(),
             _ => self.snmp.clone(),
         };
         for (scope, id, k) in &self.bound {
-            if (k == kind || (kind == "ssh" && k != "snmp")) && coreview_discover::bindings::scope_matches(scope, &target) && !ids.contains(id) {
+            if (k == kind || (kind == "ssh" && k != "snmp")) && corelens_discover::bindings::scope_matches(scope, &target) && !ids.contains(id) {
                 ids.push(id.clone());
             }
         }
@@ -196,8 +196,8 @@ impl OfferedCredentials {
     }
 }
 
-fn resolve_bindings(state: &AppState, inputs: &[BindingInput]) -> CmdResult<Vec<coreview_discover::bindings::Binding>> {
-    use coreview_discover::bindings::{Binding, Scope};
+fn resolve_bindings(state: &AppState, inputs: &[BindingInput]) -> CmdResult<Vec<corelens_discover::bindings::Binding>> {
+    use corelens_discover::bindings::{Binding, Scope};
     let mut out = Vec::new();
     for b in inputs {
         let Some(scope) = Scope::parse(b.scope.trim(), &b.value) else { continue };
@@ -295,13 +295,13 @@ pub async fn connect_with_project_logins(
     options: SshOptions,
     store: Arc<std::sync::Mutex<HostKeyStore>>,
     purpose: &str,
-) -> CmdResult<coreview_discover::ssh::Device> {
+) -> CmdResult<corelens_discover::ssh::Device> {
     let chain = crate::vault_commands::ssh_login_chain(state, credential_id)?;
     let logins: Vec<Credentials> = chain.iter().map(|(_, c)| c.clone()).collect();
-    let outcome = coreview_discover::ssh::connect_first_accepted(device, &logins, options, store, None).await;
+    let outcome = corelens_discover::ssh::connect_first_accepted(device, &logins, options, store, None).await;
     let sent = match &outcome {
         Ok((_, taken)) => taken + 1,
-        Err(coreview_discover::ssh::SshError::AuthFailed { .. }) => chain.len(),
+        Err(corelens_discover::ssh::SshError::AuthFailed { .. }) => chain.len(),
         Err(_) => 1,
     };
     for (i, (id, _)) in chain.iter().take(sent).enumerate() {
@@ -365,7 +365,7 @@ fn parse_preference(kind: &str, interface: Option<&str>) -> AddressPreference {
 }
 
 /// Starts a crawl. Returns as soon as it is scheduled; everything else arrives
-/// on `coreview://crawl`.
+/// on `corelens://crawl`.
 #[tauri::command]
 pub async fn start_crawl(
     app: AppHandle,
@@ -431,12 +431,12 @@ pub async fn start_crawl(
             ..SshOptions::default()
         },
         transport: match input.transport.as_deref() {
-            Some("telnet") => coreview_discover::crawl::Transport::Telnet,
-            Some("sshThenTelnet") => coreview_discover::crawl::Transport::SshThenTelnet,
+            Some("telnet") => corelens_discover::crawl::Transport::Telnet,
+            Some("sshThenTelnet") => corelens_discover::crawl::Transport::SshThenTelnet,
             // Anything unrecognised is SSH. Falling back to telnet because a
             // string was misspelled would put credentials on the wire in
             // clear text without anyone asking for it.
-            _ => coreview_discover::crawl::Transport::Ssh,
+            _ => corelens_discover::crawl::Transport::Ssh,
         },
         vdom: input
             .vdom
@@ -490,8 +490,8 @@ pub async fn start_crawl(
         details: input.details,
         bindings: resolve_bindings(&state, &input.bindings)?,
         // Hop through the device that found each one, when asked.
-        reach: input.reach.as_deref().map(coreview_discover::crawl::ReachMode::parse).unwrap_or_default(),
-        scan_subnets: coreview_discover::subnetscan::parse_scan_subnets(&input.scan_subnets)?,
+        reach: input.reach.as_deref().map(corelens_discover::crawl::ReachMode::parse).unwrap_or_default(),
+        scan_subnets: corelens_discover::subnetscan::parse_scan_subnets(&input.scan_subnets)?,
         ..CrawlOptions::default()
     };
 
@@ -552,7 +552,7 @@ pub async fn start_crawl(
                     }
                 }
             }
-            let _ = emitter.emit("coreview://crawl", &event);
+            let _ = emitter.emit("corelens://crawl", &event);
         }
     });
 
@@ -576,8 +576,8 @@ pub async fn start_crawl(
             secrets.extend(c.secrets());
         }
         secrets.extend(snmp_secrets);
-        let folder = coreview_discover::support::folder_under(&crate::db::data_dir(), stamp);
-        let capture = coreview_discover::support::SupportCapture::open(folder, secrets)
+        let folder = corelens_discover::support::folder_under(&crate::db::data_dir(), stamp);
+        let capture = corelens_discover::support::SupportCapture::open(folder, secrets)
             .map_err(|e| format!("could not open the support capture: {e}"))?;
         options.ssh.support_capture = Some(Arc::new(capture));
     }
@@ -589,29 +589,29 @@ pub async fn start_crawl(
         // Beside the replies, in the run's own diagnostic folder,
         // when both were asked for; on its own otherwise.
         let dir = if input.support_capture {
-            coreview_discover::support::diagnostic_folder(&crate::db::data_dir(), run_stamp)
+            corelens_discover::support::diagnostic_folder(&crate::db::data_dir(), run_stamp)
         } else {
             crate::db::data_dir().join("logs")
         };
         let _ = std::fs::create_dir_all(&dir);
         let header = format!(
-            "Coreview {} — crawl debug log\nSeeds: {seed}\nMax hops: {}",
+            "Corelens {} — crawl debug log\nSeeds: {seed}\nMax hops: {}",
             env!("CARGO_PKG_VERSION"),
             options.max_hops,
         );
         let file = if input.support_capture { dir.join("debug.log") } else { dir.join(format!("crawl-{run_stamp}.log")) };
-        coreview_discover::debuglog::start(&file, &header)
+        corelens_discover::debuglog::start(&file, &header)
             .map_err(|e| format!("could not open the debug log: {e}"))?;
     } else {
         // A previous run may have left it on.
-        coreview_discover::debuglog::stop();
+        corelens_discover::debuglog::stop();
     }
 
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
         // Addresses, names and ranges, resolved and narrowed to what
         // answers on the login port; what could not be used is reported.
-        let (parsed, mut skipped) = coreview_discover::seeds::parse_seeds(&seed);
+        let (parsed, mut skipped) = corelens_discover::seeds::parse_seeds(&seed);
         // A seed is always dialled, whatever the subnet limit says.
         //
         // "Stay inside these subnets" governs where a crawl *spreads* — it is
@@ -623,7 +623,7 @@ pub async fn start_crawl(
         // reached nothing, which reads as the app being broken rather than as
         // the boundary being enforced.
         let (seeds, more) =
-            coreview_discover::seeds::resolve_seeds(&parsed, options.ssh.port, |_| true).await;
+            corelens_discover::seeds::resolve_seeds(&parsed, options.ssh.port, |_| true).await;
         skipped.extend(more);
         for s in skipped {
             let _ = tx.send(CrawlEvent::Skipped { name: s.seed, reason: s.reason }).await;
@@ -637,8 +637,8 @@ pub async fn start_crawl(
         write_login_transcripts(&mut result.failures);
         // Names from reverse DNS where nothing else named a device.
         if reverse_dns && !result.cancelled {
-            coreview_discover::ptr::enrich_names(&mut result, |ip| {
-                coreview_probe::sweep::reverse_name(ip, 1_500)
+            corelens_discover::ptr::enrich_names(&mut result, |ip| {
+                corelens_probe::sweep::reverse_name(ip, 1_500)
             })
             .await;
         }
@@ -680,7 +680,7 @@ pub async fn start_crawl(
             }
         }
         let _ = handle.emit(
-            "coreview://crawl-result",
+            "corelens://crawl-result",
             serde_json::json!({
                 "devices": result.devices,
                 "notVisited": result.not_visited,
@@ -694,7 +694,7 @@ pub async fn start_crawl(
                 // The log is closed here, and its path told. The page
                 // has read `debugLogPath` and nothing ever sent
                 // it, so the "Open folder" button never had anything to open.
-                "debugLogPath": coreview_discover::debuglog::stop(),
+                "debugLogPath": corelens_discover::debuglog::stop(),
             }),
         );
         // The slot empties when the crawl does, however it ended.
@@ -707,20 +707,20 @@ pub async fn start_crawl(
 /// Writes the login stream of every device that failed with one, and records
 /// where it went.
 ///
-/// Into the app's own data folder — `%LOCALAPPDATA%\Coreview\logins` on
+/// Into the app's own data folder — `%LOCALAPPDATA%\Corelens\logins` on
 /// Windows — because that is somewhere the app can always write and somewhere
 /// an operator can be told to look. One file per device per run; the address
 /// and the time are in the name so two runs do not overwrite each other.
 ///
 /// A failure to write is not reported as a crawl failure: the crawl already
 /// failed, and a second error about a log file would bury the first.
-fn write_login_transcripts(failures: &mut [coreview_discover::CrawlFailure]) {
+fn write_login_transcripts(failures: &mut [corelens_discover::CrawlFailure]) {
     write_login_transcripts_into(&crate::db::data_dir().join("logins"), failures);
 }
 
 /// The part that does not need to know where the app keeps its data, so that
 /// it can be tested somewhere harmless.
-fn write_login_transcripts_into(dir: &std::path::Path, failures: &mut [coreview_discover::CrawlFailure]) {
+fn write_login_transcripts_into(dir: &std::path::Path, failures: &mut [corelens_discover::CrawlFailure]) {
     if std::fs::create_dir_all(dir).is_err() {
         return;
     }
@@ -739,12 +739,12 @@ fn write_login_transcripts_into(dir: &std::path::Path, failures: &mut [coreview_
             .collect();
         let path = dir.join(format!("{safe}-{stamp}.log"));
         let body = format!(
-            "Coreview {} — login transcript for {}\n\
+            "Corelens {} — login transcript for {}\n\
              What this is: every byte {} sent between the password being \n\
              accepted and the crawl giving up, with control characters \n\
              written the way they would be typed. Nothing was run on the \n\
              device; this is the login only, so it holds no configuration.\n\
-             Why it exists: the device never drew a prompt Coreview could \n\
+             Why it exists: the device never drew a prompt Corelens could \n\
              recognise. What it sent is the only thing that explains why.\n\
              \n\
              {}\n\
@@ -754,7 +754,7 @@ fn write_login_transcripts_into(dir: &std::path::Path, failures: &mut [coreview_
             failure.address,
             failure.address,
             failure.reason,
-            coreview_discover::cli::escape_for_reading(&bytes),
+            corelens_discover::cli::escape_for_reading(&bytes),
         );
         if std::fs::write(&path, body).is_ok() {
             failure.transcript_path = Some(path.to_string_lossy().into_owned());
@@ -773,7 +773,7 @@ pub async fn ping_from_device(
     credential_id: String,
     target: String,
     count: Option<u32>,
-) -> CmdResult<coreview_discover::pathcheck::PingFromDevice> {
+) -> CmdResult<corelens_discover::pathcheck::PingFromDevice> {
     state.limiter.allow(crate::ratelimit::Job::DevicePing)?;
     let target: std::net::Ipv4Addr = target
         .trim()
@@ -783,13 +783,13 @@ pub async fn ping_from_device(
     let mut session =
         connect_with_project_logins(&state, device.trim(), &credential_id, SshOptions::default(), Arc::clone(&store), "Ping from a device").await?;
     let output = session
-        .run(&coreview_discover::pathcheck::ping_command(target, count.unwrap_or(3)))
+        .run(&corelens_discover::pathcheck::ping_command(target, count.unwrap_or(3)))
         .await
         .map_err(|e| e.to_string());
     session.close().await;
     persist_host_keys(&app, &store);
     let output = output?;
-    coreview_discover::pathcheck::parse_ios_ping(&output)
+    corelens_discover::pathcheck::parse_ios_ping(&output)
         .ok_or_else(|| format!("{} did not report a result: {}", device.trim(), output.lines().last().unwrap_or("").trim()))
 }
 
@@ -801,7 +801,7 @@ pub async fn ping_from_device(
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeasuredTrace {
-    pub hops: Vec<coreview_discover::trace::TraceHop>,
+    pub hops: Vec<corelens_discover::trace::TraceHop>,
     pub command: String,
     pub platform: String,
     /// False when the device was still tracing at the time limit.
@@ -809,30 +809,30 @@ pub struct MeasuredTrace {
     pub elapsed_ms: u64,
 }
 
-/// A device's trace so far, on `coreview://tracert`.
+/// A device's trace so far, on `corelens://tracert`.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TracertProgress {
     pub device: String,
     pub target: String,
-    pub hops: Vec<coreview_discover::trace::TraceHop>,
+    pub hops: Vec<corelens_discover::trace::TraceHop>,
     pub elapsed_ms: u64,
 }
 
 /// Logs in, reads the version banner and hands back the dialect it names.
-async fn identify(session: &mut coreview_discover::ssh::Device) -> (String, Box<dyn coreview_discover::dialect::Dialect>) {
+async fn identify(session: &mut corelens_discover::ssh::Device) -> (String, Box<dyn corelens_discover::dialect::Dialect>) {
     let mut version = String::new();
-    for command in coreview_discover::dialect::VERSION_COMMANDS {
+    for command in corelens_discover::dialect::VERSION_COMMANDS {
         let out = session.run(command).await.unwrap_or_default();
         if version.is_empty() {
             version = out.clone();
         }
-        if coreview_discover::dialect::identifies(&out) {
+        if corelens_discover::dialect::identifies(&out) {
             version = out;
             break;
         }
     }
-    let dialect = coreview_discover::dialect::dialect_for(&version);
+    let dialect = corelens_discover::dialect::dialect_for(&version);
     (version, dialect)
 }
 
@@ -862,18 +862,18 @@ pub async fn traceroute_from_device(
         let mut last = 0usize;
         while let Some(chunk) = rx.recv().await {
             seen.push_str(&chunk);
-            let hops = coreview_discover::trace::parse_traceroute(&coreview_discover::cli::readable(&seen));
+            let hops = corelens_discover::trace::parse_traceroute(&corelens_discover::cli::readable(&seen));
             if hops.len() != last {
                 last = hops.len();
-                let _ = app2.emit("coreview://tracert", &TracertProgress { device: from.clone(), target: to.clone(), hops, elapsed_ms: started.elapsed().as_millis() as u64 });
+                let _ = app2.emit("corelens://tracert", &TracertProgress { device: from.clone(), target: to.clone(), hops, elapsed_ms: started.elapsed().as_millis() as u64 });
             }
         }
     });
-    let outcome = match coreview_discover::trace::traceroute_command(dialect.family(), target) {
+    let outcome = match corelens_discover::trace::traceroute_command(dialect.family(), target) {
         Some(command) => match session.run(&command).await {
             Ok(out) => Ok((command, out, true)),
             // A trace that reaches its limit keeps what arrived.
-            Err(coreview_discover::ssh::SshError::CommandTimeout { .. }) => {
+            Err(corelens_discover::ssh::SshError::CommandTimeout { .. }) => {
                 let partial = session.take_partial(&command);
                 Ok((command, partial, false))
             }
@@ -886,7 +886,7 @@ pub async fn traceroute_from_device(
     relay.abort();
     persist_host_keys(&app, &store);
     let (command, output, complete) = outcome?;
-    let hops = coreview_discover::trace::parse_traceroute(&output);
+    let hops = corelens_discover::trace::parse_traceroute(&output);
     if hops.is_empty() {
         return Err(if complete {
             format!("{} did not report a trace: {}", device.trim(), output.lines().last().unwrap_or("").trim())
@@ -929,14 +929,14 @@ pub async fn ecmp_leg_from_device(
         connect_with_project_logins(&state, device.trim(), &credential_id, SshOptions::default(), Arc::clone(&store), "ECMP hash from a device").await?;
     let (_, dialect) = identify(&mut session).await;
     let ports = source_port.zip(destination_port);
-    let outcome = match coreview_discover::trace::ecmp_command(dialect.family(), source, destination, protocol, ports) {
+    let outcome = match corelens_discover::trace::ecmp_command(dialect.family(), source, destination, protocol, ports) {
         Some(command) => session.run(&command).await.map_err(|e| e.to_string()).map(|out| (command, out)),
         None => Err(format!("{} runs {}, which cannot be asked which leg it hashes a flow onto.", device.trim(), dialect.name())),
     };
     session.close().await;
     persist_host_keys(&app, &store);
     let (command, output) = outcome?;
-    let leg = coreview_discover::trace::parse_ecmp_leg(&output)
+    let leg = corelens_discover::trace::parse_ecmp_leg(&output)
         .ok_or_else(|| format!("{} did not name a leg: {}", device.trim(), output.lines().last().unwrap_or("").trim()))?;
     Ok(MeasuredLeg { next_hop: leg.next_hop, interface: leg.interface, command })
 }
@@ -993,7 +993,7 @@ fn snmp_backup_for(
     project_id: &str,
     ask: &SnmpCopyInput,
     devices: usize,
-) -> CmdResult<coreview_discover::capture::SnmpBackup> {
+) -> CmdResult<corelens_discover::capture::SnmpBackup> {
     let settings = {
         let conn = state.db.lock().map_err(db_err)?;
         db::project_settings(&conn, project_id).map_err(db_err)?
@@ -1002,20 +1002,20 @@ fn snmp_backup_for(
         .get("sftpHost")
         .map(|h| h.trim().to_string())
         .filter(|h| !h.is_empty())
-        .ok_or("Name the SFTP server devices send their configuration to under Tools → Settings first.")?;
+        .ok_or("Name the SFTP server devices send their configuration to under Settings first.")?;
     let port = settings.get("sftpPort").and_then(|p| p.trim().parse::<u16>().ok()).filter(|p| *p > 0).unwrap_or(22);
     let folder = settings.get("sftpFolder").map(|f| f.trim().to_string()).unwrap_or_default();
     let login_id = settings
         .get("sftpCredentialId")
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
-        .ok_or("Save the SFTP server's login under Tools → Settings first.")?;
+        .ok_or("Save the SFTP server's login under Settings first.")?;
     let (username, password) = crate::vault_commands::sftp_credentials(state, &login_id)?;
     let auth = crate::vault_commands::snmp_credentials(state, &ask.credential_id)?;
     crate::vault_commands::note_use(state, &ask.credential_id, "Configuration backup over SNMP (write)", &format!("{devices} device(s)"));
     crate::vault_commands::note_use(state, &login_id, "SFTP server for backups over SNMP", &host);
-    Ok(coreview_discover::capture::SnmpBackup {
-        copy: coreview_discover::snmp_backup::SnmpCopy {
+    Ok(corelens_discover::capture::SnmpBackup {
+        copy: corelens_discover::snmp_backup::SnmpCopy {
             auth,
             port: ask.port.filter(|p| *p > 0).unwrap_or(161),
             timeout: std::time::Duration::from_secs(5),
@@ -1023,7 +1023,7 @@ fn snmp_backup_for(
             // is polled once a second meanwhile.
             wait: std::time::Duration::from_secs(180),
         },
-        server: coreview_discover::snmp_backup::SftpServer { host, port, folder, username, password },
+        server: corelens_discover::snmp_backup::SftpServer { host, port, folder, username, password },
     })
 }
 
@@ -1064,7 +1064,7 @@ pub async fn start_backup(
         .cloned()
         .chain(input.targets.iter().flat_map(|t| t.commands.iter().cloned()))
         .collect();
-    let refused = coreview_discover::showcmd::refused(&every_command);
+    let refused = corelens_discover::showcmd::refused(&every_command);
     if !refused.is_empty() {
         let list = refused
             .iter()
@@ -1078,8 +1078,8 @@ pub async fn start_backup(
         return Err("Choose a configuration to capture, or give at least one show command.".into());
     }
     let paging = match input.paging.as_deref() {
-        None => coreview_discover::showcmd::Paging::Auto,
-        Some(word) => coreview_discover::showcmd::Paging::parse(word)
+        None => corelens_discover::showcmd::Paging::Auto,
+        Some(word) => corelens_discover::showcmd::Paging::parse(word)
             .ok_or_else(|| format!("Unknown paging choice: {word}"))?,
     };
 
@@ -1092,7 +1092,7 @@ pub async fn start_backup(
         .filter(|p| !p.is_empty())
         .map(str::to_string);
     if let Some(p) = &file_pattern {
-        coreview_discover::backup::check_pattern(p).map_err(|why| format!("Nothing was run: {why}."))?;
+        corelens_discover::backup::check_pattern(p).map_err(|why| format!("Nothing was run: {why}."))?;
     }
 
     let snmp_copy = match &input.snmp_copy {
@@ -1112,7 +1112,7 @@ pub async fn start_backup(
             ..SshOptions::default()
         },
         second_factor: input.second_factor,
-        show: wants_show.then(|| coreview_discover::capture::ShowPlan {
+        show: wants_show.then(|| corelens_discover::capture::ShowPlan {
             commands: input.show_commands.clone(),
             paging,
         }),
@@ -1143,7 +1143,7 @@ pub async fn start_backup(
     let (tx, mut rx) = tokio::sync::mpsc::channel(1024);
     let emitter = app.clone();
     tauri::async_runtime::spawn(async move {
-        use coreview_discover::capture::BackupEvent;
+        use corelens_discover::capture::BackupEvent;
         // The registry hears how many devices are done of how many.
         let mut done: u64 = 0;
         while let Some(event) = rx.recv().await {
@@ -1155,7 +1155,7 @@ pub async fn start_backup(
                 }
                 _ => {}
             }
-            let _ = emitter.emit("coreview://backup", &event);
+            let _ = emitter.emit("corelens://backup", &event);
         }
     });
 
@@ -1230,14 +1230,14 @@ pub fn list_backup_devices(state: State<'_, AppState>, project_id: String) -> Cm
         .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
         .map(|e| {
             let name = e.file_name().to_string_lossy().to_string();
-            let captures = coreview_discover::capture::list_captures(&root, &name, "");
+            let captures = corelens_discover::capture::list_captures(&root, &name, "");
             BackupDevice {
                 latest: captures
                     .first()
                     .and_then(|p| p.file_name())
                     .map(|f| f.to_string_lossy().to_string()),
                 captures: captures.len(),
-                changed_at_latest: coreview_discover::capture::changed_at_latest(&root, &name),
+                changed_at_latest: corelens_discover::capture::changed_at_latest(&root, &name),
                 name,
             }
         })
@@ -1251,7 +1251,7 @@ pub fn list_backup_devices(state: State<'_, AppState>, project_id: String) -> Cm
 #[tauri::command]
 pub fn list_device_captures(state: State<'_, AppState>, device: String, project_id: String) -> CmdResult<Vec<String>> {
     let root = backup_root(&state, &project_id)?;
-    Ok(coreview_discover::capture::list_captures(&root, &device, "")
+    Ok(corelens_discover::capture::list_captures(&root, &device, "")
         .into_iter()
         .filter_map(|p| p.file_name().map(|f| f.to_string_lossy().to_string()))
         .collect())
@@ -1260,9 +1260,9 @@ pub fn list_device_captures(state: State<'_, AppState>, device: String, project_
 /// Every capture of one device, newest first, each flagged against
 /// the previous of its kind.
 #[tauri::command(async)]
-pub fn device_capture_history(state: State<'_, AppState>, device: String, project_id: String) -> CmdResult<Vec<coreview_discover::capture::CaptureHistory>> {
+pub fn device_capture_history(state: State<'_, AppState>, device: String, project_id: String) -> CmdResult<Vec<corelens_discover::capture::CaptureHistory>> {
     let root = backup_root(&state, &project_id)?;
-    Ok(coreview_discover::capture::history(&root, &device))
+    Ok(corelens_discover::capture::history(&root, &device))
 }
 
 /// Reads one capture.
@@ -1290,18 +1290,18 @@ pub fn diff_captures(
     before: String,
     after: String,
     project_id: String,
-) -> CmdResult<Vec<coreview_discover::capture::DiffLine>> {
+) -> CmdResult<Vec<corelens_discover::capture::DiffLine>> {
     let root = backup_root(&state, &project_id)?;
     let a = std::fs::read_to_string(capture_path(&root, &device, &before)?).map_err(|e| e.to_string())?;
     let b = std::fs::read_to_string(capture_path(&root, &device, &after)?).map_err(|e| e.to_string())?;
-    Ok(coreview_discover::capture::diff(&a, &b))
+    Ok(corelens_discover::capture::diff(&a, &b))
 }
 
 /// Every backup run, newest first, for the before-and-after picker.
 #[tauri::command]
-pub fn list_backup_runs(state: State<'_, AppState>, project_id: String) -> CmdResult<Vec<coreview_discover::compare::RunSummary>> {
+pub fn list_backup_runs(state: State<'_, AppState>, project_id: String) -> CmdResult<Vec<corelens_discover::compare::RunSummary>> {
     let root = backup_root(&state, &project_id)?;
-    Ok(coreview_discover::compare::list_runs(&root))
+    Ok(corelens_discover::compare::list_runs(&root))
 }
 
 /// Two runs compared device by device, and command by command for show
@@ -1313,9 +1313,9 @@ pub fn compare_backup_runs(
     before: String,
     after: String,
     project_id: String,
-) -> CmdResult<Vec<coreview_discover::compare::DeviceComparison>> {
+) -> CmdResult<Vec<corelens_discover::compare::DeviceComparison>> {
     let root = backup_root(&state, &project_id)?;
-    coreview_discover::compare::compare_runs(&root, &before, &after)
+    corelens_discover::compare::compare_runs(&root, &before, &after)
 }
 
 /// Runs checks against one run's show-command captures. Reads files
@@ -1328,12 +1328,12 @@ pub fn compare_backup_runs(
 pub fn run_backup_checks(
     state: State<'_, AppState>,
     stamp: String,
-    checks: Vec<coreview_discover::checks::Check>,
+    checks: Vec<corelens_discover::checks::Check>,
     project_id: String,
     roles: Option<std::collections::HashMap<String, String>>,
-) -> CmdResult<Vec<coreview_discover::checks::CheckResult>> {
+) -> CmdResult<Vec<corelens_discover::checks::CheckResult>> {
     let root = backup_root(&state, &project_id)?;
-    coreview_discover::checks::run_checks(&root, &stamp, &checks, &roles.unwrap_or_default())
+    corelens_discover::checks::run_checks(&root, &stamp, &checks, &roles.unwrap_or_default())
 }
 
 /// One entry of a gateway's ARP table, with the manufacturer behind its MAC.
@@ -1363,7 +1363,7 @@ pub async fn read_gateway_arp(
         .map_err(|_| format!("`{}` is not an IPv4 address.", gateway.trim()))?;
     let auth = crate::vault_commands::snmp_credentials(&state, &credential_id)?;
     crate::vault_commands::note_use(&state, &credential_id, "Gateway ARP table", &address.to_string());
-    let entries = coreview_discover::snmp::arp_table(
+    let entries = corelens_discover::snmp::arp_table(
         &address.to_string(),
         161,
         &auth,
@@ -1374,10 +1374,10 @@ pub async fn read_gateway_arp(
     Ok(entries
         .into_iter()
         .map(|e| {
-            let vendor = if coreview_probe::neighbour::is_locally_administered(&e.mac) {
+            let vendor = if corelens_probe::neighbour::is_locally_administered(&e.mac) {
                 None
             } else {
-                coreview_probe::oui::vendor(&e.mac).map(str::to_string)
+                corelens_probe::oui::vendor(&e.mac).map(str::to_string)
             };
             GatewayArpEntry { ip: e.ip.to_string(), mac: e.mac, vendor }
         })
@@ -1395,12 +1395,12 @@ fn capture_path(
     device: &str,
     filename: &str,
 ) -> CmdResult<std::path::PathBuf> {
-    let device = coreview_discover::backup::safe_component(device)
-        .ok_or("That is not a device name Coreview would have filed a backup under.")?;
-    let filename = coreview_discover::backup::safe_component(filename)
+    let device = corelens_discover::backup::safe_component(device)
+        .ok_or("That is not a device name Corelens would have filed a backup under.")?;
+    let filename = corelens_discover::backup::safe_component(filename)
         .ok_or("That is not a capture filename.")?;
     let path = root.join(device).join(filename);
-    if !coreview_discover::backup::is_inside(root, &path) {
+    if !corelens_discover::backup::is_inside(root, &path) {
         return Err("That path is outside the backup folder.".into());
     }
     Ok(path)
@@ -1509,7 +1509,7 @@ mod tests {
             match capture_path(root, device, file) {
                 Err(_) => {}
                 Ok(p) => assert!(
-                    coreview_discover::backup::is_inside(root, &p),
+                    corelens_discover::backup::is_inside(root, &p),
                     "{device:?}/{file:?} produced {p:?}"
                 ),
             }
@@ -1593,20 +1593,20 @@ mod tests {
 /// A saved snmpwalk of one device, read into the record an SNMP crawl
 /// builds. Pure text in, so nothing is contacted and nothing is stored.
 #[tauri::command(async)]
-pub fn read_snmp_walk(text: String, address: Option<String>) -> coreview_discover::walkfile::WalkReading {
-    coreview_discover::walkfile::read_walk(&text, address.as_deref())
+pub fn read_snmp_walk(text: String, address: Option<String>) -> corelens_discover::walkfile::WalkReading {
+    corelens_discover::walkfile::read_walk(&text, address.as_deref())
 }
 
 /// An Nmap XML report, read as ping-sweep rows.
 #[tauri::command(async)]
-pub fn read_nmap_xml(text: String) -> Result<coreview_formats::nmap_import::NmapReport, String> {
-    coreview_formats::nmap_import::read_nmap_xml(&text)
+pub fn read_nmap_xml(text: String) -> Result<corelens_formats::nmap_import::NmapReport, String> {
+    corelens_formats::nmap_import::read_nmap_xml(&text)
 }
 
 #[cfg(test)]
 mod transcript_tests {
-    use coreview_discover::crawl::FailureKind;
-    use coreview_discover::CrawlFailure;
+    use corelens_discover::crawl::FailureKind;
+    use corelens_discover::CrawlFailure;
 
     /// Diagnosis often happens on a different machine to the one
     /// running the crawl, so the file has to exist without being asked for

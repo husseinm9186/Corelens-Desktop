@@ -52,12 +52,12 @@ if ($LASTEXITCODE -ne 0) { throw "pip install failed ($LASTEXITCODE)" }
 # Console scripts are useless here and are PEs nobody would sign.
 if (Test-Path (Join-Path $site "bin")) { Remove-Item -Recurse -Force (Join-Path $site "bin") }
 
-Copy-Item -Recurse (Join-Path $root "sidecar\coreview_sidecar") (Join-Path $site "coreview_sidecar")
+Copy-Item -Recurse (Join-Path $root "sidecar\corelens_sidecar") (Join-Path $site "corelens_sidecar")
 Get-ChildItem -Recurse $out -Include "__pycache__" -Directory | Remove-Item -Recurse -Force
 
 # The smoke test the installer relies on: the interpreter starts from its
 # own folder and finds the package with nothing on PATH.
-$version = & (Join-Path $out "python.exe") -m coreview_sidecar --version
+$version = & (Join-Path $out "python.exe") -m corelens_sidecar --version
 if ($LASTEXITCODE -ne 0) { throw "the laid sidecar does not start" }
 Write-Host "sidecar laid under $out — $version"
 $pes = Get-ChildItem -Recurse $out -Include *.exe, *.dll, *.pyd

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://coreview.local/catalog.schema.json",
-  "title": "Coreview discovery catalog (one OS)",
-  "description": "The shape of resources/catalog/<os>.yaml. Checked by crates/coreview-catalog and by src/lib/catalog.test.ts.",
+  "$id": "https://corelens.local/catalog.schema.json",
+  "title": "Corelens discovery catalog (one OS)",
+  "description": "The shape of resources/catalog/<os>.yaml. Checked by crates/corelens-catalog and by src/lib/catalog.test.ts.",
   "type": "object",
   "required": ["vendor", "os", "name", "phase", "session", "role_hint", "role_defaults", "caps_probe", "commands", "live_path"],
   "additionalProperties": false,
@@ -44,7 +44,7 @@
     },
     "parser": {
       "type": "string",
-      "description": "textfsm:<template basename> | json | xml | regex | raw | api | none | genie:<name> | reader:<Coreview reader>",
+      "description": "textfsm:<template basename> | json | xml | regex | raw | api | none | genie:<name> | reader:<Corelens reader>",
       "pattern": "^(textfsm:[a-z0-9_.-]+|json|xml|regex|raw|api|none|genie:[a-z0-9_]+|reader:[a-z0-9_]+)$"
     },
     "probe": {
@@ -81,7 +81,7 @@
         "timeout": { "type": "integer", "minimum": 1 },
         "verified": { "enum": ["lab", "docs", "unverified"] },
         "evidence": { "type": "string" },
-        "coreview_reader": { "type": "boolean" },
+        "corelens_reader": { "type": "boolean" },
         "note": { "type": "string" },
         "phase": { "type": "integer" }
       }

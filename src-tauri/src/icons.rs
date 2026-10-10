@@ -1,6 +1,6 @@
 //! Local icon library.
 //!
-//! Coreview ships 26 self-drawn glyphs and no vendor artwork. This module lets
+//! Corelens ships 26 self-drawn glyphs and no vendor artwork. This module lets
 //! an operator point the app at a folder of their own SVGs — a licensed vendor
 //! set, a corporate kit — which is indexed at runtime. The artwork is never
 //! bundled into the binary and never committed to the repository.
@@ -33,7 +33,7 @@ pub struct IconEntry {
     pub category: String,
     /// Sanitised SVG source.
     pub svg: String,
-    /// What the folder's `coreview-stencils.json` says this shape is, and
+    /// What the folder's `corelens-stencils.json` says this shape is, and
     /// under what licence. Absent when there is no manifest or it
     /// does not list this file.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -186,7 +186,7 @@ fn expand_zips(root: &Path, found: &mut Found, skipped: &mut Vec<String>) -> Opt
     if zips.is_empty() {
         return None;
     }
-    let scratch = std::env::temp_dir().join(format!("coreview-zip-{}", uuid::Uuid::new_v4()));
+    let scratch = std::env::temp_dir().join(format!("corelens-zip-{}", uuid::Uuid::new_v4()));
     for zip_path in &zips {
         let file_name = zip_path.file_name().and_then(|f| f.to_str()).unwrap_or("?").to_string();
         let file = match std::fs::File::open(zip_path) {
@@ -504,7 +504,7 @@ pub fn scan_watched(
         exts.sort();
         exts.dedup();
         skipped.push(format!(
-            "{} file(s) are in formats Coreview cannot read directly ({}) — run scripts/import-shapes.mjs on them first",
+            "{} file(s) are in formats Corelens cannot read directly ({}) — run scripts/import-shapes.mjs on them first",
             found.other_formats.len(),
             exts.join(", ")
         ));
@@ -645,7 +645,7 @@ pub fn scan_watched(
             // freshly converted SVGs with it between the conversion and the
             // read. LibreOffice said it had written the file and the file was
             // not there, which is exactly what the flake looked like.
-            let work = crate::shapeconv::unique_work_dir("coreview-conv");
+            let work = crate::shapeconv::unique_work_dir("corelens-conv");
             let _ = std::fs::create_dir_all(&work);
             for batch in found.convertible.chunks(25) {
                 if stopped() {
@@ -1040,7 +1040,7 @@ mod tests {
     /// This walks a real folder, which is the path the app actually takes.
     #[test]
     fn a_scanned_folder_comes_back_sanitised_and_honest_about_what_it_skipped() {
-        let dir = std::env::temp_dir().join(format!("coreview-icons-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("corelens-icons-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
 
         std::fs::write(
@@ -1100,7 +1100,7 @@ mod tests {
     /// how much legitimate artwork one icon file may hold.
     #[test]
     fn a_large_but_legitimate_icon_sheet_still_loads() {
-        let dir = std::env::temp_dir().join(format!("coreview-icons-{}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("corelens-icons-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let mut body = String::new();
         for i in 0..11000 {
@@ -1284,7 +1284,7 @@ mod folder_tests {
         std::fs::write(dir.path().join("other.svg"), svg).unwrap();
         std::fs::write(
             dir.path().join(crate::stencil_manifest::MANIFEST_FILE),
-            r#"{"coreviewStencils":1,"licence":"Drawn for the test","shapes":[
+            r#"{"corelensStencils":1,"licence":"Drawn for the test","shapes":[
                 {"file":"edge.svg","name":"Edge router","category":"Routing","class":"router","vendor":"Example Networks","ports":8,"portNaming":"Port {n}","rackUnits":1}
             ]}"#,
         )
@@ -1306,14 +1306,14 @@ mod folder_tests {
 
         std::fs::write(
             dir.path().join(crate::stencil_manifest::MANIFEST_FILE),
-            r#"{"coreviewStencils":1,"licence":"x","shapes":[{"file":"edge.svg","class":"toaster"}]}"#,
+            r#"{"corelensStencils":1,"licence":"x","shapes":[{"file":"edge.svg","class":"toaster"}]}"#,
         )
         .unwrap();
         let lib = super::scan(dir.path().to_str().unwrap()).expect("scan");
         assert_eq!(lib.icons.len(), 2, "a refused manifest still leaves the shapes");
         assert!(lib.icons.iter().all(|i| i.meta.is_none()));
         assert_eq!(lib.skipped.len(), 1, "{:?}", lib.skipped);
-        assert!(lib.skipped[0].starts_with("coreview-stencils.json: shape 1 (edge.svg)"), "{:?}", lib.skipped);
+        assert!(lib.skipped[0].starts_with("corelens-stencils.json: shape 1 (edge.svg)"), "{:?}", lib.skipped);
         assert!(lib.skipped[0].contains("toaster"));
     }
 
@@ -1361,7 +1361,7 @@ mod folder_tests {
     /// blank tile, which is what this stencil produced.
     ///
     /// The stencil is a vendor's artwork, so it is not committed:
-    /// it is read from `COREVIEW_VSS_FIXTURE` on the local
+    /// it is read from `CORELENS_VSS_FIXTURE` on the local
     /// machine, and the assertions below are about that exact file. It never
     /// ran in CI — CI has no libvisio — so moving it out costs no coverage.
     #[test]
@@ -1370,12 +1370,12 @@ mod folder_tests {
             eprintln!("skipping: libvisio-tools not installed here");
             return;
         }
-        let Some(fixture) = std::env::var_os("COREVIEW_VSS_FIXTURE")
+        let Some(fixture) = std::env::var_os("CORELENS_VSS_FIXTURE")
             .map(std::path::PathBuf::from)
             .filter(|p| p.is_file())
         else {
             eprintln!(
-                "skipping: set COREVIEW_VSS_FIXTURE to a local tripp-lite-racks.vss \
+                "skipping: set CORELENS_VSS_FIXTURE to a local tripp-lite-racks.vss \
                  (vendor stencils are not committed)"
             );
             return;
@@ -1416,7 +1416,7 @@ mod folder_tests {
 
     /// "can we find a way to import vss" arrived with a My Shapes
     /// folder pasted in the app's own output — a zip full of stencils,
-    /// reported as one of "46 file(s) ... Coreview cannot read directly".
+    /// reported as one of "46 file(s) ... Corelens cannot read directly".
     /// It is opened and walked like a folder: an SVG inside becomes an icon,
     /// categorised under the zip's own name the way a real subfolder would
     /// be, and a `.vss` inside converts exactly as a loose one would.
@@ -1461,7 +1461,7 @@ mod folder_tests {
     }
 
     /// The refusal message once named `.vssx` and `.zip` as examples
-    /// of what Coreview cannot read — both wrong, since `.vssx` has gone
+    /// of what Corelens cannot read — both wrong, since `.vssx` has gone
     /// through the Visio route and `.zip` is opened by the test
     /// above. The message now names only extensions actually left over.
     #[test]

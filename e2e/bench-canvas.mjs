@@ -102,7 +102,7 @@ async function benchOne(browser, n) {
     // Past ~5 MB (10,000 devices) the browser refuses this; the stubbed backend
     // below serves the project either way.
     try {
-      localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+      localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
     } catch {
       /* quota */
     }

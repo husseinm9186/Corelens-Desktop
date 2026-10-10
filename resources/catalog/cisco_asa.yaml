@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Cisco ASA / FTD (cisco_asa)
+# Corelens discovery catalog — Cisco ASA / FTD (cisco_asa)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Cisco
@@ -96,7 +96,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (4 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_inventory
     cmd: show inventory
     gate: always
@@ -107,7 +107,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (4 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_failover
     cmd: show failover
     gate: always
@@ -128,7 +128,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (2 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_nameif
     cmd: show nameif
     gate: always
@@ -138,7 +138,7 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview reader from Cisco's ASA command reference; no capture yet
+    evidence: Corelens reader from Cisco's ASA command reference; no capture yet
   - id: show_nat
     cmd: show nat
     gate: always
@@ -168,7 +168,7 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview reader from Cisco's ASA command reference; no ntc template; no capture yet
+    evidence: Corelens reader from Cisco's ASA command reference; no ntc template; no capture yet
   - id: show_running_config_access_group
     cmd: show running-config access-group
     gate: always
@@ -178,7 +178,7 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview reader from Cisco's ASA command reference; ntc's template stops at an `out` or `global` line
+    evidence: Corelens reader from Cisco's ASA command reference; ntc's template stops at an `out` or `global` line
   - id: show_running_config_object_network
     cmd: show running-config object network
     gate: always
@@ -300,7 +300,7 @@ commands:
     verified: unverified
     evidence: no template, no structured output, no capture yet
   # An FTD's policy lives in its FMC. These three are what
-  # coreview-collect/src/api/fmc.rs reads for the FTD a collection reached
+  # corelens-collect/src/api/fmc.rs reads for the FTD a collection reached
   # (matched by address or name), after the documented token call; NAT and
   # routes come from the FTD's own CLI above. From Cisco's FMC REST API
   # documentation, unverified until the operator's FMC answers.
@@ -358,7 +358,7 @@ commands:
     timeout: 120
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_route
     cmd: show route
     gate: always
@@ -369,7 +369,7 @@ commands:
     timeout: 120
     verified: lab
     evidence: ntc-templates tests (3 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_running_config
     cmd: show running-config
     gate: always
@@ -412,8 +412,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview cisco reader; ASA command reference `show asp table routing`
-    coreview_reader: true
+    evidence: Corelens cisco reader; ASA command reference `show asp table routing`
+    corelens_reader: true
 live_path:
   - id: show_route_dst
     cmd: show route {dst}

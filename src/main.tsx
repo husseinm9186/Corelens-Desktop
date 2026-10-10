@@ -1,3 +1,6 @@
+// First, so storage kept under the app's earlier name is moved before the
+// store reads it.
+import './lib/renamedStorage';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';

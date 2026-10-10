@@ -42,7 +42,7 @@ describe('the DXF export', () => {
     expect(dxf).toContain('1\nBranch 12');
     expect(dxf).toContain('1\nR1\n');
     expect(dxf).toContain('1\nHQ · Room MDF');
-    expect(dxf).toContain('2026-10-03 · rev B · Coreview');
+    expect(dxf).toContain('2026-10-03 · rev B · Corelens');
     const front = rackElevationDxf(racks, devices, 'front', { links });
     expect((front.match(/8\nCABLES\n/g) ?? []).length).toBeGreaterThanOrEqual(5);
   });

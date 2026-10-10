@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Palo Alto Networks PAN-OS (panos)
+# Corelens discovery catalog — Palo Alto Networks PAN-OS (panos)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Palo Alto Networks
@@ -105,7 +105,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_high_availability_state
     cmd: show high-availability state
     gate: always
@@ -128,7 +128,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_interface_logical
     cmd: show interface logical
     gate: always
@@ -164,7 +164,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (4 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_vlan_all
     cmd: show vlan all
     gate: always
@@ -270,7 +270,7 @@ commands:
     timeout: 30
     verified: docs
     evidence: structured output (XML API `type=op`); field mapping from documentation
-    coreview_reader: true
+    corelens_reader: true
   - id: show_vpn_ike_sa
     cmd: show vpn ike-sa
     gate: role.firewall && cap.ipsec
@@ -322,7 +322,7 @@ commands:
     timeout: 120
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_mac_all
     cmd: show mac all
     gate: always
@@ -355,7 +355,7 @@ commands:
     timeout: 120
     verified: lab
     evidence: ntc-templates tests (3 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_routing_fib
     cmd: show routing fib
     gate: cap.routing && !cap.advanced_routing

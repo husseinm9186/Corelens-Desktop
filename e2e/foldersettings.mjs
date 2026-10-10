@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 
 const URL = process.env.CV_URL ?? "http://localhost:5173/";
 const NOW = 1756000000000;
-const PICKED = "/home/example/coreview-backups";
+const PICKED = "/home/example/corelens-backups";
 
 let failures = 0;
 const check = (name, ok, detail = "") => {
@@ -78,8 +78,8 @@ check("the project's Settings has its folders", (await inSettings.count()) === 1
 await inSettings.locator(".cv-folder-row", { hasText: "Configuration backups" }).locator("button", { hasText: "Choose folder" }).click();
 await page.waitForTimeout(400);
 const saved = await page.evaluate(() => window.__calls.filter((c) => c.cmd === "set_setting").at(-1)?.args);
-check("choosing a backup folder saves it to this project", saved?.key === "backupFolder" && saved?.projectId === "fs" && saved?.value === "/home/example/coreview-backups", JSON.stringify(saved));
-check("and shows it once kept", (await inSettings.innerText()).includes("/home/example/coreview-backups"), (await inSettings.innerText()).slice(0, 200));
+check("choosing a backup folder saves it to this project", saved?.key === "backupFolder" && saved?.projectId === "fs" && saved?.value === "/home/example/corelens-backups", JSON.stringify(saved));
+check("and shows it once kept", (await inSettings.innerText()).includes("/home/example/corelens-backups"), (await inSettings.innerText()).slice(0, 200));
 
 // The SFTP server a Cisco sends its configuration to under a backup over
 // SNMP is a project's too, and is typed here.
@@ -115,7 +115,7 @@ await page.locator("button", { hasText: "Backups" }).first().click();
 await page.waitForTimeout(500);
 const backups = page.locator(".cv-panel");
 check("Backups with no folder offers the chooser itself, not a trip to the start screen",
-  (await backups.locator(".cv-folders button", { hasText: "Choose folder" }).count()) >= 1 && !/on the Coreview start screen/.test(await backups.innerText()),
+  (await backups.locator(".cv-folders button", { hasText: "Choose folder" }).count()) >= 1 && !/on the Corelens start screen/.test(await backups.innerText()),
   (await backups.innerText()).slice(0, 300));
 await backups.locator(".cv-folders .cv-folder-row", { hasText: "Configuration backups" }).locator("button", { hasText: "Choose folder" }).click();
 await page.waitForTimeout(500);
@@ -134,7 +134,7 @@ await page.waitForTimeout(400);
 const made = await page.evaluate(() => window.__cvStore.getState().meta?.id);
 const sent = await page.evaluate(() => window.__calls.filter((c) => c.cmd === "set_setting").at(-1)?.args);
 check("in a project created a moment ago, the folder is kept for that project",
-  sent?.projectId === made && (await fresh.innerText()).includes("/home/example/coreview-backups") && !/no project is open/.test(await fresh.innerText()),
+  sent?.projectId === made && (await fresh.innerText()).includes("/home/example/corelens-backups") && !/no project is open/.test(await fresh.innerText()),
   JSON.stringify({ made, sent }) + " " + (await fresh.innerText()).slice(0, 200));
 
 await browser.close();

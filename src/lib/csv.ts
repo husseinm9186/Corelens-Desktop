@@ -200,7 +200,7 @@ export function parseLinkCsv(text: string): { rows: LinkCsvRow[]; errors: string
  * Import existed and export did not, which made CSV a one-way door: a diagram
  * built from a spreadsheet could not be handed back to the spreadsheet, and a
  * diagram built by a crawl could not be handed to anyone who does not run
- * Coreview. The columns are exactly the ones the importers read, so a file
+ * Corelens. The columns are exactly the ones the importers read, so a file
  * written here reopens as the same diagram.
  *
  * Positions are deliberately not exported. A CSV is an inventory, and the

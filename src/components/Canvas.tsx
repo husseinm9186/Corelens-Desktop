@@ -372,7 +372,7 @@ export function Canvas() {
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      const raw = event.dataTransfer.getData('application/coreview');
+      const raw = event.dataTransfer.getData('application/corelens');
       if (!raw) return;
       const position = rf.screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const node = nodeForDrop(raw, position.x, position.y, {
@@ -1890,7 +1890,7 @@ export function Canvas() {
         fitViewOptions={{ maxZoom: 2 }}
         /* React Flow is MIT, and its authors ask rather than require that the
            badge stay. It is a link out to their site sitting on top of the
-           operator's diagram, and it was being mistaken for part of Coreview. */
+           operator's diagram, and it was being mistaken for part of Corelens. */
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{ type: 'live' }}
       >

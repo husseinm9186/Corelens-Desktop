@@ -272,7 +272,7 @@ export function StatusPanel() {
   // The dock's height, dragged on its grip and remembered on this machine.
   const [dockHeight, setDockHeight] = useState<number | null>(() => {
     try {
-      const v = Number(localStorage.getItem('coreview.view.dockHeight'));
+      const v = Number(localStorage.getItem('corelens.view.dockHeight'));
       return Number.isFinite(v) && v >= 120 ? v : null;
     } catch {
       return null;
@@ -281,8 +281,8 @@ export function StatusPanel() {
   const keepHeight = (h: number | null) => {
     setDockHeight(h);
     try {
-      if (h) localStorage.setItem('coreview.view.dockHeight', String(Math.round(h)));
-      else localStorage.removeItem('coreview.view.dockHeight');
+      if (h) localStorage.setItem('corelens.view.dockHeight', String(Math.round(h)));
+      else localStorage.removeItem('corelens.view.dockHeight');
     } catch {
       /* no storage here */
     }

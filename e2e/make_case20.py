@@ -17,7 +17,7 @@ import time
 import uuid
 from pathlib import Path
 
-DB = Path.home() / ".local/share/Coreview/coreview.db"
+DB = Path.home() / ".local/share/Corelens/corelens.db"
 NODES, EDGES = 50, 75
 DEVICE_TYPES = [
     "router", "firewall", "core-switch", "access-switch", "distribution-switch",

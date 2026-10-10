@@ -2,7 +2,7 @@
  * The selected collection run against an earlier one — what
  * appeared, what went and what changed, in devices, links, CDP/LLDP
  * neighbours, routing neighbours, routes and overlays. Devices are matched
- * by serial and MAC in Rust (`coreview-topology/src/diff.rs`), so a switch
+ * by serial and MAC in Rust (`corelens-topology/src/diff.rs`), so a switch
  * reached on another address, or renamed, is the same switch.
  */
 import { useState } from 'react';

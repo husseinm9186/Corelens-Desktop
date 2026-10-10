@@ -9,7 +9,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -21,7 +21,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -33,7 +33,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -45,7 +45,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -57,7 +57,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -69,7 +69,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -81,7 +81,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -93,7 +93,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -105,7 +105,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -117,7 +117,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -131,7 +131,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -143,7 +143,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes",
+  "corelens": "yes",
   "templates_also": [
    "cisco_ios_show_switch_detail_stack_ports.textfsm"
   ]
@@ -158,7 +158,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "",
+  "corelens": "",
   "templates_also": [
    "cisco_ios_show_module_status.textfsm",
    "cisco_ios_show_module_submodule.textfsm",
@@ -175,7 +175,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -187,7 +187,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -199,7 +199,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -211,7 +211,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -223,7 +223,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -235,7 +235,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -247,7 +247,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -259,7 +259,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -271,7 +271,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -283,7 +283,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -297,7 +297,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -309,7 +309,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -321,7 +321,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -333,7 +333,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -345,7 +345,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -357,7 +357,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -369,7 +369,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -381,7 +381,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -393,7 +393,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -405,7 +405,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -417,7 +417,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -429,7 +429,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -441,7 +441,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -453,7 +453,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -467,7 +467,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_ios",
@@ -479,7 +479,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -491,7 +491,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -503,7 +503,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -515,7 +515,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -527,7 +527,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -539,7 +539,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -551,7 +551,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -563,7 +563,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -575,7 +575,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -587,7 +587,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -599,7 +599,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -611,7 +611,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -623,7 +623,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -635,7 +635,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -647,7 +647,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -659,7 +659,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -671,7 +671,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -683,7 +683,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -695,7 +695,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -707,7 +707,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -719,7 +719,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -731,7 +731,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -745,7 +745,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -757,7 +757,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -769,7 +769,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -781,7 +781,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -793,7 +793,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -805,7 +805,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -817,7 +817,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -829,7 +829,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_ios",
@@ -841,7 +841,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -853,7 +853,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -865,7 +865,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -877,7 +877,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -889,7 +889,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -901,7 +901,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -913,7 +913,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -925,7 +925,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -937,7 +937,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -949,7 +949,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -961,7 +961,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -973,7 +973,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -985,7 +985,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -997,7 +997,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -1011,7 +1011,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1023,7 +1023,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1035,7 +1035,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1047,7 +1047,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1059,7 +1059,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1071,7 +1071,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1083,7 +1083,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -1095,7 +1095,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -1107,7 +1107,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -1119,7 +1119,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1131,7 +1131,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -1143,7 +1143,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1155,7 +1155,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -1167,7 +1167,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1179,7 +1179,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1191,7 +1191,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1203,7 +1203,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1215,7 +1215,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1227,7 +1227,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1239,7 +1239,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1251,7 +1251,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1263,7 +1263,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1275,7 +1275,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1287,7 +1287,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1299,7 +1299,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1311,7 +1311,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -1323,7 +1323,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_nxos",
@@ -1335,7 +1335,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1347,7 +1347,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1359,7 +1359,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1371,7 +1371,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1383,7 +1383,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1395,7 +1395,7 @@
   "native": "`| json`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1407,7 +1407,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1419,7 +1419,7 @@
   "native": "`| json`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_nxos",
@@ -1431,7 +1431,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1443,7 +1443,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1455,7 +1455,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1467,7 +1467,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1479,7 +1479,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1491,7 +1491,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1503,7 +1503,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1515,7 +1515,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1527,7 +1527,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1539,7 +1539,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1551,7 +1551,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1563,7 +1563,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1575,7 +1575,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1587,7 +1587,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1601,7 +1601,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1613,7 +1613,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1625,7 +1625,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1637,7 +1637,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1649,7 +1649,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1661,7 +1661,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1673,7 +1673,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1685,7 +1685,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1697,7 +1697,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1709,7 +1709,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1721,7 +1721,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1733,7 +1733,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1745,7 +1745,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1757,7 +1757,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1769,7 +1769,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1781,7 +1781,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1793,7 +1793,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1805,7 +1805,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1817,7 +1817,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1829,7 +1829,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1841,7 +1841,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1853,7 +1853,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_iosxr",
@@ -1865,7 +1865,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -1877,7 +1877,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -1889,7 +1889,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "arista_eos",
@@ -1901,7 +1901,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -1913,7 +1913,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -1925,7 +1925,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -1937,7 +1937,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -1949,7 +1949,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -1961,7 +1961,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "arista_eos",
@@ -1973,7 +1973,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -1985,7 +1985,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "arista_eos",
@@ -1999,7 +1999,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2011,7 +2011,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2023,7 +2023,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2035,7 +2035,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2047,7 +2047,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2059,7 +2059,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2071,7 +2071,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "arista_eos",
@@ -2083,7 +2083,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2095,7 +2095,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "arista_eos",
@@ -2107,7 +2107,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2119,7 +2119,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2131,7 +2131,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2143,7 +2143,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2155,7 +2155,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2167,7 +2167,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2179,7 +2179,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2191,7 +2191,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2203,7 +2203,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2215,7 +2215,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2227,7 +2227,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2239,7 +2239,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2251,7 +2251,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2263,7 +2263,7 @@
   "native": "`| json` / eAPI",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2275,7 +2275,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2287,7 +2287,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2299,7 +2299,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2311,7 +2311,7 @@
   "native": "`| json` / eAPI",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "arista_eos",
@@ -2323,7 +2323,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2335,7 +2335,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2347,7 +2347,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2359,7 +2359,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2371,7 +2371,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2383,7 +2383,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "juniper_junos",
@@ -2395,7 +2395,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "juniper_junos",
@@ -2407,7 +2407,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2419,7 +2419,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "juniper_junos",
@@ -2431,7 +2431,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2443,7 +2443,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2455,7 +2455,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "juniper_junos",
@@ -2467,7 +2467,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2479,7 +2479,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "juniper_junos",
@@ -2491,7 +2491,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "juniper_junos",
@@ -2505,7 +2505,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2517,7 +2517,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "juniper_junos",
@@ -2529,7 +2529,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2541,7 +2541,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2553,7 +2553,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2565,7 +2565,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2577,7 +2577,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2589,7 +2589,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "juniper_junos",
@@ -2601,7 +2601,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2613,7 +2613,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "juniper_junos",
@@ -2625,7 +2625,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2637,7 +2637,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2649,7 +2649,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2661,7 +2661,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2673,7 +2673,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2685,7 +2685,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2697,7 +2697,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2709,7 +2709,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2721,7 +2721,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2733,7 +2733,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2745,7 +2745,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2757,7 +2757,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2769,7 +2769,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2781,7 +2781,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2793,7 +2793,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2805,7 +2805,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2817,7 +2817,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2829,7 +2829,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2841,7 +2841,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2853,7 +2853,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2865,7 +2865,7 @@
   "native": "`| display xml`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2877,7 +2877,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2889,7 +2889,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2901,7 +2901,7 @@
   "native": "`| display xml`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "juniper_junos",
@@ -2913,7 +2913,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -2925,7 +2925,7 @@
   "native": "REST /api/v2/monitor/system/status",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "fortios",
@@ -2937,7 +2937,7 @@
   "native": "REST /api/v2/cmdb/system/vdom",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -2949,7 +2949,7 @@
   "native": "REST /api/v2/cmdb/router/ospf",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -2961,7 +2961,7 @@
   "native": "REST /api/v2/cmdb/router/bgp",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -2973,7 +2973,7 @@
   "native": "REST /api/v2/cmdb/router/static",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -2985,7 +2985,7 @@
   "native": "REST /api/v2/cmdb/router/policy",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "fortios",
@@ -2997,7 +2997,7 @@
   "native": "REST /api/v2/cmdb/system/sdwan",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3011,7 +3011,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3023,7 +3023,7 @@
   "native": "REST /api/v2/cmdb/vpn.ipsec/phase1-interface",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3035,7 +3035,7 @@
   "native": "REST /api/v2/cmdb/firewall/vip",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3047,7 +3047,7 @@
   "native": "REST /api/v2/cmdb/system/interface",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3059,7 +3059,7 @@
   "native": "REST /api/v2/monitor/system/status",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "fortios",
@@ -3071,7 +3071,7 @@
   "native": "REST /api/v2/monitor/system/ha-peer",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3083,7 +3083,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3095,7 +3095,7 @@
   "native": "REST /api/v2/monitor/system/interface",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "fortios",
@@ -3107,7 +3107,7 @@
   "native": "REST /api/v2/cmdb/system/interface",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3119,7 +3119,7 @@
   "native": "REST /api/v2/monitor/network/arp",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "fortios",
@@ -3131,7 +3131,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3143,7 +3143,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3155,7 +3155,7 @@
   "native": "REST /api/v2/monitor/network/lldp/neighbors",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "fortios",
@@ -3169,7 +3169,7 @@
   "native": "REST /api/v2/monitor/network/lldp/neighbors",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3181,7 +3181,7 @@
   "native": "REST /api/v2/monitor/system/interface",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3193,7 +3193,7 @@
   "native": "REST /api/v2/cmdb/system/zone",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3205,7 +3205,7 @@
   "native": "REST /api/v2/monitor/router/ipv4",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "fortios",
@@ -3217,7 +3217,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3229,7 +3229,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3241,7 +3241,7 @@
   "native": "REST /api/v2/cmdb/router/static",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3253,7 +3253,7 @@
   "native": "REST /api/v2/cmdb/router/policy",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "fortios",
@@ -3265,7 +3265,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3277,7 +3277,7 @@
   "native": "REST /api/v2/monitor/router/ospf/neighbors",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3289,7 +3289,7 @@
   "native": "REST /api/v2/monitor/router/bgp/neighbors",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3301,7 +3301,7 @@
   "native": "REST /api/v2/cmdb/firewall/policy",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3313,7 +3313,7 @@
   "native": "REST /api/v2/cmdb/firewall/address",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3325,7 +3325,7 @@
   "native": "REST /api/v2/cmdb/firewall/addrgrp",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3337,7 +3337,7 @@
   "native": "REST /api/v2/cmdb/firewall/vip",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3349,7 +3349,7 @@
   "native": "REST /api/v2/cmdb/firewall/ippool",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3361,7 +3361,7 @@
   "native": "REST /api/v2/monitor/vpn/ipsec",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3373,7 +3373,7 @@
   "native": "REST /api/v2/monitor/vpn/ipsec",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3385,7 +3385,7 @@
   "native": "REST /api/v2/cmdb/vpn.ipsec/phase1-interface",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3397,7 +3397,7 @@
   "native": "REST /api/v2/cmdb/vpn.ipsec/phase2-interface",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3409,7 +3409,7 @@
   "native": "REST /api/v2/cmdb/system/sdwan",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3421,7 +3421,7 @@
   "native": "REST /api/v2/monitor/virtual-wan/members",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3433,7 +3433,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3445,7 +3445,7 @@
   "native": "REST /api/v2/monitor/virtual-wan/health-check",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3457,7 +3457,7 @@
   "native": "REST /api/v2/monitor/switch-controller/managed-switch/status",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "fortios",
@@ -3645,7 +3645,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3657,7 +3657,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3669,7 +3669,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "fortios",
@@ -3681,7 +3681,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3693,7 +3693,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "panos",
@@ -3705,7 +3705,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3717,7 +3717,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "panos",
@@ -3729,7 +3729,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3741,7 +3741,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "panos",
@@ -3753,7 +3753,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3765,7 +3765,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3777,7 +3777,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "panos",
@@ -3789,7 +3789,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "panos",
@@ -3801,7 +3801,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3813,7 +3813,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3825,7 +3825,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3839,7 +3839,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3851,7 +3851,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "panos",
@@ -3863,7 +3863,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3875,7 +3875,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3887,7 +3887,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3899,7 +3899,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3911,7 +3911,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3923,7 +3923,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3935,7 +3935,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3947,7 +3947,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3961,7 +3961,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3973,7 +3973,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3985,7 +3985,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -3997,7 +3997,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "panos",
@@ -4009,7 +4009,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -4021,7 +4021,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -4033,7 +4033,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -4045,7 +4045,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -4079,7 +4079,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -4091,7 +4091,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -4103,7 +4103,7 @@
   "native": "XML API `type=op`",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -4115,7 +4115,7 @@
   "native": "XML API `type=op`",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "panos",
@@ -4127,7 +4127,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4139,7 +4139,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4151,7 +4151,7 @@
   "native": "REST /rest/v10.xx/firmware",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoscx",
@@ -4163,7 +4163,7 @@
   "native": "REST /rest/v10.xx/system",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoscx",
@@ -4175,7 +4175,7 @@
   "native": "REST /rest/v10.xx/system",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4187,7 +4187,7 @@
   "native": "REST /rest/v10.xx/system/interfaces",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4199,7 +4199,7 @@
   "native": "REST /rest/v10.xx/system/interfaces",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4211,7 +4211,7 @@
   "native": "REST /rest/v10.xx/system/interfaces",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoscx",
@@ -4223,7 +4223,7 @@
   "native": "REST /rest/v10.xx/system/vrfs/{vrf}/neighbors",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoscx",
@@ -4235,7 +4235,7 @@
   "native": "REST /rest/v10.xx/system/vrfs/{vrf}/neighbors",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4247,7 +4247,7 @@
   "native": "REST /rest/v10.xx/system/interfaces/{if}/lldp_neighbors",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4259,7 +4259,7 @@
   "native": "REST /rest/v10.xx/system/interfaces/{if}/lldp_neighbors",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoscx",
@@ -4273,7 +4273,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4285,7 +4285,7 @@
   "native": "REST /rest/v10.xx/system/vsf",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoscx",
@@ -4297,7 +4297,7 @@
   "native": "REST /rest/v10.xx/system/vsx",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4309,7 +4309,7 @@
   "native": "REST /rest/v10.xx/system/vsx",
   "kind": "native",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoscx",
@@ -4321,7 +4321,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4333,7 +4333,7 @@
   "native": "REST /rest/v10.xx/system/vlans",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4345,7 +4345,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4357,7 +4357,7 @@
   "native": "REST /rest/v10.xx/system/vlans/{vlan}/macs",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoscx",
@@ -4369,7 +4369,7 @@
   "native": "REST /rest/v10.xx/system/interfaces",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4381,7 +4381,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4393,7 +4393,7 @@
   "native": "REST /rest/v10.xx/system/vrfs",
   "kind": "both",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4405,7 +4405,7 @@
   "native": "REST /rest/v10.xx/system/vrfs/{vrf}/routes",
   "kind": "both",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoscx",
@@ -4417,7 +4417,7 @@
   "native": "REST /rest/v10.xx/system/vrfs/{vrf}/routes",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4429,7 +4429,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4443,7 +4443,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4455,7 +4455,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4467,7 +4467,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4479,7 +4479,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4491,7 +4491,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4503,7 +4503,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4570,7 +4570,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4582,7 +4582,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoscx",
@@ -4594,7 +4594,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4606,7 +4606,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4618,7 +4618,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4630,7 +4630,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4642,7 +4642,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4654,7 +4654,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4666,7 +4666,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4678,7 +4678,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4690,7 +4690,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4702,7 +4702,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4714,7 +4714,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4726,7 +4726,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4738,7 +4738,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4750,7 +4750,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4762,7 +4762,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4774,7 +4774,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4786,7 +4786,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4798,7 +4798,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4810,7 +4810,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4822,7 +4822,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4834,7 +4834,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "aoss",
@@ -4846,7 +4846,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4858,7 +4858,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4870,7 +4870,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aoss",
@@ -4882,7 +4882,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -4894,7 +4894,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -4906,7 +4906,7 @@
   "native": null,
   "kind": "caps",
   "note": "capability flags from line prefixes (`parser: regex`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -4918,7 +4918,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_asa",
@@ -4930,7 +4930,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_asa",
@@ -4942,7 +4942,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -4954,7 +4954,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_asa",
@@ -4966,7 +4966,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -4978,7 +4978,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -4990,7 +4990,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_asa",
@@ -5002,7 +5002,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_asa",
@@ -5014,7 +5014,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5026,7 +5026,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5040,7 +5040,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5052,7 +5052,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5064,7 +5064,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5076,7 +5076,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5088,7 +5088,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5100,7 +5100,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5112,7 +5112,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5124,7 +5124,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5136,7 +5136,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5148,7 +5148,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5160,7 +5160,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5216,7 +5216,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_asa",
@@ -5228,7 +5228,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5240,7 +5240,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5252,7 +5252,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5264,7 +5264,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5276,7 +5276,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5288,7 +5288,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5300,7 +5300,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5312,7 +5312,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5324,7 +5324,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5336,7 +5336,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5348,7 +5348,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5360,7 +5360,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_wlc_aireos",
@@ -5372,7 +5372,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "meraki",
@@ -5593,7 +5593,7 @@
   "native": "JSON",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hosts",
@@ -5605,7 +5605,7 @@
   "native": "JSON",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hosts",
@@ -5617,7 +5617,7 @@
   "native": "JSON",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hosts",
@@ -5629,7 +5629,7 @@
   "native": "JSON",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hosts",
@@ -5641,7 +5641,7 @@
   "native": "JSON",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "esxi",
@@ -5653,7 +5653,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "esxi",
@@ -5665,7 +5665,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "esxi",
@@ -5677,7 +5677,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "windows",
@@ -5689,7 +5689,7 @@
   "native": "JSON",
   "kind": "native",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "windows",
@@ -5701,7 +5701,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "windows",
@@ -5713,7 +5713,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5725,7 +5725,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5737,7 +5737,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5749,7 +5749,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5761,7 +5761,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5773,7 +5773,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5785,7 +5785,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5797,7 +5797,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5809,7 +5809,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5821,7 +5821,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5833,7 +5833,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_s300",
@@ -5845,7 +5845,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_viptela",
@@ -5857,7 +5857,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_viptela",
@@ -5869,7 +5869,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_viptela",
@@ -5881,7 +5881,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_viptela",
@@ -5893,7 +5893,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_viptela",
@@ -5905,7 +5905,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_viptela",
@@ -5917,7 +5917,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "cisco_viptela",
@@ -5929,7 +5929,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aruba_os",
@@ -5941,7 +5941,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aruba_os",
@@ -5953,7 +5953,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aruba_os",
@@ -5965,7 +5965,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aruba_os",
@@ -5977,7 +5977,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aruba_os",
@@ -5989,7 +5989,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aruba_os",
@@ -6001,7 +6001,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aruba_os",
@@ -6013,7 +6013,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aruba_os",
@@ -6025,7 +6025,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "aruba_os",
@@ -6037,7 +6037,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6049,7 +6049,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6061,7 +6061,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6073,7 +6073,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6085,7 +6085,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6097,7 +6097,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6109,7 +6109,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6121,7 +6121,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6133,7 +6133,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6145,7 +6145,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6157,7 +6157,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "extreme_exos",
@@ -6169,7 +6169,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6181,7 +6181,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6193,7 +6193,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6205,7 +6205,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6217,7 +6217,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6229,7 +6229,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6241,7 +6241,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6253,7 +6253,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6265,7 +6265,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6277,7 +6277,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ruckus_icx",
@@ -6289,7 +6289,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ubiquiti_edgeos",
@@ -6301,7 +6301,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "ubiquiti_edgeos",
@@ -6313,7 +6313,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "ubiquiti_edgeos",
@@ -6325,7 +6325,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ubiquiti_edgeos",
@@ -6337,7 +6337,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "ubiquiti_edgeos",
@@ -6349,7 +6349,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ubiquiti_edgeos",
@@ -6361,7 +6361,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "ubiquiti_edgeos",
@@ -6373,7 +6373,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ubiquiti_edgeos",
@@ -6385,7 +6385,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "ubiquiti_edgeos",
@@ -6397,7 +6397,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "vyos",
@@ -6409,7 +6409,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "vyos",
@@ -6421,7 +6421,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "vyos",
@@ -6433,7 +6433,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "vyos",
@@ -6445,7 +6445,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "vyos",
@@ -6457,7 +6457,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "vyos",
@@ -6469,7 +6469,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "vyos",
@@ -6481,7 +6481,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "vyos",
@@ -6493,7 +6493,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "huawei_vrp",
@@ -6505,7 +6505,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "huawei_vrp",
@@ -6517,7 +6517,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "huawei_vrp",
@@ -6529,7 +6529,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "huawei_vrp",
@@ -6541,7 +6541,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "huawei_vrp",
@@ -6553,7 +6553,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "huawei_vrp",
@@ -6565,7 +6565,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "huawei_vrp",
@@ -6577,7 +6577,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "huawei_vrp",
@@ -6589,7 +6589,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "huawei_vrp",
@@ -6601,7 +6601,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "huawei_vrp",
@@ -6613,7 +6613,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "",
+  "corelens": "",
   "templates_also": [
    "huawei_vrp_display_vlan_brief.textfsm"
   ]
@@ -6628,7 +6628,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "huawei_vrp",
@@ -6640,7 +6640,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "huawei_vrp",
@@ -6652,7 +6652,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "huawei_vrp",
@@ -6664,7 +6664,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hpe_comware",
@@ -6676,7 +6676,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "hpe_comware",
@@ -6688,7 +6688,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hpe_comware",
@@ -6700,7 +6700,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "hpe_comware",
@@ -6712,7 +6712,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hpe_comware",
@@ -6724,7 +6724,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "hpe_comware",
@@ -6736,7 +6736,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "hpe_comware",
@@ -6748,7 +6748,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "hpe_comware",
@@ -6760,7 +6760,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hpe_comware",
@@ -6772,7 +6772,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hpe_comware",
@@ -6784,7 +6784,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hpe_comware",
@@ -6796,7 +6796,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hpe_comware",
@@ -6808,7 +6808,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hpe_comware",
@@ -6820,7 +6820,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "hpe_comware",
@@ -6832,7 +6832,7 @@
   "native": null,
   "kind": "raw",
   "note": "kept scrubbed, not parsed (`parser: raw`)",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "mikrotik_routeros",
@@ -6844,7 +6844,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": "yes"
+  "corelens": "yes"
  },
  {
   "os": "mikrotik_routeros",
@@ -6856,7 +6856,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "mikrotik_routeros",
@@ -6868,7 +6868,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "mikrotik_routeros",
@@ -6880,7 +6880,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "mikrotik_routeros",
@@ -6892,7 +6892,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "mikrotik_routeros",
@@ -6904,7 +6904,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "mikrotik_routeros",
@@ -6916,7 +6916,7 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "mikrotik_routeros",
@@ -6928,7 +6928,7 @@
   "native": null,
   "kind": "template",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  },
  {
   "os": "mikrotik_routeros",
@@ -6940,6 +6940,6 @@
   "native": null,
   "kind": "none",
   "note": "",
-  "coreview": ""
+  "corelens": ""
  }
 ]

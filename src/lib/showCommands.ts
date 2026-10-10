@@ -1,7 +1,7 @@
 /**
  * The Backups tab's show-command capture, the parts with no network in them
  *
- * Deliberately **no** built-in command lists. Coreview is given away, and a
+ * Deliberately **no** built-in command lists. Corelens is given away, and a
  * preset lifted from any real project is exactly what must never ship; the
  * user writes their own. What is here is vendor fact: each platform's own
  * session-only command for switching paging off.

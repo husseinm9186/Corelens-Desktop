@@ -6,7 +6,7 @@
  * before?*, asked three weeks later by someone reading a change request.
  *
  * It is a history of edits, not an audit trail in the compliance sense. There
- * are no logins in Coreview, so "who" is whoever was at this machine — saying
+ * are no logins in Corelens, so "who" is whoever was at this machine — saying
  * that plainly is better than a user column that always reads the same name.
  *
  * It lives in the project, so it travels with an export, and it is capped:

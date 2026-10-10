@@ -2,7 +2,7 @@
 
 ## Create a project
 
-The first time Coreview opens there are three ways in:
+The first time Corelens opens there are three ways in:
 
 - **Map a network.** Type the address or name of one switch or router and
   choose **Start discovery**. A project is made for it — named after that
@@ -29,7 +29,7 @@ your own the samples are a row of names beside the list.
 Drag anything from the left palette on to the canvas. Drop it, then click it and
 rename it in the inspector.
 
-The shapes are Coreview's own and describe what a device *is* — router, L3 or L2
+The shapes are Corelens's own and describe what a device *is* — router, L3 or L2
 switch, firewall, load balancer, WAF, patch panel, PDU, UPS and so on — not whose
 it is. Type the vendor and model into the inspector; the shape stays the same.
 
@@ -246,7 +246,7 @@ watts, kilograms and airflow. **Apply to** the selected device sets those
 on it; **Add to** the rack puts a box of that template in the rack as
 furniture. **Import a NetBox device type…** reads one YAML file from the
 NetBox devicetype-library (CC0) for the same fields; nothing of that
-library ships with Coreview, and what you import stays in your project.
+library ships with Corelens, and what you import stays in your project.
 
 **Where a rack stands.** **Where** on a rack opens its building, floor, room,
 row and position, and its power and weight limits. Racks are grouped under
@@ -405,20 +405,20 @@ says either *Unsaved changes* or *Saved* with a time.
 
 ## Use your own stencils
 
-Coreview ships no vendor icons (see `docs/BRAND_AND_LICENSING.md`). To use artwork
+Corelens ships no vendor icons (see `docs/BRAND_AND_LICENSING.md`). To use artwork
 you have the right to use — a vendor pack, your team's own kit — put it in a
 folder of your own and point the icon library at it. SVG files load directly;
 Visio stencils and EMF files are converted where the converters are installed.
 
-**You are responsible for the licensing of anything you import.** Coreview does
+**You are responsible for the licensing of anything you import.** Corelens does
 not ship, fetch or update vendor packs.
 
 To have each shape arrive as a proper device rather than a bare picture, put a
-`coreview-stencils.json` beside the files:
+`corelens-stencils.json` beside the files:
 
 ```json
 {
-  "coreviewStencils": 1,
+  "corelensStencils": 1,
   "name": "Lab shapes",
   "licence": "Drawn by the lab team; free to use internally",
   "source": "optional: where the artwork came from",
@@ -432,7 +432,7 @@ To have each shape arrive as a proper device rather than a bare picture, put a
 
 - `licence` is required: say under what terms the artwork is used.
 - `file` is a file name in the same folder — no paths.
-- `class` is one of Coreview's device classes — `router`, `l3-switch`,
+- `class` is one of Corelens's device classes — `router`, `l3-switch`,
   `l2-switch`, `firewall`, `load-balancer`, `waf`, `server`, `vm-host`,
   `storage`, `patch-panel`, `pdu`, `ups` and the rest of the palette. The device
   takes that class's defaults, then the manifest's own values.
@@ -444,7 +444,7 @@ naming the shape and the field; the shapes still load, undescribed.
 
 When a project uses imported stencils, the **Export** menu says how many devices
 use them and which licences they came with, and each saved diagram or package
-says so again. Tick **Vendor-safe export** to replace them with Coreview's
+says so again. Tick **Vendor-safe export** to replace them with Corelens's
 built-in shape for each device's class in the diagram files and the project
 package — use it for anything shared outside your organisation. Vendor, model
 and every other field stay; only the artwork goes. Printing shows the canvas as
@@ -577,7 +577,7 @@ that matters.
 **What a link is** is drawn into its line, so it still reads when the labels
 are hidden: a **bundle** (a port-channel) is a double line, a **tunnel** is
 dashed, a **logical** layer-3 hop is dotted, and a **transit** circuit — a
-WAN cable — is heavier. Coreview works the kind out from what a crawl found
+WAN cable — is heavier. Corelens works the kind out from what a crawl found
 or the cable type; **Kind** in the link's inspector sets it by hand, and
 a dashed, dotted or dash-dot **Line style** chosen on the link still wins.
 Orthogonal links turn with a small rounded corner.
@@ -604,7 +604,7 @@ Last updated: 19:11:22
 
 ## What this proves, and what it does not
 
-Every check runs from the Windows machine Coreview is on. A green node means
+Every check runs from the Windows machine Corelens is on. A green node means
 that machine reached that address with that method just now. It does not mean
 every hop drawn between them is healthy, and it does not mean application
 traffic works. Link colour follows the rule you chose. Keep that in mind before
@@ -700,7 +700,7 @@ in turn, then the **second login** typed for the run. **At once**, **Give
 up after**, **Retries** and **Also read from each device** are the classic
 crawler's; with the collector a line says so.
 
-**Discover devices has two engines.** The default, **Coreview collector**,
+**Discover devices has two engines.** The default, **Corelens collector**,
 recognises each device, sends it only its own OS's read-only commands from the
 catalog, and follows its CDP and LLDP neighbours, the next hop of every route
 it holds, and the neighbours it knows only from its ARP table — within the hop,
@@ -718,10 +718,10 @@ the Discover form and the classic crawler, instead of opening an SSH session
 to every address straight from this machine, logs in to a seed, then runs
 that device's own `ssh` to the next device it found, and on down the chain —
 the way you reach a switch only the core can see. It works from any platform
-Coreview identifies: OpenSSH on a Linux-shell switch or host, `ssh user@host`
+Corelens identifies: OpenSSH on a Linux-shell switch or host, `ssh user@host`
 on Arista, Junos, ArubaOS-CX, Dell and the rest, `ssh -l user host` on Cisco
 IOS, IOS-XE, IOS-XR and NX-OS, `execute ssh` on FortiOS. The run's own login
-is used the whole way. Coreview never writes to a device it passes through
+is used the whole way. Corelens never writes to a device it passes through
 and types the password only at the next device's own prompt. If a hop can't
 be made, that one device is reached directly instead, so nothing is lost.
 This runs on the classic crawler.
@@ -908,7 +908,7 @@ credentials, lists every time one was offered to a device — for a crawl, a
 backup, an SNMP check, a ping from a device — with when and how often. It is kept
 on this machine only, and can be cleared.
 
-**Every saved login is tried.** Wherever Coreview logs in — a crawl under
+**Every saved login is tried.** Wherever Corelens logs in — a crawl under
 either engine, a backup, an SSH tab, Path check, Tracert, and Path-Trace's
 checks from a device — a device that refuses the chosen login is offered
 every other SSH login saved in this project, in turn, before it is given up
@@ -965,7 +965,7 @@ out. Sessions are never saved: closing the project closes them all.
 terminal**, which hands the connection to PuTTY, Terminal or whatever your
 desktop uses. **The password is not passed to it** — no client takes one
 without putting it on a command line, where the rest of the machine can read it
-— so the client asks, with the username already filled in. Coreview knows
+— so the client asks, with the username already filled in. Corelens knows
 nothing about a session it did not open: no log, no colouring, no keepalive.
 Set which one the first menu entry uses, and the command to run, on the SSH
 tab.
@@ -1212,11 +1212,11 @@ user with write access. The tick shows a picker for it.
 
 **What happens.** For each device, one SNMP write creates a row in the copy
 table — protocol SFTP, the configuration asked for, your server, the file
-name, the login — then Coreview polls the device once a second until it
+name, the login — then Corelens polls the device once a second until it
 reports the copy done, destroys the row, logs in to your server, reads the
 file, and files it in the backup folder under the device's own name exactly
 as an SSH capture is. History and **Before and after** work unchanged. The
-file stays on your server; Coreview reads a copy. Both uses are listed under
+file stays on your server; Corelens reads a copy. Both uses are listed under
 **Where they were used**.
 
 **What it costs.** The device logs in to the server itself, so it is given
@@ -1257,7 +1257,7 @@ any `--More--` prompt, which covers most Cisco, Dell and Arista kit. For the
 rest, pick the platform under *Paging* and its own session-only command goes
 first: ASA/FTD, Palo Alto, Aruba/HP, Juniper, Huawei/H3C. FortiOS has no
 session-only pager command — its only one is a saved configuration change —
-so Coreview answers its `--More--` prompts instead of changing the device.
+so Corelens answers its `--More--` prompts instead of changing the device.
 
 **A FortiGate or FortiSwitch** is backed up with `show full-configuration` —
 every setting, defaults included; `show` alone gives only what differs from
@@ -1277,7 +1277,7 @@ A command a device does not recognise is kept in the file and marked, because
 privilege still run on a device that refused enable; the file says it ran in
 user mode. FortiOS is never asked to enable.
 
-The list and the paging choice are remembered between sessions. Coreview ships
+The list and the paging choice are remembered between sessions. Corelens ships
 with no commands filled in — the list is yours.
 
 ## Name capture files
@@ -1379,7 +1379,7 @@ Comparing only reads files in the backup folder. It never connects to a device.
 ## Check a run for pass or fail
 
 Rather than reading every file after a window, write down what should be
-true and let Coreview answer it for every device at once. Under **Checks** in
+true and let Corelens answer it for every device at once. Under **Checks** in
 the Backups tab, choose **Add check** and fill in:
 
 - **Command**: the show command whose output to look at, exactly as it was
@@ -1439,10 +1439,10 @@ The **Export** menu gives you:
 - **Validation report (Markdown)** — project metadata, object counts, status
   summary, the drawings (as images inside the file), the full transition table
   and the cable schedule
-- **Project as a folder** — `project.coreview` and a readable `project.yaml` in
+- **Project as a folder** — `project.corelens` and a readable `project.yaml` in
   a folder of their own, ready for Git. Unchanged projects write identical
   files; saved credentials are never included
-- **Project package (.coreview)** — the whole project, importable elsewhere
+- **Project package (.corelens)** — the whole project, importable elsewhere
 
 ## A report as a PDF
 
@@ -1489,13 +1489,13 @@ plugged in. Walk with `-On` for the most complete result.
 
 ## Move a project to another machine
 
-Export the `.coreview` package, copy it over, and use **Import project** on the
+Export the `.corelens` package, copy it over, and use **Import project** on the
 welcome screen. Diagram, metadata, probes and health rules come across. Event
 history does not — it stays with the machine that recorded it.
 
-## Keep Coreview up to date
+## Keep Corelens up to date
 
-Coreview never looks for a new version on its own. When you want to know,
+Corelens never looks for a new version on its own. When you want to know,
 open **Settings → Updates** and press **Check for updates**. That
 sends one request to this project's GitHub Releases page for the newest
 release's manifest — it carries this computer's address and the updater's
@@ -1505,14 +1505,14 @@ version, a newer one is available, or why GitHub could not be reached.
 
 A newer version shows its date and, under **What changed**, its release
 notes. **Install and restart** downloads it, checks its signature against
-the key built into Coreview, runs the installer and starts the new version.
+the key built into Corelens, runs the installer and starts the new version.
 Windows asks for an administrator's approval, as it did when you first
 installed; a download whose signature does not match is refused and says so.
 Save your work before you press it.
 
-**Check automatically when Coreview starts** is off until you tick it. With
+**Check automatically when Corelens starts** is off until you tick it. With
 it on, that one request goes out each time the app starts; a newer release
 is then announced by an **Update to …** button in the top bar, which opens
 this page. If the check fails quietly — a machine with no route out, say —
 nothing is announced, and this page says why if you look. Untick it and
-Coreview goes back to contacting nobody.
+Corelens goes back to contacting nobody.

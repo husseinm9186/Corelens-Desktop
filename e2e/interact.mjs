@@ -117,7 +117,7 @@ await page.addInitScript(() => {
   };
 });
 await page.addInitScript((p) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
 }, project);
 await page.goto(URL, { waitUntil: "networkidle" });
 await page.locator(".cv-project-open").first().click();
@@ -2312,7 +2312,7 @@ await dismissRecovery();
   await page.waitForTimeout(3200);
   // Plant a recovery slot newer than the project's last save, then reload.
   const projectId = await page.evaluate(() => {
-    const all = JSON.parse(localStorage.getItem("coreview.projects.v1") ?? "{}");
+    const all = JSON.parse(localStorage.getItem("corelens.projects.v1") ?? "{}");
     const id = Object.keys(all)[0];
     const doc = all[id].document;
     // A document holds pages, and the nodes live on one of
@@ -2327,7 +2327,7 @@ await dismissRecovery();
       ? { ...doc, pages: doc.pages.map((pg, i) =>
           i === 0 ? { ...pg, nodes: [...pg.nodes, extra] } : pg) }
       : { ...doc, nodes: [...doc.nodes, extra] };
-    localStorage.setItem(`coreview.recovery.${id}`,
+    localStorage.setItem(`corelens.recovery.${id}`,
       JSON.stringify({ savedAt: Date.now() + 60_000, document: marked }));
     return id;
   });
@@ -2357,9 +2357,9 @@ await dismissRecovery();
   // planted stale slot with a genuine fresh one on the way out.
   await page.waitForTimeout(3200);
   await page.evaluate(() => {
-    const all = JSON.parse(localStorage.getItem("coreview.projects.v1") ?? "{}");
+    const all = JSON.parse(localStorage.getItem("corelens.projects.v1") ?? "{}");
     const id = Object.keys(all)[0];
-    localStorage.setItem(`coreview.recovery.${id}`,
+    localStorage.setItem(`corelens.recovery.${id}`,
       JSON.stringify({ savedAt: 1, document: all[id].document }));
   });
   await page.reload({ waitUntil: "networkidle" });

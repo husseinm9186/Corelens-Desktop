@@ -1,4 +1,4 @@
-# Coreview discovery catalog — Cisco SD-WAN vEdge / vManage / vSmart / vBond (cisco_viptela)
+# Corelens discovery catalog — Cisco SD-WAN vEdge / vManage / vSmart / vBond (cisco_viptela)
 #
 # 2026-10-01: the Viptela OS devices of an SD-WAN fabric (a cEdge
 # is IOS-XE and belongs to cisco_ios). ntc-templates' `cisco_viptela` set
@@ -7,7 +7,7 @@
 # number, so the fingerprint is `show system status`. No device met yet.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Cisco

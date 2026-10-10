@@ -101,7 +101,7 @@ const calls = [];
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 1100 } });
 await page.addInitScript(({ p, creds, orgs, nets, profs, rep }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   window.__cvCalls = [];
   const listeners = {}, callbacks = {};
   let next = 1;
@@ -276,7 +276,7 @@ check("and what to do about it, in numbered steps",
 
 // The tool is not named anywhere in the customer's document.
 check("the report never names the tool that made it",
-  !/Coreview/i.test(reportText), (reportText.match(/.{0,40}Coreview.{0,40}/i) || [""])[0]);
+  !/Corelens/i.test(reportText), (reportText.match(/.{0,40}Corelens.{0,40}/i) || [""])[0]);
 
 // The profile changes the grading and nothing else. Same network, read again.
 await meraki.locator("select").last().selectOption("regulated");

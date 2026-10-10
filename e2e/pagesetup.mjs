@@ -27,8 +27,8 @@ const project = {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
-  localStorage.removeItem("coreview.view.printScale");
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.removeItem("corelens.view.printScale");
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -129,7 +129,7 @@ const settle = () => page.waitForTimeout(350);
   await settle();
   const after = await viewport();
   check("and puts the view back afterwards", after.zoom === before.zoom && after.x === before.x && after.y === before.y, JSON.stringify({ before, after }));
-  check("the choice is remembered for this machine", (await st(() => localStorage.getItem("coreview.view.printScale"))) === "actual");
+  check("the choice is remembered for this machine", (await st(() => localStorage.getItem("corelens.view.printScale"))) === "actual");
   await st(() => window.__cvStore.getState().setSettings({ printScale: "fit" }));
   await st(() => window.__cvStore.getState().setPrinting(true));
   await settle();

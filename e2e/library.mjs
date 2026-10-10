@@ -39,7 +39,7 @@ const project = {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
 await page.addInitScript(({ p, lib }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   const listeners = {}, callbacks = {};
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };

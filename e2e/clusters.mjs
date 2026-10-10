@@ -50,8 +50,8 @@ const project = {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
-  localStorage.removeItem("coreview.view.foldFans");
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.removeItem("corelens.view.foldFans");
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -182,7 +182,7 @@ await zoomTo(100);
   await toggleFoldFans();
   await page.waitForTimeout(300);
   check("and on again, the fans fold", (await chips().count()) === 2);
-  check("the setting is remembered for this machine", (await st(() => localStorage.getItem("coreview.view.foldFans"))) === "1");
+  check("the setting is remembered for this machine", (await st(() => localStorage.getItem("corelens.view.foldFans"))) === "1");
   await zoomTo(100);
 }
 

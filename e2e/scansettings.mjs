@@ -45,8 +45,8 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1700, height: 1100 } });
 
 await page.addInitScript(({ p }) => {
-  if (!localStorage.getItem("coreview.projects.v1")) {
-    localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  if (!localStorage.getItem("corelens.projects.v1")) {
+    localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   }
   const listeners = {}, callbacks = {};
   let next = 1;
@@ -179,7 +179,7 @@ await page.waitForTimeout(200);
 // The seed and the login, as an operator would type them.
 const seed = page.locator('input[placeholder*="10."], .cv-crawl-seed input').first();
 if (await seed.count()) await seed.fill("192.168.77.7");
-await field("Username").fill("Coreview").catch(() => {});
+await field("Username").fill("Corelens").catch(() => {});
 await field("Password").fill(SECRETS.password).catch(() => {});
 await field("Enable password").fill(SECRETS.enable).catch(() => {});
 
@@ -292,7 +292,7 @@ check("and to be wiped outright", (await heldButton("Wipe").count()) === 1);
 // Replace: the same record is overwritten, so the project's reference holds.
 await heldButton("Replace").click();
 await page.waitForTimeout(300);
-await field("Username").fill("Coreview2");
+await field("Username").fill("Corelens2");
 await field("Password").fill("PLAINTEXT-REPLACED-4d1e");
 await page.locator("button", { hasText: "Save over it" }).first().click();
 await page.waitForTimeout(600);
@@ -338,7 +338,7 @@ check("so the password fields come back",
   (await loginFormEarly.locator('.cv-field', { has: page.locator('span:text-is("Password")') }).count()) === 1);
 
 // Put one back, so the restart below has something to find.
-await field("Username").fill("Coreview");
+await field("Username").fill("Corelens");
 await field("Password").fill(SECRETS.password);
 await page.locator(".cv-panel button", { hasText: /^Save$/ }).first().click();
 await page.waitForTimeout(800);

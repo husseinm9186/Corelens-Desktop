@@ -56,7 +56,7 @@ const inspectorTab = async (name) => {
 };
 
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {

@@ -73,16 +73,16 @@ jobs:
         run: npm run build
 
       - name: Probe crate tests
-        run: cargo test -p coreview-probe
+        run: cargo test -p corelens-probe
 
       # Live tests run real ping processes against 127.0.0.1 and the RFC 5737
       # documentation range. Loopback is available on both runners; the
       # documentation range is expected to time out, which is the point.
       - name: Probe crate live tests
-        run: cargo test -p coreview-probe --test live_linux -- --test-threads=1
+        run: cargo test -p corelens-probe --test live_linux -- --test-threads=1
 
       - name: Backend tests
-        run: cargo test -p coreview
+        run: cargo test -p corelens
 
       # Findings are echoed as annotations as well as logged. A failure here is
       # otherwise only visible by downloading the job log, which needs admin
@@ -138,13 +138,13 @@ jobs:
           # commented out, so switching one on is one edit that deletes
           # nothing.
           # - os: ubuntu-latest
-          #   artifact: coreview-linux
+          #   artifact: corelens-linux
           #   bundles: deb,appimage
           #   paths: |
           #     target/release/bundle/deb/*.deb
           #     target/release/bundle/appimage/*.AppImage
           - os: windows-latest
-            artifact: coreview-windows
+            artifact: corelens-windows
             bundles: nsis
             paths: |
               target/release/bundle/nsis/*.exe
@@ -218,7 +218,7 @@ jobs:
       #
       # rusqlite is built with `bundled`, so there is no external SQLite.
       # The SBOM tools. cargo-auditable embeds the exact dependency
-      # list in coreview.exe; cargo-audit reads it back from the shipped binary;
+      # list in corelens.exe; cargo-audit reads it back from the shipped binary;
       # cargo-cyclonedx writes the Rust SBOM.
       - name: Install SBOM tools
         if: matrix.os == 'windows-latest'
@@ -260,6 +260,9 @@ jobs:
             Write-Host "::error title=Build bundles::$tail"
             exit 1
           }
+          # The product name has a space, which GitHub would turn into a full
+          # stop on upload; the manifest needs the names as uploaded.
+          node scripts/asset-names.mjs target/release/bundle/nsis target/release/bundle/msi target/release/bundle/deb target/release/bundle/appimage
 
       # An SBOM for everything the installer carries — the Rust
       # executable (CycloneDX, and its embedded list audited), the sidecar's
@@ -272,12 +275,12 @@ jobs:
           $ErrorActionPreference = "Stop"
           $out = "target/release/bundle/nsis/sbom"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
-          cargo audit bin target/release/coreview.exe
-          if ($LASTEXITCODE -ne 0) { Write-Host "::error title=SBOM::cargo audit found advisories in coreview.exe"; exit 1 }
+          cargo audit bin target/release/corelens.exe
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error title=SBOM::cargo audit found advisories in corelens.exe"; exit 1 }
           Push-Location src-tauri
-          cargo cyclonedx --format json --target x86_64-pc-windows-msvc --override-filename coreview-rust.cdx
+          cargo cyclonedx --format json --target x86_64-pc-windows-msvc --override-filename corelens-rust.cdx
           Pop-Location
-          Move-Item src-tauri/coreview-rust.cdx.json "$out/coreview-rust.cdx.json"
+          Move-Item src-tauri/corelens-rust.cdx.json "$out/corelens-rust.cdx.json"
           python -m pip install --disable-pip-version-check -q pip-audit==2.10.1
           $ignore = Get-Content sidecar/pip-audit-ignore.txt | Where-Object { $_ -match '^[A-Z]' } | ForEach-Object { "--ignore-vuln"; ($_ -split '\s')[0] }
           python -m pip_audit -r sidecar/requirements.txt --require-hashes --disable-pip @ignore --format cyclonedx-json -o "$out/sidecar-python.cdx.json"
@@ -297,8 +300,8 @@ jobs:
           # The public halves of the certificates, beside the installer, for the
           # install notes (docs/INSTALL-WINDOWS.md). Never a private key.
           Copy-Item brand/coreview-root-ca.crt target/release/bundle/nsis/coreview-root-ca.crt
-          if ($env:COREVIEW_SIGN_THUMBPRINT) {
-            Export-Certificate -Cert "Cert:\CurrentUser\My\$env:COREVIEW_SIGN_THUMBPRINT" -FilePath target/release/bundle/nsis/coreview-code-signing.cer -Type CERT | Out-Null
+          if ($env:CORELENS_SIGN_THUMBPRINT) {
+            Export-Certificate -Cert "Cert:\CurrentUser\My\$env:CORELENS_SIGN_THUMBPRINT" -FilePath target/release/bundle/nsis/coreview-code-signing.cer -Type CERT | Out-Null
           }
           foreach ($exe in Get-ChildItem target/release/bundle/nsis/*.exe) {
             ./.github/actions/virustotal/scan.ps1 -Path $exe.FullName
@@ -358,7 +361,9 @@ jobs:
       # offline build differs from the ordinary one in exactly one field and
       # cannot drift in any other.
       - name: Build the offline installers
-        run: npx tauri build --config src-tauri/tauri.offline.conf.json
+        run: |
+          npx tauri build --config src-tauri/tauri.offline.conf.json
+          node scripts/asset-names.mjs target/release/bundle/nsis target/release/bundle/msi
 
       - name: The build's version, for the artifact name
         id: ver
@@ -366,7 +371,7 @@ jobs:
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
         with:
-          name: coreview-windows-offline-v${{ steps.ver.outputs.version }}
+          name: corelens-windows-offline-v${{ steps.ver.outputs.version }}
           path: |
             target/release/bundle/nsis/*.exe
             target/release/bundle/msi/*.msi
@@ -413,7 +418,7 @@ jobs:
       - run: npm ci
 
       # With the minisign key configured, the build also writes the
-      # update archive (Coreview.app.tar.gz) and its signature, which is
+      # update archive (Corelens-Desktop.app.tar.gz) and its signature, which is
       # what an installed copy downloads when it updates itself.
       - name: Build bundles
         env:
@@ -426,6 +431,7 @@ jobs:
             echo "::notice title=Updater::TAURI_SIGNING_PRIVATE_KEY is not set, so no updater archive is produced"
           fi
           npm run tauri build -- --target universal-apple-darwin "${extra[@]}"
+          node scripts/asset-names.mjs target/universal-apple-darwin/release/bundle/dmg target/universal-apple-darwin/release/bundle/macos
 
       - name: The build's version, for the artifact name
         id: ver
@@ -433,7 +439,7 @@ jobs:
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
         with:
-          name: coreview-macos-v${{ steps.ver.outputs.version }}
+          name: corelens-macos-v${{ steps.ver.outputs.version }}
           path: |
             target/universal-apple-darwin/release/bundle/dmg/*.dmg
             target/universal-apple-darwin/release/bundle/macos/*.tar.gz
@@ -460,7 +466,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: coreview-linux
+          name: corelens-linux
           path: dist-artifacts
 
       - name: Launch under a bare container
@@ -526,11 +532,11 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: coreview-windows-v${{ steps.ver.outputs.version }}
+          name: corelens-windows-v${{ steps.ver.outputs.version }}
           path: dl
 
       - name: Build the fake switch and the collector client
-        run: cargo build -p coreview-collect --example fake_switch --example capture
+        run: cargo build -p corelens-collect --example fake_switch --example capture
 
       - name: Install silently and check the installed tree
         shell: pwsh
@@ -540,22 +546,22 @@ jobs:
           if (-not $setup) { Fail "no NSIS installer in the artifact" }
           $p = Start-Process $setup.FullName -ArgumentList '/S' -Wait -PassThru
           if ($p.ExitCode -ne 0) { Fail "the installer exited $($p.ExitCode)" }
-          $exe = Get-ChildItem "$env:ProgramFiles\Coreview", "$env:ProgramFiles", "$env:LOCALAPPDATA\Programs" -Recurse -Filter coreview.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $exe) { Fail "coreview.exe is not installed anywhere expected" }
+          $exe = Get-ChildItem "$env:ProgramFiles\Corelens Desktop", "$env:ProgramFiles", "$env:LOCALAPPDATA\Programs" -Recurse -Filter corelens.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { Fail "corelens.exe is not installed anywhere expected" }
           $dir = $exe.DirectoryName
           # The paths src-tauri/src/collection.rs resolves under the resource directory.
-          foreach ($need in @("sidecar\python.exe", "sidecar\python312._pth", "sidecar\Lib\site-packages\coreview_sidecar\__main__.py", "sidecar\Lib\site-packages\scrapli", "sidecar\Lib\site-packages\paramiko", "catalog\cisco_ios.yaml", "catalog\fortios.yaml", "templates\ntc\index", "templates\ntc\cisco_ios_show_version.textfsm", "templates\LICENSE", "THIRD-PARTY-NOTICES.md")) {
+          foreach ($need in @("sidecar\python.exe", "sidecar\python312._pth", "sidecar\Lib\site-packages\corelens_sidecar\__main__.py", "sidecar\Lib\site-packages\scrapli", "sidecar\Lib\site-packages\paramiko", "catalog\cisco_ios.yaml", "catalog\fortios.yaml", "templates\ntc\index", "templates\ntc\cisco_ios_show_version.textfsm", "templates\LICENSE", "THIRD-PARTY-NOTICES.md")) {
             if (-not (Test-Path (Join-Path $dir $need))) { Fail "installed tree lacks $need (under $dir)" }
           }
           $sig = Get-AuthenticodeSignature $exe.FullName
-          Write-Host "::notice title=Install check::installed at $dir; coreview.exe signed by $($sig.SignerCertificate.Subject)"
-          "COREVIEW_INSTALL=$dir" >> $env:GITHUB_ENV
+          Write-Host "::notice title=Install check::installed at $dir; corelens.exe signed by $($sig.SignerCertificate.Subject)"
+          "CORELENS_INSTALL=$dir" >> $env:GITHUB_ENV
 
       - name: Collect through the installed sidecar with no Python on PATH
         shell: pwsh
         run: |
           function Fail([string]$m) { Write-Host "::error title=Install check::$m"; exit 1 }
-          $dir = $env:COREVIEW_INSTALL
+          $dir = $env:CORELENS_INSTALL
           # No Python anywhere on PATH: the runner's own, the tool cache, the Store alias.
           $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -and $_ -notmatch '(?i)python|pipx|WindowsApps|hostedtoolcache' }) -join ';'
           Remove-Item Env:PYTHONHOME, Env:PYTHONPATH -ErrorAction SilentlyContinue
@@ -565,11 +571,11 @@ jobs:
           }
           $switch = Start-Process -FilePath target\debug\examples\fake_switch.exe -ArgumentList 2230 -PassThru -WindowStyle Hidden
           Start-Sleep -Seconds 3
-          $env:COREVIEW_SIDECAR_PYTHON = Join-Path $dir "sidecar\python.exe"
-          $env:COREVIEW_SIDECAR_DIR = Join-Path $dir "sidecar"
-          $env:COREVIEW_CATALOG_DIR = Join-Path $dir "catalog"
-          $env:COREVIEW_TEMPLATES_DIR = Join-Path $dir "templates\ntc"
-          $env:COREVIEW_CAPTURE_PASSWORD = "correct-horse-fixture"
+          $env:CORELENS_SIDECAR_PYTHON = Join-Path $dir "sidecar\python.exe"
+          $env:CORELENS_SIDECAR_DIR = Join-Path $dir "sidecar"
+          $env:CORELENS_CATALOG_DIR = Join-Path $dir "catalog"
+          $env:CORELENS_TEMPLATES_DIR = Join-Path $dir "templates\ntc"
+          $env:CORELENS_CAPTURE_PASSWORD = "correct-horse-fixture"
           $out = & target\debug\examples\capture.exe --host 127.0.0.1 --port 2230 --user reader --out captures --os cisco_ios "show ip arp" 2>&1 | Out-String
           $code = $LASTEXITCODE
           Stop-Process -Id $switch.Id -ErrorAction SilentlyContinue
@@ -625,13 +631,13 @@ jobs:
       - uses: actions/download-artifact@v8
         if: steps.ver.outputs.exists == 'false'
         with:
-          name: coreview-windows-v${{ steps.ver.outputs.version }}
+          name: corelens-windows-v${{ steps.ver.outputs.version }}
           path: dl/windows
 
       - uses: actions/download-artifact@v8
         if: steps.ver.outputs.exists == 'false'
         with:
-          name: coreview-macos-v${{ steps.ver.outputs.version }}
+          name: corelens-macos-v${{ steps.ver.outputs.version }}
           path: dl/macos
 
       # Fails, and so publishes nothing, when an installer or its signature
@@ -657,7 +663,7 @@ jobs:
           gh release create "v${{ steps.ver.outputs.version }}" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Coreview ${{ steps.ver.outputs.version }}" \
+            --title "Corelens Desktop ${{ steps.ver.outputs.version }}" \
             --notes-file release/notes.md \
             "${files[@]}"
           echo "::notice title=Release::v${{ steps.ver.outputs.version }} published with ${#files[@]} files"

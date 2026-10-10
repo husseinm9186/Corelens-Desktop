@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Cisco AireOS WLC (cisco_wlc_aireos)
+# Corelens discovery catalog — Cisco AireOS WLC (cisco_wlc_aireos)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Cisco
@@ -67,7 +67,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_inventory
     cmd: show inventory
     gate: always
@@ -78,7 +78,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (2 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_interface_summary
     cmd: show interface summary
     gate: always
@@ -110,7 +110,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (3 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_ap_cdp_neighbors_all
     cmd: show ap cdp neighbors all
     gate: always
@@ -122,7 +122,7 @@ commands:
     timeout: 30
     verified: unverified
     evidence: no template, no structured output, no capture yet
-    coreview_reader: true
+    corelens_reader: true
   - id: show_wlan_summary
     cmd: show wlan summary
     gate: always

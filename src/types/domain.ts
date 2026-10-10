@@ -286,7 +286,7 @@ export interface DeviceNodeData extends Record<string, unknown> {
    *  when a manifest gave one. Named when the project is exported.
    *  */
   stencilLicence?: string;
-  /** The inlined artwork is Coreview's own (a captured built-in glyph), so an
+  /** The inlined artwork is Corelens's own (a captured built-in glyph), so an
    *  export does not warn about it. */
   ownArtwork?: boolean;
   /** A section that is a logical boundary: what kind, and its

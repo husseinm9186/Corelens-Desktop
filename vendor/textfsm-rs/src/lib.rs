@@ -1012,7 +1012,7 @@ impl TextFSM {
                 let number_of_values = curr_record.keys().len();
 
                 for k in mandatory_values {
-                    // COREVIEW PATCH 3 (LT-525): an empty value does not satisfy
+                    // CORELENS PATCH 3 (LT-525): an empty value does not satisfy
                     // Required — Python's `if not self._value.value` treats "" and
                     // [] as missing. An optional group that did not match leaves
                     // "" here, which used to count as present.
@@ -1046,7 +1046,7 @@ impl TextFSM {
                         trace!("RECORD: {:?}", &new_rec);
                         records.push_back(new_rec);
                     } else {
-                        // COREVIEW PATCH 1 (LT-525): a record skipped because a
+                        // CORELENS PATCH 1 (LT-525): a record skipped because a
                         // Required value is empty is still cleared, as Python
                         // TextFSM's `_AppendRecord` does (`SkipRecord` →
                         // `_ClearRecord`): everything but the Filldown values goes.

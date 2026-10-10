@@ -102,21 +102,25 @@ export function unpackHistory(packed: PackedHistory): { past: HistoryEntry[]; fu
 
 // ---------------------------------------------------------------- IndexedDB
 
-const DB_NAME = 'coreview-history';
+const DB_NAME = 'corelens-history';
+/** Where the history was kept under the app's earlier name. Read, never
+ *  written: a project whose history is not under the current name yet finds
+ *  it here until its next save puts it there. */
+const PREVIOUS_DB_NAMES = ['coreview-history'];
 const STORE = 'projects';
 
-function openDb(): Promise<IDBDatabase> | null {
+function openDb(name = DB_NAME): Promise<IDBDatabase> | null {
   if (typeof indexedDB === 'undefined') return null;
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    const req = indexedDB.open(name, 1);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-async function withStore<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T | undefined> {
-  const opening = openDb();
+async function withStore<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>, name = DB_NAME): Promise<T | undefined> {
+  const opening = openDb(name);
   if (!opening) return undefined;
   const db = await opening;
   try {
@@ -148,12 +152,24 @@ export async function loadHistory(
   stamp: number,
 ): Promise<{ past: HistoryEntry[]; future: HistoryEntry[] } | null> {
   try {
-    const packed = (await withStore('readonly', (s) => s.get(projectId))) as PackedHistory | undefined;
+    let packed = (await withStore('readonly', (s) => s.get(projectId))) as PackedHistory | undefined;
+    if (!packed) packed = await fromPreviousName(projectId);
     if (!packed || packed.version !== 1 || packed.stamp !== stamp) return null;
     return unpackHistory(packed);
   } catch {
     return null;
   }
+}
+
+async function fromPreviousName(projectId: string): Promise<PackedHistory | undefined> {
+  // Opening a database that is not there creates it, so ask first.
+  const existing = typeof indexedDB.databases === 'function' ? await indexedDB.databases() : [];
+  for (const name of PREVIOUS_DB_NAMES) {
+    if (!existing.some((db) => db.name === name)) continue;
+    const packed = (await withStore('readonly', (s) => s.get(projectId), name)) as PackedHistory | undefined;
+    if (packed) return packed;
+  }
+  return undefined;
 }
 
 export async function deleteHistory(projectId: string): Promise<void> {

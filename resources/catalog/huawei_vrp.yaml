@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Huawei VRP (huawei_vrp)
+# Corelens discovery catalog — Huawei VRP (huawei_vrp)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Huawei
@@ -36,7 +36,7 @@ session:
   paging:
     off:
       - screen-length 0 temporary
-    source: scrapli_community huawei_vrp on_open; Coreview huawei dialect
+    source: scrapli_community huawei_vrp on_open; Corelens huawei dialect
 role_hint: []
 role_defaults: {}
 caps_probe: []
@@ -51,7 +51,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (7 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: display_interface_brief
     cmd: display interface brief
     gate: always
@@ -73,7 +73,7 @@ commands:
     timeout: 30
     verified: unverified
     evidence: no template, no structured output, no capture yet
-    coreview_reader: true
+    corelens_reader: true
   - id: display_lldp_neighbor_information_verbose
     cmd: display lldp neighbor-information verbose
     gate: always
@@ -95,7 +95,7 @@ commands:
     timeout: 30
     verified: unverified
     evidence: no template, no structured output, no capture yet
-    coreview_reader: true
+    corelens_reader: true
   - id: display_ospf_peer
     cmd: display ospf peer
     gate: always
@@ -179,7 +179,7 @@ commands:
     timeout: 120
     verified: unverified
     evidence: no template, no structured output, no capture yet
-    coreview_reader: true
+    corelens_reader: true
   - id: display_current_configuration
     cmd: display current-configuration
     gate: always

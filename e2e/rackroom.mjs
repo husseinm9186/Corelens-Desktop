@@ -57,7 +57,7 @@ const project = {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -68,7 +68,7 @@ await page.addInitScript(({ p }) => {
       if (cmd === "list_projects") return Promise.resolve([meta]);
       if (cmd === "load_project") return Promise.resolve({ meta, document_version: p.documentVersion, document: p.document });
       if (cmd === "get_settings") return Promise.resolve({});
-      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/coreview-rackroom-test.out");
+      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/corelens-rackroom-test.out");
       if (cmd === "pick_export_target") return Promise.resolve({ token: `t-${next++}`, path: `/tmp/${args.filename}` });
       if (cmd === "save_export") {
         const bytes = Uint8Array.from(atob(args.contentsB64), (c) => c.charCodeAt(0));
@@ -487,7 +487,7 @@ await page.locator(".cv-racks button", { hasText: "Export front as DXF" }).click
 await page.waitForTimeout(400);
 const dxf = await page.evaluate(() => (window.__exports ?? []).at(-1) ?? "");
 check("the DXF export is R12 in millimetres with the named layers, the racks, the cables and the title block",
-  dxf.startsWith("0\nSECTION\n2\nHEADER") && dxf.includes("8\nCABLES\n") && dxf.includes("1\nRACK-01, RACK-02") && dxf.includes("rev B · Coreview") && dxf.trimEnd().endsWith("0\nEOF"), dxf.slice(0, 80));
+  dxf.startsWith("0\nSECTION\n2\nHEADER") && dxf.includes("8\nCABLES\n") && dxf.includes("1\nRACK-01, RACK-02") && dxf.includes("rev B · Corelens") && dxf.trimEnd().endsWith("0\nEOF"), dxf.slice(0, 80));
 
 // ------------------------------------------------------------- what a planner should tell you
 

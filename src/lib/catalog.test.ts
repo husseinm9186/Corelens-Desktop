@@ -129,7 +129,7 @@ describe('every checked-in catalog', () => {
           expect(raws.length, `${c.os} ${cmd.id}: ${dir}`).toBe(Number(fromNtc[1]));
           for (const raw of raws) expect(existsSync(join(dir, raw.replace(/\.raw$/, '.yml'))), `${dir}/${raw} has no .yml`).toBe(true);
         } else {
-          expect(cmd.evidence, `${c.os} ${cmd.id}`).toMatch(/Coreview .* reader/);
+          expect(cmd.evidence, `${c.os} ${cmd.id}`).toMatch(/Corelens .* reader/);
         }
       }
     }

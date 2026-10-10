@@ -11,7 +11,7 @@ import { useStore } from '../../state/store';
 // The catalogue's `t`, aliased: this file already has a `t` of its own.
 import { t as tr } from '../../i18n';
 
-const AUTHOR_KEY = 'coreview.commentAuthor';
+const AUTHOR_KEY = 'corelens.commentAuthor';
 
 function rememberedAuthor(): string {
   try {

@@ -2,7 +2,7 @@
  * The diagram as a draw.io file.
  *
  * draw.io is free and runs in a browser, so it is what a colleague without
- * Coreview or Visio most likely has. The file is written uncompressed — the
+ * Corelens or Visio most likely has. The file is written uncompressed — the
  * format draw.io itself saves by default today — with one `<diagram>` per
  * page, devices as the network stencils draw.io ships (`mxgraph.networks.*`,
  * names taken from its own `networks.xml`), links glued to both ends with
@@ -140,5 +140,5 @@ function pageModel(page: DrawioPage, used: Set<string>): string {
 export function drawioFile(pages: DrawioPage[], modified = new Date()): string {
   const used = new Set<string>();
   const diagrams = pages.map((p, i) => `<diagram id="page-${i + 1}" name="${esc(p.name || `Page-${i + 1}`)}">${pageModel(p, used)}</diagram>`);
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile host="Coreview" modified="${modified.toISOString()}" type="device" pages="${pages.length}">${diagrams.join('')}</mxfile>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile host="Corelens" modified="${modified.toISOString()}" type="device" pages="${pages.length}">${diagrams.join('')}</mxfile>\n`;
 }

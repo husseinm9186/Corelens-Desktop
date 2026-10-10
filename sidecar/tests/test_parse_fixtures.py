@@ -10,7 +10,7 @@ import os
 import pytest
 import yaml
 
-from coreview_sidecar.parse import parse, set_templates_dir
+from corelens_sidecar.parse import parse, set_templates_dir
 
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 NTC = os.path.join(ROOT, "resources", "templates", "ntc")
@@ -33,7 +33,7 @@ def also_from_index():
 
 
 def fixture_pairs():
-    """Every vendored pair — the same set crates/coreview-catalog/tests/ntc_conformance.rs runs."""
+    """Every vendored pair — the same set crates/corelens-catalog/tests/ntc_conformance.rs runs."""
     also = also_from_index()
     pairs = []
     for platform in sorted(os.listdir(TESTS)):

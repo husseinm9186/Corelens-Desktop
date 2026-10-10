@@ -63,7 +63,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
 
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -663,7 +663,7 @@ await page.waitForTimeout(250);
 const headingsNow = (await page.locator(".cv-ipam-addresses").first().locator("thead th").allInnerTexts()).map((h) => h.trim().toLowerCase());
 check("a hidden column leaves the table", !headingsNow.includes("mac") && headingsNow.includes("site"), headingsNow.join("|"));
 check("and is remembered on this machine, as what is hidden",
-  (await page.evaluate(() => localStorage.getItem("coreview.view.registerHiddenColumns"))) === '["mac"]');
+  (await page.evaluate(() => localStorage.getItem("corelens.view.registerHiddenColumns"))) === '["mac"]');
 await page.locator(".cv-ipam-columns-list label", { hasText: "MAC" }).locator("input").check();
 await page.locator(".cv-ipam-columns > summary").click();
 await page.waitForTimeout(200);

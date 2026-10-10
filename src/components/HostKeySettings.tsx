@@ -4,9 +4,9 @@ import { ipc, isDesktop, type HostKeyRow } from '../lib/ipc';
 import { t } from '../i18n';
 
 /**
- * The SSH host keys Coreview has remembered, and the ways to forget them.
+ * The SSH host keys Corelens has remembered, and the ways to forget them.
  *
- * Coreview records a device's key the first time it connects and refuses to
+ * Corelens records a device's key the first time it connects and refuses to
  * connect again if it changes. That is the right default — a changed key is
  * either a rebuilt device or someone in the middle, and those look identical
  * from here — but it needs a way out, because switches genuinely do get
@@ -56,7 +56,7 @@ export function HostKeySettings() {
 
       {keys.length === 0 ? (
         <p className="cv-help">
-          {t('hostKeySettings.noneRememberedYetCoreview')}
+          {t('hostKeySettings.noneRememberedYetCorelens')}
         </p>
       ) : (
         <>

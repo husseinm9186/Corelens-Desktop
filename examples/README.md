@@ -24,7 +24,7 @@ underscores do not matter.
 ## links.csv
 
 `source` and `target` are required and are device **names**, because a
-spreadsheet has no way to know the ids Coreview generates. Matching ignores
+spreadsheet has no way to know the ids Corelens generates. Matching ignores
 case.
 
 | Column | Meaning |

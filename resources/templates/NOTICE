@@ -8,6 +8,6 @@ under the Apache License, Version 2.0. The full licence text is in LICENSE
 beside this file, and it travels with the application through
 bundle.resources and THIRD-PARTY-NOTICES.md.
 
-Only the tests for the platforms Coreview's catalogs name are kept; the
+Only the tests for the platforms Corelens's catalogs name are kept; the
 templates are kept whole. Rerun `scripts/vendor-ntc.sh <checkout>` to
 refresh, then `node scripts/reconcile-ntc.mjs`.

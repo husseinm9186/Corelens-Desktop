@@ -1,10 +1,10 @@
 //! The Meraki Dashboard API, from the app.
 //!
 //! Meraki MR, MS and MX have no command line, so a crawl can never log into
-//! one. This is the only way Coreview sees such an estate from the inside, and
+//! one. This is the only way Corelens sees such an estate from the inside, and
 //! the five conditions are what make it allowed: the operator starts it,
 //! it is the user's own account and data, it is read-only **by construction**
-//! (`coreview-meraki` has no HTTP verb but GET), the key lives in the vault,
+//! (`corelens-meraki` has no HTTP verb but GET), the key lives in the vault,
 //! and it talks to one named host.
 //!
 //! **The key is an ordinary vault credential**, saved with `save_credential`
@@ -15,8 +15,8 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use coreview_meraki::api::{Network, Organization};
-use coreview_meraki::{backup, checks, collect, health, Client};
+use corelens_meraki::api::{Network, Organization};
+use corelens_meraki::{backup, checks, collect, health, Client};
 
 use crate::vault_commands::{db_err, note_use};
 use crate::AppState;
@@ -50,7 +50,7 @@ fn key_of(state: &AppState, credential_id: &str) -> CmdResult<String> {
 
 fn client_for(state: &AppState, credential_id: &str, purpose: &str) -> CmdResult<Client> {
     let key = key_of(state, credential_id)?;
-    note_use(state, credential_id, purpose, coreview_meraki::BASE);
+    note_use(state, credential_id, purpose, corelens_meraki::BASE);
     Ok(Client::new(key))
 }
 
@@ -97,12 +97,12 @@ pub struct BackupWritten {
 /// Where a Meraki backup is filed: beside the device backups, under the
 /// organisation's name, stamped like everything else.
 fn backup_path(root: &std::path::Path, organization: &str, stamp: &str) -> CmdResult<std::path::PathBuf> {
-    let folder = coreview_discover::backup::safe_component(&format!("Meraki {organization}"))
+    let folder = corelens_discover::backup::safe_component(&format!("Meraki {organization}"))
         .ok_or("That organisation name cannot be used as a folder name.")?;
-    let file = coreview_discover::backup::safe_component(&format!("{stamp}.json"))
+    let file = corelens_discover::backup::safe_component(&format!("{stamp}.json"))
         .ok_or("That timestamp cannot be used as a file name.")?;
     let path = root.join(folder).join(file);
-    if !coreview_discover::backup::is_inside(root, &path) {
+    if !corelens_discover::backup::is_inside(root, &path) {
         return Err("That path is outside the backup folder.".into());
     }
     Ok(path)
@@ -186,7 +186,7 @@ pub async fn meraki_backup(
 /// `backup.missing` can be answered honestly instead of guessed.
 fn has_backup(root: Option<&std::path::Path>, organization: &str, network: &str) -> Option<bool> {
     let root = root?;
-    let folder = coreview_discover::backup::safe_component(&format!("Meraki {organization}"))?;
+    let folder = corelens_discover::backup::safe_component(&format!("Meraki {organization}"))?;
     let dir = root.join(folder);
     let entries = std::fs::read_dir(&dir).ok()?;
     for entry in entries.flatten() {
@@ -301,7 +301,7 @@ pub async fn meraki_discover(
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Discovered {
-    pub devices: Vec<coreview_discover::crawl::CrawledDevice>,
+    pub devices: Vec<corelens_discover::crawl::CrawledDevice>,
     pub links: usize,
     pub notes: Vec<String>,
 }
@@ -310,9 +310,9 @@ pub struct Discovered {
 ///
 /// Split out so it can be tested without a key: the mapping is where a
 /// discovery would quietly go wrong, not the HTTP.
-fn as_crawl_result(found: coreview_meraki::discover::Found) -> Discovered {
-    use coreview_discover::crawl::{CrawledDevice, DeviceDetails, ReachedBy};
-    use coreview_discover::types::{DeviceAddress, DeviceClass, Neighbor, Protocol};
+fn as_crawl_result(found: corelens_meraki::discover::Found) -> Discovered {
+    use corelens_discover::crawl::{CrawledDevice, DeviceDetails, ReachedBy};
+    use corelens_discover::types::{DeviceAddress, DeviceClass, Neighbor, Protocol};
 
     let class_of = |kind: &str| match kind {
         "appliance" => DeviceClass::Firewall,
@@ -397,12 +397,12 @@ fn as_crawl_result(found: coreview_meraki::discover::Found) -> Discovered {
                 details: DeviceDetails::default(),
                 dns_name: None,
                 // The Dashboard's word for every one of these.
-                evidence: coreview_discover::types::EvidenceMap::from([
-                    ("hostname".to_string(), coreview_discover::types::Evidence::now("meraki:dashboard")),
-                    ("class".to_string(), coreview_discover::types::Evidence::now("meraki:dashboard").saying(&d.kind)),
-                    ("platform".to_string(), coreview_discover::types::Evidence::now("meraki:dashboard")),
-                    ("addresses".to_string(), coreview_discover::types::Evidence::now("meraki:dashboard")),
-                    ("serial".to_string(), coreview_discover::types::Evidence::now("meraki:dashboard")),
+                evidence: corelens_discover::types::EvidenceMap::from([
+                    ("hostname".to_string(), corelens_discover::types::Evidence::now("meraki:dashboard")),
+                    ("class".to_string(), corelens_discover::types::Evidence::now("meraki:dashboard").saying(&d.kind)),
+                    ("platform".to_string(), corelens_discover::types::Evidence::now("meraki:dashboard")),
+                    ("addresses".to_string(), corelens_discover::types::Evidence::now("meraki:dashboard")),
+                    ("serial".to_string(), corelens_discover::types::Evidence::now("meraki:dashboard")),
                 ]),
             }
         })
@@ -425,7 +425,7 @@ mod tests {
         assert!(path.to_string_lossy().contains("Meraki-Contoso-Ltd"), "{}", path.display());
 
         // An organisation name is a customer's own string and reaches here
-        // from the API, not from a list Coreview wrote.
+        // from the API, not from a list Corelens wrote.
         // A refusal is a fine answer; landing outside the folder is not.
         for hostile in ["../../etc", "..", "/etc/passwd", "a/../../b"] {
             if let Ok(p) = backup_path(root, hostile, "2026-09-23T101500") {
@@ -450,13 +450,13 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let root = dir.path();
         let folder = root.join(
-            coreview_discover::backup::safe_component("Meraki Contoso").expect("a usable folder name"),
+            corelens_discover::backup::safe_component("Meraki Contoso").expect("a usable folder name"),
         );
         std::fs::create_dir_all(&folder).expect("folder");
 
         let taken = backup::Backup {
             taken_at: "2026-09-23T00:00:00Z".into(),
-            taken_by: "Coreview".into(),
+            taken_by: "Corelens".into(),
             organization: Organization { id: "1".into(), name: "Contoso".into(), url: None },
             networks: vec![backup::NetworkBackup {
                 network: Network {
@@ -493,8 +493,8 @@ mod tests {
     /// do not match a device draws as nothing at all.
     #[test]
     fn an_estate_becomes_devices_and_links_the_diagram_can_use() {
-        use coreview_discover::types::DeviceClass;
-        use coreview_meraki::discover::{Found, FoundDevice, FoundLink};
+        use corelens_discover::types::DeviceClass;
+        use corelens_meraki::discover::{Found, FoundDevice, FoundLink};
 
         let device = |serial: &str, name: &str, kind: &str, ip: Option<&str>| FoundDevice {
             name: name.into(),
@@ -535,7 +535,7 @@ mod tests {
         assert_eq!(class("Gateway"), DeviceClass::Firewall);
 
         // Nothing was logged into, and it says so.
-        assert!(out.devices.iter().all(|d| matches!(d.reached_by, coreview_discover::crawl::ReachedBy::Reported)));
+        assert!(out.devices.iter().all(|d| matches!(d.reached_by, corelens_discover::crawl::ReachedBy::Reported)));
 
         // The link appears from both ends, named by hostname rather than by a
         // serial nobody recognises, with each end's own port.

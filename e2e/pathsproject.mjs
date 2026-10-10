@@ -33,10 +33,10 @@ const projects = [
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
 await page.addInitScript(({ ps }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify(Object.fromEntries(ps.map((p) => [p.meta.id, p]))));
-  localStorage.setItem("coreview.view.panelOpen", "1");
+  localStorage.setItem("corelens.projects.v1", JSON.stringify(Object.fromEntries(ps.map((p) => [p.meta.id, p]))));
+  localStorage.setItem("corelens.view.panelOpen", "1");
   // What the first project's card says: written by the last save on this machine.
-  localStorage.setItem("coreview.summary.p-branch", JSON.stringify({ devices: 2, links: 1, pages: 2, healthy: 1, warning: 0, down: 1, unknown: 0, at: Date.now() }));
+  localStorage.setItem("corelens.summary.p-branch", JSON.stringify({ devices: 2, links: 1, pages: 2, healthy: 1, warning: 0, down: 1, unknown: 0, at: Date.now() }));
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {

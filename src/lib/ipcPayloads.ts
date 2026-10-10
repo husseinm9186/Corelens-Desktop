@@ -35,7 +35,7 @@ export function only<T extends object, K extends keyof T>(value: T, keys: readon
   return out;
 }
 
-/** `ProbeConfig` in `coreview-probe/src/types.rs`. */
+/** `ProbeConfig` in `corelens-probe/src/types.rs`. */
 export const PROBE_CONFIG_KEYS = [
   'id', 'projectId', 'objectKind', 'objectId', 'name', 'kind', 'target', 'tcpPort', 'intervalSeconds', 'timeoutMs',
   'failureThreshold', 'recoveryThreshold', 'warningLatencyMs', 'enabled', 'maintenance', 'httpPath', 'ignoreCertErrors',
@@ -105,10 +105,10 @@ export const collectionInput = (o: object) => {
   return out;
 };
 
-/** `ViewOptions` in `coreview-topology/src/crawl_view.rs`. */
+/** `ViewOptions` in `corelens-topology/src/crawl_view.rs`. */
 export const topologyViewOptions = (o: object) => pickAll(o, ['collapseBundles', 'collapseStacks', 'placeholders', 'minConfidence', 'vlan', 'vrf', 'seeds']);
 
-/** `Request` and `DownLink` in `coreview-path/src/walk.rs`. */
+/** `Request` and `DownLink` in `corelens-path/src/walk.rs`. */
 export const pathRequest = (o: object) => {
   const r = o as Obj;
   const out = pickAll(r, ['from', 'to', 'vrf', 'protocol', 'port', 'sourcePort', 'downDevices', 'downLinks', 'traceroute', 'noReverse']);
@@ -124,13 +124,13 @@ export const pathLiveInput = (o: object) => {
   return out;
 };
 
-/** `SweepOptions` in `coreview-probe/src/sweep.rs`. */
+/** `SweepOptions` in `corelens-probe/src/sweep.rs`. */
 export const sweepOptions = (o: object) => pickAll(o, ['timeoutMs', 'concurrency', 'identify', 'scanPorts', 'ports']);
 
 /** `SaveCredential` in `src-tauri/src/vault_commands.rs`. */
 export const saveCredential = (c: object) => pickAll(c, ['id', 'label', 'kind', 'username', 'secret', 'secondSecret', 'detail']);
 
-/** `Check` in `coreview-discover/src/checks.rs`. */
+/** `Check` in `corelens-discover/src/checks.rs`. */
 export const backupCheck = (c: object) => pickAll(c, ['id', 'name', 'command', 'expect', 'pattern', 'ignoreCase', 'block', 'severity', 'roles']);
 
 /** `VisioDrawing`, `VisioPage`, `VisioShape` and `VisioLink` in `src-tauri/src/visio.rs`. */

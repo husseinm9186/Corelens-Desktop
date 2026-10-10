@@ -67,7 +67,7 @@ const start = async () => {
           return Promise.resolve({ current: "2.9.0", available: { version: "2.9.1", notes: "**Fixes**\n- An invented fix.", date: "2026-10-20T09:00:00Z" } });
         }
         if (cmd === "install_update") {
-          if (window.__found === "install-fails") return Promise.reject("The download's signature does not match Coreview's key, so it was not installed.");
+          if (window.__found === "install-fails") return Promise.reject("The download's signature does not match Corelens's key, so it was not installed.");
           return new Promise(() => {}); // success never returns: the process restarted
         }
         return Promise.resolve([]);
@@ -94,7 +94,7 @@ const setFound = async (found) => { backend.found = found; await page.evaluate((
 // ------------------------------------------------- off by default: silence
 let updates = await openSettings();
 check("Settings has an Updates block", (await updates.count()) === 1);
-check("it says Coreview never contacts GitHub on its own", /never contacts GitHub on its own/.test(await updates.innerText()), (await updates.innerText()).slice(0, 200));
+check("it says Corelens never contacts GitHub on its own", /never contacts GitHub on its own/.test(await updates.innerText()), (await updates.innerText()).slice(0, 200));
 check("the at-start tick is off until somebody ticks it", !(await updates.locator('[data-field="update-on-start"]').isChecked()));
 check("and nothing was sent to GitHub on load", (await sent("check_for_update")) === 0, String(await sent("check_for_update")));
 check("the top bar announces nothing", (await page.locator('[data-action="update-available"]').count()) === 0);
@@ -119,7 +119,7 @@ check("and the button can be pressed again", await updates.locator('[data-action
 await setFound("newer");
 await updates.locator('[data-action="check-updates"]').click();
 await page.waitForTimeout(400);
-check("a newer release is named with the version in hand", /Coreview 2\.9\.1 is available\. You have 2\.9\.0\./.test(await updates.locator('[data-hint="updates"]').innerText()), await updates.locator('[data-hint="updates"]').innerText());
+check("a newer release is named with the version in hand", /Corelens 2\.9\.1 is available\. You have 2\.9\.0\./.test(await updates.locator('[data-hint="updates"]').innerText()), await updates.locator('[data-hint="updates"]').innerText());
 const found = updates.locator('[data-region="update-found"]');
 check("its date is shown", /Published 2026-10-20/.test(await found.innerText()), (await found.innerText()).slice(0, 200));
 await found.locator("summary", { hasText: "What changed" }).click();

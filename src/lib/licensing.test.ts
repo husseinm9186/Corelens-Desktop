@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 /**
  * The licence promises, checked rather than trusted.
  *
- * Coreview is proprietary and free to use. Two things follow that are easy to
+ * Corelens is proprietary and free to use. Two things follow that are easy to
  * break by accident and expensive to break in public: a manifest quietly
  * claiming a different licence, and a dependency arriving under a licence that
  * a proprietary build may not ship. Both are one commit away at any time, so
@@ -16,7 +16,7 @@ const read = (p: string) => readFileSync(`${root}/${p}`, 'utf8');
 
 const LICENCE_ID = 'LicenseRef-Almoola-Free-Proprietary';
 
-describe('what Coreview says its own licence is', () => {
+describe('what Corelens says its own licence is', () => {
   it('ships a LICENSE file carrying the terms', () => {
     const licence = read('LICENSE');
     expect(licence).toContain('free of charge');
@@ -30,7 +30,7 @@ describe('what Coreview says its own licence is', () => {
     expect(licence).toContain('unchanged');
     expect(licence).toContain('do not charge for it');
     // And still reserves what it reserves.
-    expect(licence).toMatch(/may not[\s\S]*sell Coreview/i);
+    expect(licence).toMatch(/may not[\s\S]*sell Corelens/i);
     expect(licence).toMatch(/derivative works/i);
   });
 
@@ -48,15 +48,15 @@ describe('what Coreview says its own licence is', () => {
     expect(JSON.parse(read('package.json')).license).toBe(LICENCE_ID);
     for (const manifest of [
       'src-tauri/Cargo.toml',
-      'crates/coreview-probe/Cargo.toml',
-      'crates/coreview-discover/Cargo.toml',
-      'crates/coreview-meraki/Cargo.toml',
-      'crates/coreview-formats/Cargo.toml',
+      'crates/corelens-probe/Cargo.toml',
+      'crates/corelens-discover/Cargo.toml',
+      'crates/corelens-meraki/Cargo.toml',
+      'crates/corelens-formats/Cargo.toml',
     ]) {
       const text = read(manifest);
       expect(text, manifest).toContain(`license = "${LICENCE_ID}"`);
       // A proprietary crate that can be published by accident is a crate that
-      // will be. coreview-probe declared MIT until 2026-09-18.
+      // will be. corelens-probe declared MIT until 2026-09-18.
       expect(text, manifest).toContain('publish = false');
     }
   });
@@ -72,7 +72,7 @@ describe('what Coreview says its own licence is', () => {
   });
 });
 
-describe('what Coreview is allowed to ship', () => {
+describe('what Corelens is allowed to ship', () => {
   const notices = existsSync(`${root}/THIRD-PARTY-NOTICES.md`) ? read('THIRD-PARTY-NOTICES.md') : '';
 
   it('has notices at all, generated rather than written', () => {

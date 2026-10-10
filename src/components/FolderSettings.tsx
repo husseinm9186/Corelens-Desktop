@@ -5,7 +5,7 @@ import { isDesktop } from '../lib/ipc';
 import { t } from '../i18n';
 
 /**
- * Where Coreview writes things, chosen once and remembered.
+ * Where Corelens writes things, chosen once and remembered.
  *
  * The two folders are deliberately separate and the copy says so. A running
  * configuration contains SNMP communities, hashed local passwords and ACLs;

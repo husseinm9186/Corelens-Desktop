@@ -2422,7 +2422,7 @@ function LinkInspector({ edgeId }: { edgeId: string }) {
         <h3>{tr('inspector.healthRule')}</h3>
         <Field
           label="What determines this link's state"
-          hint="This is a rule you choose. Coreview does not trace the physical path."
+          hint="This is a rule you choose. Corelens does not trace the physical path."
         >
           <select
             className="cv-input"

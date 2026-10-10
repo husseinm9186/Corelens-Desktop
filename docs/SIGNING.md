@@ -3,7 +3,7 @@
 The root certificate that signs these builds is published as
 `brand/coreview-root-ca.crt`. It is the **public** certificate — there is no
 private key in it, and there must never be one in this repository. Installing
-it as a trusted root is what makes a signed Coreview installer show
+it as a trusted root is what makes a signed Corelens installer show
 "COREVIEW-APP" as the publisher instead of "Unknown Publisher"; it does nothing
 about SmartScreen, for the reasons below.
 
@@ -17,7 +17,7 @@ What that is worth depends entirely on who is running the installer.
 | | Machine that trusts COREVIEW-APP-Root-CA | Any other machine |
 | --- | --- | --- |
 | Signature validates | Yes | No |
-| Publisher shown | COREVIEW | "Unknown Publisher" |
+| Publisher shown | CORELENS | "Unknown Publisher" |
 | Tamper-evident | Yes | Yes — the hash is still checked |
 | SmartScreen warning | Still possible on a new file | **Yes, unchanged** |
 
@@ -28,7 +28,7 @@ been altered, and it names the publisher on managed machines. It does not make
 the warning go away for anyone outside the estate, and no amount of
 configuration changes that.
 
-**Decision, 2026-09-29: Coreview stays on this certificate.** No public-CA
+**Decision, 2026-09-29: Corelens stays on this certificate.** No public-CA
 certificate and no cloud signing service. What a customer does to trust it,
 and what that does and does not change for SmartScreen and Defender, is in
 `docs/INSTALL-WINDOWS.md`; the public root and signing certificates travel
@@ -85,7 +85,7 @@ into `SHA256SUMS.txt`, and CycloneDX SBOMs into `sbom/`.
 On Windows:
 
 ```powershell
-Get-AuthenticodeSignature .\Coreview_2.7.1_x64-setup.exe | Format-List
+Get-AuthenticodeSignature .\Corelens_2.7.1_x64-setup.exe | Format-List
 ```
 
 `Status` reads `Valid` on a machine that trusts the root, and

@@ -1,5 +1,5 @@
 /**
- * Turning what was read out of a drawing into Coreview's own model.
+ * Turning what was read out of a drawing into Corelens's own model.
  *
  * Pulled out of the import panel so the decisions here can be stated as tests
  * rather than only as behaviour you have to import a file to see. Each of them

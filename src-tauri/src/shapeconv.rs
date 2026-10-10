@@ -840,7 +840,7 @@ fn unique_profile_dir() -> PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
-    std::env::temp_dir().join(format!("coreview-soffice-{}-{}-{}", std::process::id(), n, nanos))
+    std::env::temp_dir().join(format!("corelens-soffice-{}-{}-{}", std::process::id(), n, nanos))
 }
 
 /// The full treatment for one LibreOffice-made SVG: cruft off, bitmaps made
@@ -964,8 +964,8 @@ mod tests {
     /// caller's cleanup destroys the other's work.
     #[test]
     fn two_conversions_at_once_do_not_share_a_working_directory() {
-        let a = unique_work_dir("coreview-conv");
-        let b = unique_work_dir("coreview-conv");
+        let a = unique_work_dir("corelens-conv");
+        let b = unique_work_dir("corelens-conv");
         assert_ne!(a, b, "two scans would share one directory and delete each other's output");
 
         std::fs::create_dir_all(&a).expect("a");
@@ -985,7 +985,7 @@ mod tests {
     #[test]
     fn working_directories_are_distinct_across_threads() {
         let dirs: Vec<std::path::PathBuf> = std::thread::scope(|scope| {
-            let handles: Vec<_> = (0..16).map(|_| scope.spawn(|| unique_work_dir("coreview-conv"))).collect();
+            let handles: Vec<_> = (0..16).map(|_| scope.spawn(|| unique_work_dir("corelens-conv"))).collect();
             handles.into_iter().map(|h| h.join().expect("thread")).collect()
         });
         let mut unique = dirs.clone();

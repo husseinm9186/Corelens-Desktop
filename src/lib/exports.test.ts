@@ -4,23 +4,23 @@ import { buildMarkdownReport, joinPath, slug } from './exports';
 
 describe('joinPath', () => {
   it('joins a POSIX folder', () => {
-    expect(joinPath('/home/me/exports', 'a.coreview')).toBe('/home/me/exports/a.coreview');
+    expect(joinPath('/home/me/exports', 'a.corelens')).toBe('/home/me/exports/a.corelens');
   });
 
   it('does not double the separator when the folder already ends with one', () => {
-    expect(joinPath('/home/me/exports/', 'a.coreview')).toBe('/home/me/exports/a.coreview');
+    expect(joinPath('/home/me/exports/', 'a.corelens')).toBe('/home/me/exports/a.corelens');
   });
 
   it('uses a backslash for a Windows folder', () => {
     // The picker returns native paths, and mixing separators produces a path
     // that looks right and does not exist.
-    expect(joinPath('C:\\Users\\me\\Exports', 'a.coreview')).toBe('C:\\Users\\me\\Exports\\a.coreview');
-    expect(joinPath('C:\\Users\\me\\Exports\\', 'a.coreview')).toBe('C:\\Users\\me\\Exports\\a.coreview');
+    expect(joinPath('C:\\Users\\me\\Exports', 'a.corelens')).toBe('C:\\Users\\me\\Exports\\a.corelens');
+    expect(joinPath('C:\\Users\\me\\Exports\\', 'a.corelens')).toBe('C:\\Users\\me\\Exports\\a.corelens');
   });
 
   it('treats a UNC path as a Windows path', () => {
-    expect(joinPath('\\\\server\\share\\exports', 'a.coreview')).toBe(
-      '\\\\server\\share\\exports\\a.coreview',
+    expect(joinPath('\\\\server\\share\\exports', 'a.corelens')).toBe(
+      '\\\\server\\share\\exports\\a.corelens',
     );
   });
 });

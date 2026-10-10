@@ -35,8 +35,8 @@ const project = {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
-  localStorage.setItem("coreview.view.panelOpen", "1");
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.view.panelOpen", "1");
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -48,7 +48,7 @@ await page.addInitScript(({ p }) => {
       if (cmd === "load_project") return Promise.resolve({ meta, document_version: p.documentVersion, document: p.document });
       // A backup folder, so the Backups tab shows its device list rather than
       // asking for one first. Nothing is written: no backup runs.
-      if (cmd === "get_settings") return Promise.resolve({ backupFolder: "/tmp/coreview-e2e-not-a-real-folder" });
+      if (cmd === "get_settings") return Promise.resolve({ backupFolder: "/tmp/corelens-e2e-not-a-real-folder" });
       if (cmd === "list_crawl_runs") return Promise.resolve([]);
       return Promise.resolve([]);
     },

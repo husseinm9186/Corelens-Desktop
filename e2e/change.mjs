@@ -87,7 +87,7 @@ const inspectorTab = async (name) => {
 };
 
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
 
   // The smallest thing that behaves like Tauri's bridge: callbacks can be
   // registered, listeners remembered, and every other command answers
@@ -153,7 +153,7 @@ await page.waitForTimeout(500);
 
 check("no report before a crawl has run", (await page.locator(".cv-change").count()) === 0);
 
-await page.evaluate((r) => window.__cvEmit("coreview://crawl-result", r), crawlResult);
+await page.evaluate((r) => window.__cvEmit("corelens://crawl-result", r), crawlResult);
 await page.waitForTimeout(700);
 
 const report = page.locator(".cv-change");

@@ -328,7 +328,7 @@ export const ICONS: Record<DeviceType, (p: P) => JSX.Element> = {
  * A device's glyph as it is drawn, on the canvas and in export alike: stacked
  * or single, outline or solid.
  *
- * Solid is Coreview's own "iconic" style — the device's colour as a rounded
+ * Solid is Corelens's own "iconic" style — the device's colour as a rounded
  * tile with the glyph over it in whichever ink reads on that colour. Not a
  * vendor's style; the same shape, filled.
  */

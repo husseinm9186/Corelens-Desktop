@@ -5,8 +5,8 @@ import os
 
 import pytest
 
-from coreview_sidecar.__main__ import Sidecar
-from coreview_sidecar.protocol import BadRequest, Response, parse_request, redact
+from corelens_sidecar.__main__ import Sidecar
+from corelens_sidecar.protocol import BadRequest, Response, parse_request, redact
 
 TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "..", "resources", "templates", "ntc")
 

@@ -603,7 +603,7 @@ interface Store {
   setHelpOpen: (on: boolean) => void;
   /** The interactive SSH sessions this window has open, one per tab
    *  in the panel's SSH section. Window state, never the document: a live
-   *  connection cannot be saved, and a `.coreview` file must not carry a
+   *  connection cannot be saved, and a `.corelens` file must not carry a
    *  hostname and a username it was never asked to keep. */
   sshSessions: SshTab[];
   sshActive: string | null;
@@ -615,7 +615,7 @@ interface Store {
   closeDrawer: () => void;
   setDrawerPinned: (on: boolean) => void;
   /** Every job running or stopping right now, as `jobs.rs` reports
-   *  them on `coreview://job`. Window state: a job belongs to the process,
+   *  them on `corelens://job`. Window state: a job belongs to the process,
    *  not to the document, and the list is rebuilt from `job_list` on load. */
   jobs: JobSnapshot[];
   setJobs: (jobs: JobSnapshot[]) => void;
@@ -976,7 +976,7 @@ function sameList(a: readonly string[], b: readonly string[]): boolean {
 
 function viewPref(key: string, fallback = true): boolean {
   try {
-    const v = localStorage.getItem(`coreview.view.${key}`);
+    const v = localStorage.getItem(`corelens.view.${key}`);
     return v === null ? fallback : v === '1';
   } catch {
     return fallback;
@@ -986,7 +986,7 @@ function viewPref(key: string, fallback = true): boolean {
 /** The register's hidden columns, remembered for this machine. */
 function readHiddenColumns(): string[] {
   try {
-    const v = JSON.parse(localStorage.getItem('coreview.view.registerHiddenColumns') ?? '[]');
+    const v = JSON.parse(localStorage.getItem('corelens.view.registerHiddenColumns') ?? '[]');
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
   } catch {
     return [];
@@ -996,7 +996,7 @@ function readHiddenColumns(): string[] {
 /** The remembered clock, defaulting to the DTG this was built around. */
 function readTimeFormat(): TimeFormat {
   try {
-    const v = localStorage.getItem('coreview.view.timeFormat');
+    const v = localStorage.getItem('corelens.view.timeFormat');
     const allowed: TimeFormat[] = ['dtg-zulu', 'dtg-local', 'local-24', 'local-12'];
     return allowed.includes(v as TimeFormat) ? (v as TimeFormat) : 'dtg-zulu';
   } catch {
@@ -1006,7 +1006,7 @@ function readTimeFormat(): TimeFormat {
 
 function rememberView(key: string, open: boolean): void {
   try {
-    localStorage.setItem(`coreview.view.${key}`, open ? '1' : '0');
+    localStorage.setItem(`corelens.view.${key}`, open ? '1' : '0');
   } catch {
     /* private mode, or storage disabled — the panel just reopens next time */
   }
@@ -1177,7 +1177,7 @@ function placePaste(set: (fn: (s: Store) => Partial<Store>) => void, fresh: Clip
  * on the way out, offered back only when it is newer than the last real save
  * — an old slot is stale, not a recovery.
  */
-const recoveryKey = (id: string) => `coreview.recovery.${id}`;
+const recoveryKey = (id: string) => `corelens.recovery.${id}`;
 let recoveryTimer: ReturnType<typeof setInterval> | null = null;
 let recoveryUnload: (() => void) | null = null;
 
@@ -1366,7 +1366,7 @@ export const useStore = create<Store>((set, get) => ({
     })()),
     uiScale: (() => {
       try {
-        const v = Number(localStorage.getItem('coreview.view.uiScale'));
+        const v = Number(localStorage.getItem('corelens.view.uiScale'));
         return v >= 0.85 && v <= 1.4 ? v : 1;
       } catch {
         return 1;
@@ -1376,14 +1376,14 @@ export const useStore = create<Store>((set, get) => ({
     foldFans: viewPref('foldFans'),
     wheel: (() => {
       try {
-        return localStorage.getItem('coreview.view.wheel') === 'scroll' ? 'scroll' : 'zoom';
+        return localStorage.getItem('corelens.view.wheel') === 'scroll' ? 'scroll' : 'zoom';
       } catch {
         return 'zoom';
       }
     })(),
     printScale: (() => {
       try {
-        return localStorage.getItem('coreview.view.printScale') === 'actual' ? 'actual' : 'fit';
+        return localStorage.getItem('corelens.view.printScale') === 'actual' ? 'actual' : 'fit';
       } catch {
         return 'fit';
       }
@@ -1816,7 +1816,7 @@ export const useStore = create<Store>((set, get) => ({
     set((s) => {
       const next = { ...s.dockPlacements, [tab]: side };
       try {
-        localStorage.setItem('coreview.view.dockPlacements', JSON.stringify(next));
+        localStorage.setItem('corelens.view.dockPlacements', JSON.stringify(next));
       } catch {
         /* private mode — the choice lasts this session */
       }
@@ -4097,35 +4097,35 @@ export const useStore = create<Store>((set, get) => ({
     if (patch.highContrast !== undefined) rememberView('highContrast', patch.highContrast);
     if (patch.uiScale !== undefined) {
       try {
-        localStorage.setItem('coreview.view.uiScale', String(patch.uiScale));
+        localStorage.setItem('corelens.view.uiScale', String(patch.uiScale));
       } catch {
         /* private mode — the choice lasts this session */
       }
     }
     if (patch.printScale !== undefined) {
       try {
-        localStorage.setItem('coreview.view.printScale', patch.printScale);
+        localStorage.setItem('corelens.view.printScale', patch.printScale);
       } catch {
         /* private mode — the choice lasts this session */
       }
     }
     if (patch.wheel !== undefined) {
       try {
-        localStorage.setItem('coreview.view.wheel', patch.wheel);
+        localStorage.setItem('corelens.view.wheel', patch.wheel);
       } catch {
         /* private mode — the choice lasts this session */
       }
     }
     if (patch.registerHiddenColumns !== undefined) {
       try {
-        localStorage.setItem('coreview.view.registerHiddenColumns', JSON.stringify(patch.registerHiddenColumns));
+        localStorage.setItem('corelens.view.registerHiddenColumns', JSON.stringify(patch.registerHiddenColumns));
       } catch {
         /* private mode — the choice lasts this session */
       }
     }
     if (patch.timeFormat !== undefined) {
       try {
-        localStorage.setItem('coreview.view.timeFormat', patch.timeFormat);
+        localStorage.setItem('corelens.view.timeFormat', patch.timeFormat);
       } catch {
         /* private mode — the choice lasts this session */
       }
@@ -4205,7 +4205,7 @@ export const useStore = create<Store>((set, get) => ({
         ...s.doc,
         customShapes: [
           ...(s.doc.customShapes ?? []),
-          // A capture of a built-in glyph is Coreview's own artwork;
+          // A capture of a built-in glyph is Corelens's own artwork;
           // a capture of an imported picture is still someone else's.
           {
             id: uid(),

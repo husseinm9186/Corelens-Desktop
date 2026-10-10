@@ -2,7 +2,7 @@
 #
 #   pwsh sidecar/build/sign.ps1 [-Thumbprint <cert thumbprint>]
 #
-# Tauri's own signing covers coreview.exe and the installer; it does not
+# Tauri's own signing covers corelens.exe and the installer; it does not
 # touch resources, so the interpreter's folder is signed here, before
 # `tauri build` packs it. Every PE ends up signed:
 #
@@ -11,19 +11,19 @@
 #     left as it is — a trusted publisher's signature is worth more than a
 #     second one of ours on top;
 #   - unsigned (the wheels' native modules, cryptography, bcrypt, nacl,
-#     cffi): signed with Coreview's certificate, SHA-256, timestamped.
+#     cffi): signed with Corelens's certificate, SHA-256, timestamped.
 #
 # The check afterwards is that the signer is *our* certificate, not that
 # Windows trusts it: a self-signed certificate is reported "UnknownError"
 # on a machine that does not trust its root, which is every CI runner, and
-# is exactly as trusted as the signature on coreview.exe itself.
+# is exactly as trusted as the signature on corelens.exe itself.
 #
 # Every failure is an annotation (::error), readable without the job log,
 # which needs admin rights to download.
 #
-# The certificate is Coreview's own (decision of 2026-09-29; docs/SIGNING.md).
+# The certificate is Corelens's own (decision of 2026-09-29; docs/SIGNING.md).
 param(
-  [string]$Thumbprint = $env:COREVIEW_SIGN_THUMBPRINT,
+  [string]$Thumbprint = $env:CORELENS_SIGN_THUMBPRINT,
   [string]$TimestampUrl = "http://timestamp.digicert.com"
 )
 $ErrorActionPreference = "Stop"
@@ -67,4 +67,4 @@ foreach ($pe in $pes) {
 if ($failed.Count -gt 0) {
   Fail ("{0} of {1} not signed: {2}" -f $failed.Count, $pes.Count, ($failed | Select-Object -First 5) -join '; ')
 }
-Write-Host "::notice title=Sidecar signing::$($pes.Count) sidecar PE files signed: $publisher by their publisher (kept), $ours by Coreview's certificate."
+Write-Host "::notice title=Sidecar signing::$($pes.Count) sidecar PE files signed: $publisher by their publisher (kept), $ours by Corelens's certificate."

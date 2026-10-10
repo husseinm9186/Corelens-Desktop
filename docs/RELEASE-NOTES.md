@@ -4,6 +4,22 @@ Newest first.
 
 ## 2.12.0 — 2026-10-10
 
+**Coreview is now Corelens Desktop**
+- The app has a new name. It installs as **Corelens Desktop**, beside the
+  Coreview it replaces rather than over it; uninstall Coreview once
+  Corelens Desktop has opened your projects.
+- Nothing is left behind. The first time Corelens Desktop starts, it copies
+  what Coreview kept on this computer into its own folders: every project
+  and folder, the saved logins (still encrypted), the settings, the logs
+  and diagnostics, the view settings, each project's undo history and any
+  unsaved recovery copy. A vault key kept in the system keychain is moved
+  across, so the vault still opens by itself. Coreview's own folders are
+  copied, not moved, and are never touched again.
+- `.coreview` project files, and icon folders described by a
+  `coreview-stencils.json`, open as before. New exports are `.corelens`.
+- Close Coreview before the first start of Corelens Desktop, so what is
+  copied is what was last saved.
+
 **Tools, dissolved**
 - The Tools screen is gone, and what it held lives where it is looked
   for: **Compare runs** in the panel's Monitor group; the two imports
@@ -60,7 +76,7 @@ Newest first.
 **What a link is, in its line**
 - A bundle is drawn as a double line, a tunnel dashed, a logical (layer-3)
   hop dotted and a transit circuit heavier, so what a link is still reads
-  when its labels are hidden. Coreview works the kind out from what a
+  when its labels are hidden. Corelens works the kind out from what a
   crawl found — a port-channel's members, a tunnel, a routed hop — or from
   a WAN cable type; **Kind** in the link's inspector sets it by hand. A
   line style chosen on the link still wins. The export draws the same.
@@ -172,10 +188,10 @@ Newest first.
   which verifies the download's signature against the key built into the app
   before running the installer; a download that fails that check is refused
   and says so.
-- **Check automatically when Coreview starts**, beside it, is off until
+- **Check automatically when Corelens starts**, beside it, is off until
   ticked. With it on, the same request goes out at start and a newer
   release is announced by an **Update to …** button in the top bar. With it
-  off, which is the default, Coreview contacts nobody.
+  off, which is the default, Corelens contacts nobody.
 - Every version is now published as a GitHub Release, with the installers,
   their updater signatures and checksums, and these notes beside them.
 
@@ -186,7 +202,7 @@ Newest first.
   the new tick on the Backups tab, each device is asked — one write into
   Cisco's configuration-copy table, with a read-write SNMP credential — to
   send its running or startup configuration to the SFTP server named under
-  Tools → Settings, and Coreview collects the file from there and files it
+  Tools → Settings, and Corelens collects the file from there and files it
   like any other capture, so history and before/after work unchanged. The
   SFTP server and its login live in Settings; the login is a vault kind of
   its own and is never offered to a device. A device without the table, or
@@ -200,7 +216,7 @@ Newest first.
 - README, the Windows install guide, the signing notes and the architecture
   notes brought up to date: the installers CI publishes and their artifact
   names, the dependency and command counts, and where secrets live.
-- The user guide describes every saved login being tried wherever Coreview
+- The user guide describes every saved login being tried wherever Corelens
   logs in.
 
 Nothing in the application changed since 2.7.0; this release rebuilds both
@@ -211,7 +227,7 @@ installers from the same code.
 **Discovery**
 - Every login saved in the project is tried on a device that refuses the
   first, then any second login typed for the run, under both engines — and
-  the same everywhere else Coreview logs in: backups, the SSH terminal, Path
+  the same everywhere else Corelens logs in: backups, the SSH terminal, Path
   check, Tracert and Path-Trace's checks from a device. Only a refused login
   moves on to the next; an unreachable device is not retried once per login.
 - A **Scan** box beside each subnet: the subnet is swept for devices that
@@ -245,7 +261,7 @@ The first release in which the catalog-driven collector is what **Discover
 devices** runs, and the first checked against real hardware end to end.
 
 **Discovery**
-- *Discover devices* runs the Coreview collector by default: each device is
+- *Discover devices* runs the Corelens collector by default: each device is
   recognised and sent only its own OS's read-only commands; CDP/LLDP
   neighbours, the default route's next hop and neighbours known only from
   ARP are followed within the hop, device and subnet limits. A next hop
@@ -261,7 +277,7 @@ devices** runs, and the first checked against real hardware end to end.
 
 - A stuck device no longer ends the run; Stop stops at once; a sidecar that
   stops answering is replaced.
-- FortiOS 7.6 replies that ntc's templates refused are read by Coreview's own
+- FortiOS 7.6 replies that ntc's templates refused are read by Corelens's own
   readers; a FortiSwitch has its own catalog.
 
 **Topology and paths**

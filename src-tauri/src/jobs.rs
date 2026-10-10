@@ -6,7 +6,7 @@
 //! Made that a refusal. Makes each running job a thing with an
 //! id, a kind, a start time, a phase, a count of what is done out of what is
 //! known, and a cancel — listed by `job_list`, stopped by `job_cancel`, and
-//! reported on one event, `coreview://job`, whenever any of that changes. The
+//! reported on one event, `corelens://job`, whenever any of that changes. The
 //! interface draws every job from the same snapshot rather than from three
 //! panels each keeping their own idea of what is running.
 //!

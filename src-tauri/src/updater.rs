@@ -1,8 +1,8 @@
-//! Checking GitHub for a newer Coreview, and installing one.
+//! Checking GitHub for a newer Corelens, and installing one.
 //!
 //! Nothing here runs unless asked. The page sends `check_for_update` when
 //! the **Check for updates** button in Settings is pressed, or at start when
-//! **Check automatically when Coreview starts** is on — and that setting is
+//! **Check automatically when Corelens starts** is on — and that setting is
 //! off until somebody switches it on. A check is one GET of `latest.json`
 //! from the repository's GitHub Releases; it carries this machine's address
 //! and the updater's User-Agent, and nothing about the operator, the
@@ -96,7 +96,7 @@ pub async fn install_update(app: AppHandle, pending: State<'_, Pending>) -> CmdR
         .download_and_install(
             move |chunk, total| {
                 downloaded += chunk as u64;
-                let _ = window.emit("coreview://update", Progress { downloaded, total });
+                let _ = window.emit("corelens://update", Progress { downloaded, total });
             },
             || {},
         )
@@ -118,7 +118,7 @@ pub fn explain(e: tauri_plugin_updater::Error) -> String {
         E::TargetNotFound(target) => format!("The newest release has no build for this platform ({target})."),
         E::TargetsNotFound(targets) => format!("The newest release has no build for this platform ({}).", targets.join(", ")),
         E::Minisign(_) | E::SignatureUtf8(_) => {
-            "The download's signature does not match Coreview's key, so it was not installed.".into()
+            "The download's signature does not match Corelens's key, so it was not installed.".into()
         }
         E::Io(err) => format!("The update could not be written to disk: {err}"),
         E::AuthenticationFailed => "The installer was not allowed to run; it needs an administrator's approval.".into(),
@@ -197,7 +197,7 @@ mod tests {
         let endpoints = updater["endpoints"].as_array().expect("endpoints");
         assert_eq!(endpoints.len(), 1, "one place to ask, and only one");
         let endpoint = endpoints[0].as_str().unwrap();
-        assert_eq!(endpoint, "https://github.com/husseinm9186/Coreview/releases/latest/download/latest.json");
+        assert_eq!(endpoint, "https://github.com/husseinm9186/Corelens-Desktop/releases/latest/download/latest.json");
         assert!(updater["dangerousInsecureTransportProtocol"].is_null());
         assert!(updater["dangerousAcceptInvalidCerts"].is_null());
         let pubkey = updater["pubkey"].as_str().expect("pubkey");

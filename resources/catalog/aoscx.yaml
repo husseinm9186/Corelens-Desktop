@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Aruba (HPE) AOS-CX (aoscx)
+# Corelens discovery catalog — Aruba (HPE) AOS-CX (aoscx)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Aruba (HPE)
@@ -38,7 +38,7 @@ session:
   paging:
     off:
       - no page
-    source: scrapli_community aruba_aoscx on_open; netmiko aruba_aoscx.py session_preparation; Coreview arubacx dialect (verified on the lab 6200F)
+    source: scrapli_community aruba_aoscx on_open; netmiko aruba_aoscx.py session_preparation; Corelens arubacx dialect (verified on the lab 6200F)
   ansi:
     strip: true
     source: netmiko aruba_aoscx.py ansi_escape_codes = True
@@ -78,8 +78,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: Coreview aoscx reader, met real hardware
-    coreview_reader: true
+    evidence: Corelens aoscx reader, met real hardware
+    corelens_reader: true
   - id: show_system
     cmd: show system
     gate: always
@@ -90,8 +90,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (5 captures); Coreview aoscx reader
-    coreview_reader: true
+    evidence: ntc-templates tests (5 captures); Corelens aoscx reader
+    corelens_reader: true
   - id: show_hostname
     cmd: show hostname
     gate: always
@@ -126,7 +126,7 @@ commands:
     timeout: 30
     verified: docs
     evidence: structured output (REST /rest/v10.xx/system/interfaces); field mapping from documentation
-    coreview_reader: true
+    corelens_reader: true
   - id: show_lldp_neighbor_info
     cmd: show lldp neighbor-info
     gate: always
@@ -151,7 +151,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (2 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_vsf
     cmd: show vsf
     gate: (cap.stack || cap.vpc_mlag_vsx)
@@ -163,7 +163,7 @@ commands:
     timeout: 30
     verified: docs
     evidence: structured output (REST /rest/v10.xx/system/vsf); field mapping from documentation
-    coreview_reader: true
+    corelens_reader: true
   - id: show_vsx_status
     cmd: show vsx status
     gate: (cap.stack || cap.vpc_mlag_vsx)
@@ -186,7 +186,7 @@ commands:
     timeout: 30
     verified: docs
     evidence: structured output (REST /rest/v10.xx/system/vsx); field mapping from documentation
-    coreview_reader: true
+    corelens_reader: true
   - id: show_module
     cmd: show module
     gate: (cap.stack || cap.vpc_mlag_vsx)
@@ -382,7 +382,7 @@ commands:
     timeout: 120
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_ipv6_neighbors_all_vrfs
     cmd: show ipv6 neighbors all-vrfs
     gate: always
@@ -416,7 +416,7 @@ commands:
     timeout: 120
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_ip_route_all_vrfs
     cmd: show ip route all-vrfs
     # Every CX has a table — its SVIs' subnets and a default at
@@ -431,7 +431,7 @@ commands:
     timeout: 120
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_ipv6_route_all_vrfs
     cmd: show ipv6 route all-vrfs
     gate: cap.routing

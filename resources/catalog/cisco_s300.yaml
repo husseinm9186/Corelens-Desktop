@@ -1,4 +1,4 @@
-# Coreview discovery catalog — Cisco Small Business Sx300/Sx350/Sx500/CBS (cisco_s300)
+# Corelens discovery catalog — Cisco Small Business Sx300/Sx350/Sx500/CBS (cisco_s300)
 #
 # 2026-10-01: the SG/CBS switches, whose CLI is not IOS — `show
 # system`, `show system id`, `terminal datadump`. Commands and parsers from
@@ -6,7 +6,7 @@
 # cisco_s300.py. First device to come.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Cisco

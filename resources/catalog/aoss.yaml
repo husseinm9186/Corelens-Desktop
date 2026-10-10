@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Aruba (HPE) ArubaOS-Switch / ProCurve (aoss)
+# Corelens discovery catalog — Aruba (HPE) ArubaOS-Switch / ProCurve (aoss)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Aruba (HPE)
@@ -40,7 +40,7 @@ session:
       - terminal width 511
       - no page
     needs_enable: true
-    source: netmiko hp_procurve.py session_preparation ("requires elevated privileges to disable output paging"); Coreview arubasw dialect (verified on the lab 2930M)
+    source: netmiko hp_procurve.py session_preparation ("requires elevated privileges to disable output paging"); Corelens arubasw dialect (verified on the lab 2930M)
   on_close:
     steps:
       - logout
@@ -87,8 +87,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (3 captures); Coreview aoss reader
-    coreview_reader: true
+    evidence: ntc-templates tests (3 captures); Corelens aoss reader
+    corelens_reader: true
   - id: show_version
     cmd: show version
     gate: always
@@ -98,8 +98,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (1 captures); Coreview aoss reader
-    coreview_reader: true
+    evidence: ntc-templates tests (1 captures); Corelens aoss reader
+    corelens_reader: true
   - id: show_modules
     cmd: show modules
     gate: always
@@ -139,8 +139,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (3 captures); Coreview aoss reader
-    coreview_reader: true
+    evidence: ntc-templates tests (3 captures); Corelens aoss reader
+    corelens_reader: true
   - id: show_lldp_info_remote_device
     cmd: show lldp info remote-device
     gate: always
@@ -150,8 +150,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (1 captures); Coreview aoss reader
-    coreview_reader: true
+    evidence: ntc-templates tests (1 captures); Corelens aoss reader
+    corelens_reader: true
   - id: show_lldp_info_remote_device_detail
     cmd: show lldp info remote-device detail
     gate: always
@@ -161,8 +161,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (2 captures); Coreview aoss reader
-    coreview_reader: true
+    evidence: ntc-templates tests (2 captures); Corelens aoss reader
+    corelens_reader: true
   - id: show_cdp_neighbors_detail
     cmd: show cdp neighbors detail
     gate: always
@@ -183,7 +183,7 @@ commands:
     timeout: 30
     verified: unverified
     evidence: no template, no structured output, no capture yet
-    coreview_reader: true
+    corelens_reader: true
   - id: show_vlans
     cmd: show vlans
     gate: cap.switching
@@ -214,8 +214,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (1 captures); Coreview aoss reader
-    coreview_reader: true
+    evidence: ntc-templates tests (1 captures); Corelens aoss reader
+    corelens_reader: true
   - id: show_lacp
     cmd: show lacp
     gate: cap.switching
@@ -275,8 +275,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: lab
-    evidence: ntc-templates tests (3 captures); Coreview aoss reader
-    coreview_reader: true
+    evidence: ntc-templates tests (3 captures); Corelens aoss reader
+    corelens_reader: true
   - id: show_running_config
     cmd: show running-config
     gate: always
@@ -296,8 +296,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: lab
-    evidence: ntc-templates tests (2 captures); Coreview aoss reader
-    coreview_reader: true
+    evidence: ntc-templates tests (2 captures); Corelens aoss reader
+    corelens_reader: true
   - id: show_ip_route
     cmd: show ip route
     gate: cap.routing
@@ -307,8 +307,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: lab
-    evidence: ntc-templates tests (1 captures); Coreview aoss reader
-    coreview_reader: true
+    evidence: ntc-templates tests (1 captures); Corelens aoss reader
+    corelens_reader: true
 live_path:
   - id: traceroute_dst_source_src
     cmd: traceroute {dst} source {src}

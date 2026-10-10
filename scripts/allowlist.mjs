@@ -1,7 +1,7 @@
 /**
  * The read-only allowlist, as the reconciliation and the catalog tests
- * apply it. The Rust collector (`crates/coreview-catalog/src/allowlist.rs`)
- * and the sidecar (`sidecar/coreview_sidecar/allowlist.py`) implement the
+ * apply it. The Rust collector (`crates/corelens-catalog/src/allowlist.rs`)
+ * and the sidecar (`sidecar/corelens_sidecar/allowlist.py`) implement the
  * same rule; `allowlist.test.ts` holds the three to one fixture,
  * `resources/catalog/allowlist-cases.json`.
  *

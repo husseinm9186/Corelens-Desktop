@@ -92,7 +92,7 @@ await page.addInitScript(({ p }) => {
         const d = (version) => ({ hostname: "SW-A", address: "192.0.2.10", addresses: [], probeTarget: "", class: "switch", platform: null, serial: null, version, neighbors: [], hops: 0, reachedBy: "ssh", attached: [] });
         return Promise.resolve({ devices: [d(args.id === "c1" ? "15.2(6)E" : "15.2(7)E")], notVisited: [], failures: [], cancelled: false });
       }
-      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/coreview-compare.out");
+      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/corelens-compare.out");
       if (cmd === "pick_export_target") return Promise.resolve({ token: `t-${next++}`, path: args.folder ? `${args.folder}/${args.filename}` : `/tmp/${args.filename}` });
       if (cmd === "pick_export_folder") return Promise.resolve({ token: `f-${next++}`, path: args.folder ?? "/tmp/picked" });
       if (cmd === "save_export") {
@@ -201,7 +201,7 @@ await page.evaluate((id) => {
   // Samples are the run's, so a run is going when they arrive —
   // before that fix they were applied with nothing running at all.
   window.__cvStore.setState({ session: { id: "s1", state: "running", startedAt: 1 } });
-  const emit = (e) => window.__cvEmit("coreview://engine", e);
+  const emit = (e) => window.__cvEmit("corelens://engine", e);
   [4, 6, 5, null, 7].forEach((rtt, i) => emit({
     kind: "sample", session_id: "s1", status: rtt === null ? "down" : "healthy",
     result: { probe_id: id, timestamp_ms: 2000 + i, outcome: rtt === null ? "timeout" : "success", rtt_ms: rtt, resolved: [], summary: "", error_message: null },

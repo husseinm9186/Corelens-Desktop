@@ -1,4 +1,4 @@
-# Coreview discovery catalog — FortiSwitchOS (fortiswitch)
+# Corelens discovery catalog — FortiSwitchOS (fortiswitch)
 #
 # 2026-09-29: split from `fortios`, whose fingerprint matched a
 # FortiSwitch and sent it FortiGate commands. Built against the replies of
@@ -6,7 +6,7 @@
 # the readers' fixtures keep that layout with invented values.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Fortinet
@@ -50,7 +50,7 @@ session:
     - end
     in_global: true
     source: netmiko fortinet_ssh.py disable_paging / cleanup; scrapli_community prepare_session / cleanup_session; spec prep
-  kex_note: 'netmiko fortinet_ssh.py preferred_kex: group14-sha1, group-exchange-sha1, group-exchange-sha256, group1-sha1 — Coreview already offers these'
+  kex_note: 'netmiko fortinet_ssh.py preferred_kex: group14-sha1, group-exchange-sha1, group-exchange-sha256, group1-sha1 — Corelens already offers these'
 role_hint:
 - match: FortiSwitch
   role: switch
@@ -69,7 +69,7 @@ commands:
   weight: light
   timeout: 30
   verified: lab
-  evidence: Coreview fortios reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
+  evidence: Corelens fortios reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
 - id: get_switch_lldp_neighbors_summary
   cmd: get switch lldp neighbors-summary
   gate: always
@@ -79,7 +79,7 @@ commands:
   weight: light
   timeout: 30
   verified: lab
-  evidence: Coreview fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
+  evidence: Corelens fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
 - id: diagnose_switch_mac_address_list
   cmd: diagnose switch mac-address list
   gate: always
@@ -89,7 +89,7 @@ commands:
   weight: heavy
   timeout: 120
   verified: lab
-  evidence: Coreview fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
+  evidence: Corelens fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
 - id: get_system_interface_physical
   cmd: get system interface physical
   gate: always
@@ -100,7 +100,7 @@ commands:
   weight: light
   timeout: 30
   verified: lab
-  evidence: Coreview fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
+  evidence: Corelens fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
 - id: get_router_info_routing_table_all
   cmd: get router info routing-table all
   gate: always
@@ -110,7 +110,7 @@ commands:
   weight: light
   timeout: 30
   verified: lab
-  evidence: Coreview fortios reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
+  evidence: Corelens fortios reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
 - id: get_system_arp
   cmd: get system arp
   gate: always
@@ -120,7 +120,7 @@ commands:
   weight: light
   timeout: 30
   verified: lab
-  evidence: ntc-templates tests (1 captures); Coreview fortios reader
+  evidence: ntc-templates tests (1 captures); Corelens fortios reader
 # 2026-10-01: the L3 and VLAN side, each reader met the lab's
 # FortiSwitch 224E through examples/try_commands (the capture stays off the
 # repository; the fixtures are its layout with invented values).
@@ -133,8 +133,8 @@ commands:
   weight: light
   timeout: 60
   verified: lab
-  evidence: Coreview fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab — the management address the summary form lacks
-  coreview_reader: true
+  evidence: Corelens fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab — the management address the summary form lacks
+  corelens_reader: true
 - id: diagnose_switch_vlan_list
   cmd: diagnose switch vlan list
   gate: always
@@ -144,8 +144,8 @@ commands:
   weight: heavy
   timeout: 120
   verified: lab
-  evidence: Coreview fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
-  coreview_reader: true
+  evidence: Corelens fortiswitch reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab
+  corelens_reader: true
 - id: show_system_interface
   cmd: show system interface
   gate: always
@@ -156,7 +156,7 @@ commands:
   weight: light
   timeout: 60
   verified: lab
-  evidence: Coreview fortinet reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab — VLAN interfaces and secondary addresses
-  coreview_reader: true
+  evidence: Corelens fortinet reader, met a FortiSwitch 224E on FortiSwitchOS 7.6.1 in a lab — VLAN interfaces and secondary addresses
+  corelens_reader: true
 live_path: []
 note: 'FortiSwitchOS standalone. Its commands and readers met a FortiSwitch 224E in the operator''s lab; a FortiSwitch managed over FortiLink is read through its FortiGate.'

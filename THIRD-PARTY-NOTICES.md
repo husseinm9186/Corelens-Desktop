@@ -1,15 +1,15 @@
 # Third-party notices
 
-Coreview is proprietary software, free to use — see `LICENSE`. It is built on
+Corelens is proprietary software, free to use — see `LICENSE`. It is built on
 the open-source components listed here, which keep their own licences. Nothing
-in Coreview's licence changes them, and the notices those licences require are
+in Corelens's licence changes them, and the notices those licences require are
 reproduced in full below, which is why this file is installed alongside the
 application rather than only kept in the repository.
 
 Generated from the real dependency trees by `scripts/third-party-notices.mjs`.
 Run it again whenever dependencies change.
 
-**No component is under a licence that prevents Coreview being distributed as
+**No component is under a licence that prevents Corelens being distributed as
 proprietary software.** There is no GPL, AGPL or SSPL anywhere in either tree —
 the generator fails rather than writes this file if one ever appears.
 
@@ -18,7 +18,7 @@ the generator fails rather than writes this file if one ever appears.
 5 components are under the MPL-2.0, which is
 copyleft *per file*: linking them into a larger proprietary work is expressly
 allowed, and the only obligation is to make the source of any **modified**
-MPL-covered file available. Coreview uses them unmodified, as published. Their
+MPL-covered file available. Corelens uses them unmodified, as published. Their
 source is at the addresses below.
 
 - **cssparser 0.36.0** — https://github.com/servo/rust-cssparser
@@ -828,7 +828,7 @@ in the `sidecar` folder of the installation directory (`Lib\site-packages`),
 where they can be replaced with a modified version without touching
 anything else — which is what the LGPL asks of a program that uses a
 library under it. Their source is at the addresses above, and on request
-from the author of Coreview.
+from the author of Corelens.
 
 ## Collector sidecar — 11 components in the Windows installer
 
@@ -23924,7 +23924,7 @@ under the Apache License, Version 2.0. The full licence text is in LICENSE
 beside this file, and it travels with the application through
 bundle.resources and THIRD-PARTY-NOTICES.md.
 
-Only the tests for the platforms Coreview's catalogs name are kept; the
+Only the tests for the platforms Corelens's catalogs name are kept; the
 templates are kept whole. Rerun `scripts/vendor-ntc.sh <checkout>` to
 refresh, then `node scripts/reconcile-ntc.mjs`.
 ```

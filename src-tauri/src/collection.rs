@@ -7,10 +7,10 @@
 //! the database keeps rows, statuses and durations, never a reply.
 
 use std::path::{Path, PathBuf};
-use coreview_catalog::Catalog;
-use coreview_collect::run::{DeviceRun, RunEvent, RunOptions, RunSink, Target};
-use coreview_collect::sidecar::{Auth, Sidecar, SidecarLocation};
-use coreview_collect::tables::normalise_all;
+use corelens_catalog::Catalog;
+use corelens_collect::run::{DeviceRun, RunEvent, RunOptions, RunSink, Target};
+use corelens_collect::sidecar::{Auth, Sidecar, SidecarLocation};
+use corelens_collect::tables::normalise_all;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
@@ -90,7 +90,7 @@ pub struct FollowInput {
     pub subnet_limit: Option<String>,
 }
 
-/// One event on `coreview://collection`. 5: `rename_all` names the
+/// One event on `corelens://collection`. 5: `rename_all` names the
 /// variants; `rename_all_fields` is what makes `run_id` reach the interface
 /// as the `runId` it reads.
 #[derive(Serialize, Clone)]
@@ -117,7 +117,7 @@ struct Emit {
 
 impl Emit {
     fn send(&self, ev: CollectionEvent) {
-        let _ = self.app.emit("coreview://collection", &ev);
+        let _ = self.app.emit("corelens://collection", &ev);
     }
 }
 
@@ -168,13 +168,13 @@ fn templates_dir(app: &AppHandle) -> CmdResult<PathBuf> {
         .ok_or_else(|| "The parser templates are not installed.".to_string())
 }
 
-/// Where the sidecar's interpreter is. `COREVIEW_SIDECAR_PYTHON` and
-/// `COREVIEW_SIDECAR_DIR` override for development; otherwise the bundled
+/// Where the sidecar's interpreter is. `CORELENS_SIDECAR_PYTHON` and
+/// `CORELENS_SIDECAR_DIR` override for development; otherwise the bundled
 /// `sidecar/` resource; otherwise the repository's venv.
 pub fn sidecar_location(app: &AppHandle) -> CmdResult<SidecarLocation> {
     let templates = templates_dir(app)?;
-    if let Ok(python) = std::env::var("COREVIEW_SIDECAR_PYTHON") {
-        let cwd = std::env::var("COREVIEW_SIDECAR_DIR").map(PathBuf::from).unwrap_or_else(|_| repo_root().join("sidecar"));
+    if let Ok(python) = std::env::var("CORELENS_SIDECAR_PYTHON") {
+        let cwd = std::env::var("CORELENS_SIDECAR_DIR").map(PathBuf::from).unwrap_or_else(|_| repo_root().join("sidecar"));
         return Ok(SidecarLocation { python: PathBuf::from(python), cwd, templates_dir: templates });
     }
     // The installed sidecar: an embeddable CPython whose ._pth puts
@@ -192,7 +192,7 @@ pub fn sidecar_location(app: &AppHandle) -> CmdResult<SidecarLocation> {
             return Ok(SidecarLocation { python: candidate, cwd: dev, templates_dir: templates });
         }
     }
-    Err("The collector sidecar is not installed. In development: `cd sidecar && python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements.txt`, or set COREVIEW_SIDECAR_PYTHON.".into())
+    Err("The collector sidecar is not installed. In development: `cd sidecar && python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements.txt`, or set CORELENS_SIDECAR_PYTHON.".into())
 }
 
 /// The catalogs, and none of them unless every one is sound: a catalog
@@ -201,8 +201,8 @@ pub fn sidecar_location(app: &AppHandle) -> CmdResult<SidecarLocation> {
 /// before it starts. Data the app ships is still checked at the
 /// door, because a resource folder is a folder.
 /// The Rust TextFSM engine over the same templates the sidecar reads.
-fn rust_engine(app: &AppHandle) -> CmdResult<std::sync::Arc<coreview_catalog::textfsm::Engine>> {
-    Ok(std::sync::Arc::new(coreview_catalog::textfsm::Engine::new(templates_dir(app)?)))
+fn rust_engine(app: &AppHandle) -> CmdResult<std::sync::Arc<corelens_catalog::textfsm::Engine>> {
+    Ok(std::sync::Arc::new(corelens_catalog::textfsm::Engine::new(templates_dir(app)?)))
 }
 
 /// the feature flag: the project setting `collectorShadow`.
@@ -213,11 +213,11 @@ fn shadow_on(state: &AppState, project_id: &str) -> bool {
 
 fn load_catalogs(app: &AppHandle) -> CmdResult<Vec<Catalog>> {
     let dir = catalog_dir(app)?;
-    let catalogs = coreview_catalog::load_dir(&dir).map_err(|e| format!("The discovery catalogs could not be read: {e}"))?;
+    let catalogs = corelens_catalog::load_dir(&dir).map_err(|e| format!("The discovery catalogs could not be read: {e}"))?;
     let templates = templates_dir(app).ok();
     let mut problems = Vec::new();
     for c in &catalogs {
-        problems.extend(coreview_catalog::load::problems(c, templates.as_deref()));
+        problems.extend(corelens_catalog::load::problems(c, templates.as_deref()));
     }
     if !problems.is_empty() {
         return Err(format!("The discovery catalogs are not sound and nothing was sent: {}", problems.join("; ")));
@@ -260,7 +260,7 @@ fn snmp_eligible(run: &DeviceRun) -> bool {
 
 /// The SNMP tables appended to the device's run as steps, stored and
 /// normalised like any other; the SSH failure stays recorded beside them.
-fn apply_snmp_fallback(run: &mut DeviceRun, read: Result<Vec<coreview_discover::snmp_collect::SnmpTable>, coreview_discover::snmp::SnmpError>, sink: &dyn RunSink) {
+fn apply_snmp_fallback(run: &mut DeviceRun, read: Result<Vec<corelens_discover::snmp_collect::SnmpTable>, corelens_discover::snmp::SnmpError>, sink: &dyn RunSink) {
     let ssh = run.failure.clone().unwrap_or_default();
     match read {
         Ok(tables) => {
@@ -270,22 +270,22 @@ fn apply_snmp_fallback(run: &mut DeviceRun, read: Result<Vec<coreview_discover::
                 run.version_text = v.to_string();
             }
             for t in tables {
-                let step = coreview_catalog::Step {
+                let step = corelens_catalog::Step {
                     id: t.id.into(),
                     cmd: t.mib.into(),
                     gate: "snmp fallback".into(),
                     because: vec![format!("ssh: {ssh}")],
                     parser: "snmp".into(),
                     feeds: t.feeds.iter().map(|f| f.to_string()).collect(),
-                    weight: coreview_catalog::Weight::Light,
+                    weight: corelens_catalog::Weight::Light,
                     timeout: 5,
-                    verified: coreview_catalog::Verified::Docs,
+                    verified: corelens_catalog::Verified::Docs,
                     context: None,
                     scope: None,
                 };
                 let status = if t.rows.is_empty() { "unsupported" } else { "ok" };
-                let outcome = coreview_collect::run::CommandOutcome { status: status.into(), rows: t.rows, raw: String::new(), duration_ms: 0, error: None, shadow: None, engine: Some("snmp".into()) };
-                let sr = coreview_collect::run::StepResult { step, outcome };
+                let outcome = corelens_collect::run::CommandOutcome { status: status.into(), rows: t.rows, raw: String::new(), duration_ms: 0, error: None, shadow: None, engine: Some("snmp".into()) };
+                let sr = corelens_collect::run::StepResult { step, outcome };
                 sink.event(RunEvent::Step(&sr));
                 run.results.push(sr);
             }
@@ -297,8 +297,8 @@ fn apply_snmp_fallback(run: &mut DeviceRun, read: Result<Vec<coreview_discover::
 #[cfg(test)]
 mod snmp_fallback_tests {
     use super::*;
-    use coreview_collect::run::Quiet;
-    use coreview_discover::snmp_collect::SnmpTable;
+    use corelens_collect::run::Quiet;
+    use corelens_discover::snmp_collect::SnmpTable;
     use serde_json::json;
 
     /// After the first login is refused, every distinct
@@ -347,7 +347,7 @@ mod snmp_fallback_tests {
         assert_eq!(run.results[1].outcome.status, "unsupported", "a MIB with nothing in it is said as such");
         assert!(run.log.iter().any(|l| l.contains("read over SNMP instead")));
         let mut none = DeviceRun { host: "192.0.2.9".into(), failure: Some("timeout".into()), ..Default::default() };
-        apply_snmp_fallback(&mut none, Err(coreview_discover::snmp::SnmpError::NothingReturned { host: "192.0.2.9".into() }), &Quiet);
+        apply_snmp_fallback(&mut none, Err(corelens_discover::snmp::SnmpError::NothingReturned { host: "192.0.2.9".into() }), &Quiet);
         assert_eq!(none.os, None);
         assert!(none.log.iter().any(|l| l.contains("SNMP did not answer either")));
     }
@@ -388,7 +388,7 @@ fn persist_device(state: &AppState, run_id: &str, run: &DeviceRun, diagnostic: O
         let path = host_dir.join(&name);
         // Configuration secrets as well as the login's own: a capability probe
         // such as `show run | include ^crypto` carries a pre-shared key line.
-        std::fs::write(&path, coreview_discover::support::redact(&coreview_collect::scrub::scrub(raw), secrets)).ok()?;
+        std::fs::write(&path, corelens_discover::support::redact(&corelens_collect::scrub::scrub(raw), secrets)).ok()?;
         Some(format!("{}/{}", host_dir.file_name()?.to_string_lossy(), name))
     };
     for p in &run.probes {
@@ -422,7 +422,7 @@ fn persist_device(state: &AppState, run_id: &str, run: &DeviceRun, diagnostic: O
         seq += 1;
         commands += 1;
         let raw_ref = keep(seq, &r.step.cmd, &r.outcome.raw);
-        let rows = if r.outcome.status == "ok" { coreview_collect::tables::rows_of(&r.step.parser, &r.outcome) } else { Vec::new() };
+        let rows = if r.outcome.status == "ok" { corelens_collect::tables::rows_of(&r.step.parser, &r.outcome) } else { Vec::new() };
         let e = cdb::LogEntry {
             device_id: device_id.clone(),
             seq,
@@ -439,14 +439,14 @@ fn persist_device(state: &AppState, run_id: &str, run: &DeviceRun, diagnostic: O
             rows: rows.len() as i64,
             raw_ref,
             // A parse error quotes the line it stopped on, and the shadow detail a value.
-            error: r.outcome.error.as_deref().map(|e| coreview_discover::support::redact(&coreview_collect::scrub::scrub(e), secrets).trim_end().to_string()),
+            error: r.outcome.error.as_deref().map(|e| corelens_discover::support::redact(&corelens_collect::scrub::scrub(e), secrets).trim_end().to_string()),
             verified: Some(format!("{:?}", r.step.verified).to_lowercase()),
             shadow: r.outcome.shadow.as_ref().map(|s| s.verdict.clone()),
-            shadow_detail: r.outcome.shadow.as_ref().and_then(|s| s.detail.as_deref().map(|d| coreview_discover::support::redact(&coreview_collect::scrub::scrub(d), secrets).trim_end().to_string())),
+            shadow_detail: r.outcome.shadow.as_ref().and_then(|s| s.detail.as_deref().map(|d| corelens_discover::support::redact(&corelens_collect::scrub::scrub(d), secrets).trim_end().to_string())),
             engine: r.outcome.engine.clone(),
         };
         cdb::write_log(&conn, run_id, &device_id, seq, &e).map_err(db_err)?;
-        for n in coreview_collect::tables::rows_for_step(&r.step, &rows) {
+        for n in corelens_collect::tables::rows_for_step(&r.step, &rows) {
             cdb::write_row(&conn, run_id, &device_id, &r.step.id, &n).map_err(db_err)?;
         }
     }
@@ -495,8 +495,8 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
     // the first is refused — the project's other saved SSH logins, in order,
     // then the typed second login, each distinct one once (never the same
     // credential twice: the lockout rule).
-    let transport = coreview_collect::run::Transport::parse(input.transport.as_deref());
-    let auth_of = |c: &coreview_discover::ssh::Credentials| -> Auth {
+    let transport = corelens_collect::run::Transport::parse(input.transport.as_deref());
+    let auth_of = |c: &corelens_discover::ssh::Credentials| -> Auth {
         let s = c.secrets();
         Auth { username: c.username.clone(), password: s.first().cloned().unwrap_or_default(), enable: s.get(1).cloned(), private_key: None }
     };
@@ -579,26 +579,26 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
     };
     // Parsed before anything starts, so a subnet too large to sweep
     // is refused with its reason rather than cut short.
-    let scan_subnets = coreview_discover::subnetscan::parse_scan_subnets(&input.scan_subnets)?;
+    let scan_subnets = corelens_discover::subnetscan::parse_scan_subnets(&input.scan_subnets)?;
     // Following neighbours, when asked; otherwise the targets alone.
     let following = input.follow.is_some();
     let limits = match &input.follow {
-        Some(f) => coreview_collect::follow::Limits {
+        Some(f) => corelens_collect::follow::Limits {
             login_classes: crate::discovery::parse_classes(&input.login_classes),
             max_hops: f.max_hops.min(16),
             max_devices: f.max_devices.clamp(1, 500),
-            subnets: f.subnet_limit.as_deref().unwrap_or("").split([',', ';', ' ', '\n']).map(str::trim).filter(|s| !s.is_empty()).map(coreview_collect::follow::parse_subnet).collect::<Result<Vec<_>, _>>()?,
+            subnets: f.subnet_limit.as_deref().unwrap_or("").split([',', ';', ' ', '\n']).map(str::trim).filter(|s| !s.is_empty()).map(corelens_collect::follow::parse_subnet).collect::<Result<Vec<_>, _>>()?,
         },
         // A scan adds devices of its own, so it lifts the "targets
         // alone" count to the panel's device limit.
-        None => coreview_collect::follow::Limits { max_hops: 0, max_devices: if scan_subnets.is_empty() { targets.len() } else { 500 }, subnets: Vec::new(), login_classes: Vec::new() },
+        None => corelens_collect::follow::Limits { max_hops: 0, max_devices: if scan_subnets.is_empty() { targets.len() } else { 500 }, subnets: Vec::new(), login_classes: Vec::new() },
     };
     let port = input.port;
     let os_hint = input.os_hint.clone().filter(|s| !s.trim().is_empty());
     let role_override = input.role_override.clone().filter(|s| !s.trim().is_empty());
     let app2 = app.clone();
     let run_id2 = run_id.clone();
-    let _ = app.emit("coreview://collection", &CollectionEvent::Started { run_id: run_id.clone(), targets: targets.len() });
+    let _ = app.emit("corelens://collection", &CollectionEvent::Started { run_id: run_id.clone(), targets: targets.len() });
     tauri::async_runtime::spawn(async move {
         use tauri::Manager;
         let _ticket = ticket;
@@ -611,21 +611,21 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
                 if let Ok(conn) = state_arc.db.lock() {
                     let _ = cdb::finish_run(&conn, &run_id2, "failed");
                 }
-                let _ = app2.emit("coreview://collection", &CollectionEvent::Failed { run_id: run_id2.clone(), error: e.to_string() });
+                let _ = app2.emit("corelens://collection", &CollectionEvent::Failed { run_id: run_id2.clone(), error: e.to_string() });
                 return;
             }
         };
-        let mut slot = coreview_collect::collector::SidecarSlot::started(location, first);
+        let mut slot = corelens_collect::collector::SidecarSlot::started(location, first);
         let mut devices = 0usize;
         let mut failed = 0usize;
         let mut cancelled = false;
-        let mut frontier = coreview_collect::follow::Frontier::new(&targets, limits);
+        let mut frontier = corelens_collect::follow::Frontier::new(&targets, limits);
         // The ticked subnets are swept while the neighbours are
         // collected; what answered is queued once the neighbours run out.
         let mut sweep = (!scan_subnets.is_empty()).then(|| {
             let token = token.clone();
             let subnets = scan_subnets.clone();
-            tokio::spawn(async move { coreview_discover::subnetscan::sweep_login_port(&subnets, port, coreview_discover::subnetscan::SCAN_TIMEOUT, &token).await })
+            tokio::spawn(async move { corelens_discover::subnetscan::sweep_login_port(&subnets, port, corelens_discover::subnetscan::SCAN_TIMEOUT, &token).await })
         });
         loop {
             let Some((host, hop)) = frontier.next_device() else {
@@ -639,7 +639,7 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
                 };
                 let mut added = 0;
                 for scan in &scans {
-                    let _ = app2.emit("coreview://collection", &CollectionEvent::Scanned { run_id: run_id2.clone(), subnet: scan.subnet.clone(), tried: scan.tried, answered: scan.answered.len() });
+                    let _ = app2.emit("corelens://collection", &CollectionEvent::Scanned { run_id: run_id2.clone(), subnet: scan.subnet.clone(), tried: scan.tried, answered: scan.answered.len() });
                     added += frontier.add_scanned(&scan.answered);
                 }
                 if added == 0 {
@@ -655,7 +655,7 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
             let total = (devices + 1 + frontier.waiting()) as u64;
             progress.set(format!("Collecting {host}"), devices as u64, Some(total));
             let device_id = device_id_of(host);
-            let _ = app2.emit("coreview://collection", &CollectionEvent::Device { run_id: run_id2.clone(), device_id: device_id.clone(), host: host.clone(), phase: "connecting".into() });
+            let _ = app2.emit("corelens://collection", &CollectionEvent::Device { run_id: run_id2.clone(), device_id: device_id.clone(), host: host.clone(), phase: "connecting".into() });
             let sink = Emit { app: app2.clone(), run_id: run_id2.clone(), device_id: device_id.clone() };
             let known_host_key = host_keys.lock().ok().and_then(|k| k.known(host, port));
             // The hint and the role override are for what the operator named, not what was followed.
@@ -674,7 +674,7 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
             if run.failure.as_deref() == Some("auth") {
                 for (nth, login) in logins_after_first(&auth, &more_logins).iter().enumerate() {
                     let phase = if nth == 0 { "second login".to_string() } else { format!("login {}", nth + 2) };
-                    let _ = app2.emit("coreview://collection", &CollectionEvent::Device { run_id: run_id2.clone(), device_id: device_id.clone(), host: host.clone(), phase });
+                    let _ = app2.emit("corelens://collection", &CollectionEvent::Device { run_id: run_id2.clone(), device_id: device_id.clone(), host: host.clone(), phase });
                     let Some(mut again) = slot.collect(&catalogs, &target, login, &options, &sink, &token).await else {
                         cancelled = true;
                         break;
@@ -697,20 +697,20 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
                 if let Ok(conn) = state_arc.db.lock() {
                     let _ = cdb::finish_run(&conn, &run_id2, "failed");
                 }
-                let _ = app2.emit("coreview://collection", &CollectionEvent::Failed { run_id: run_id2.clone(), error: reason });
+                let _ = app2.emit("corelens://collection", &CollectionEvent::Failed { run_id: run_id2.clone(), error: reason });
                 slot.quit().await;
                 return;
             }
             // Stop ends the SNMP and REST phases at once as well.
             let rest = async {
                 if let (Some(snmp), true) = (&snmp_auth, snmp_eligible(&run)) {
-                    let read = coreview_discover::snmp_collect::read_for_collection(host, 161, snmp, std::time::Duration::from_secs(5)).await;
+                    let read = corelens_discover::snmp_collect::read_for_collection(host, 161, snmp, std::time::Duration::from_secs(5)).await;
                     apply_snmp_fallback(&mut run, read, &sink);
                 }
                 if let Some(login) = &api_login {
                     // The REST side, its certificate pinned in the same store as SSH host keys.
                     let known = |h: &str, p: u16| host_keys.lock().ok().and_then(|k| k.known(h, p));
-                    if let Some(first) = coreview_collect::api::collect_for(&mut run, &catalogs, login, fmc_host.as_deref(), known, &sink).await {
+                    if let Some(first) = corelens_collect::api::collect_for(&mut run, &catalogs, login, fmc_host.as_deref(), known, &sink).await {
                         if let Ok(mut k) = host_keys.lock() {
                             k.remember(&first.host, first.port, &first.fingerprint);
                         }
@@ -743,14 +743,14 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
             };
             if following {
                 // Neighbours with no address to reach them on are listed, not dropped.
-                let found = coreview_collect::follow::found_of_run(&run);
+                let found = corelens_collect::follow::found_of_run(&run);
                 frontier.learn_found(hop, &found);
             }
             devices += 1;
             if run.failure.is_some() {
                 failed += 1;
             }
-            let _ = app2.emit("coreview://collection", &CollectionEvent::DeviceDone { run_id: run_id2.clone(), device_id, host: host.clone(), os: run.os.clone(), failure: run.failure.clone(), commands });
+            let _ = app2.emit("corelens://collection", &CollectionEvent::DeviceDone { run_id: run_id2.clone(), device_id, host: host.clone(), os: run.os.clone(), failure: run.failure.clone(), commands });
             // A sidecar that stopped answering has been replaced; the run goes on.
         }
         slot.quit().await;
@@ -758,7 +758,7 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
             let _ = cdb::finish_run(&conn, &run_id2, if cancelled { "cancelled" } else { "finished" });
         }
         progress.set("Finished", devices as u64, Some(devices as u64));
-        let _ = app2.emit("coreview://collection", &CollectionEvent::Finished { run_id: run_id2, devices, failed, cancelled });
+        let _ = app2.emit("corelens://collection", &CollectionEvent::Finished { run_id: run_id2, devices, failed, cancelled });
     });
     Ok(run_id)
 }
@@ -866,7 +866,7 @@ pub async fn import_captures(app: AppHandle, state: State<'_, AppState>, project
     sidecar.quit().await;
     let conn = state.db.lock().map_err(db_err)?;
     cdb::finish_run(&conn, &run_id, "finished").map_err(db_err)?;
-    let _ = app.emit("coreview://collection", &CollectionEvent::Finished { run_id: run_id.clone(), devices: imported, failed: 0, cancelled: false });
+    let _ = app.emit("corelens://collection", &CollectionEvent::Finished { run_id: run_id.clone(), devices: imported, failed: 0, cancelled: false });
     Ok(run_id)
 }
 
@@ -933,10 +933,10 @@ fn files_for(files: &[(String, PathBuf)], cmd: &str) -> Vec<(Option<String>, Pat
 }
 
 async fn import_one(sidecar: &mut Sidecar, catalogs: &[Catalog], host: &str, files: &[(String, PathBuf)], options: &RunOptions) -> DeviceRun {
-    use coreview_catalog::{plan, Facts};
-    use coreview_collect::capabilities::{apply_probe, initial_facts};
-    use coreview_collect::fingerprint::{identify, probes};
-    use coreview_collect::run::{CommandOutcome, ProbeResult, StepResult};
+    use corelens_catalog::{plan, Facts};
+    use corelens_collect::capabilities::{apply_probe, initial_facts};
+    use corelens_collect::fingerprint::{identify, probes};
+    use corelens_collect::run::{CommandOutcome, ProbeResult, StepResult};
 
     let mut run = DeviceRun { host: host.to_string(), ..Default::default() };
     let read = |p: &Path| std::fs::read_to_string(p).unwrap_or_default();
@@ -987,7 +987,7 @@ async fn import_one(sidecar: &mut Sidecar, catalogs: &[Catalog], host: &str, fil
     // Every command with a file is worth parsing whatever its gate said.
     for c in &catalog.commands {
         if !files_for(files, &c.cmd).is_empty() {
-            for name in coreview_catalog::Gate::parse(&c.gate).map(|g| g.names()).unwrap_or_default() {
+            for name in corelens_catalog::Gate::parse(&c.gate).map(|g| g.names()).unwrap_or_default() {
                 if let Some(flag) = name.strip_prefix("cap.") {
                     facts.caps.insert(flag.to_string());
                 }
@@ -1002,13 +1002,13 @@ async fn import_one(sidecar: &mut Sidecar, catalogs: &[Catalog], host: &str, fil
         let candidates: Vec<PathBuf> = files_for(files, &step.cmd).into_iter().map(|(_, p)| p).collect();
         let Some(path) = candidates.first() else { continue };
         let raw = read(path);
-        let parser = coreview_collect::run::sidecar_parser(step, catalog, options);
+        let parser = corelens_collect::run::sidecar_parser(step, catalog, options);
         let outcome = match sidecar.parse(&catalog.os, &step.cmd, &parser, &also, &raw).await {
             Ok(r) => {
                 let mut o: CommandOutcome = r.into();
-                coreview_collect::run::settle(&mut o, step, catalog, &also, options);
+                corelens_collect::run::settle(&mut o, step, catalog, &also, options);
                 if step.parser == "raw" {
-                    o.raw = coreview_collect::scrub::scrub(&o.raw);
+                    o.raw = corelens_collect::scrub::scrub(&o.raw);
                 }
                 o
             }
@@ -1093,7 +1093,7 @@ mod tests {
 /// CDP/LLDP neighbours, routing neighbours, routes and overlays, with devices
 /// matched by serial and MAC rather than by the address each run reached.
 #[tauri::command(async)]
-pub fn collection_diff(state: State<'_, AppState>, before: String, after: String) -> CmdResult<coreview_topology::diff::RunDiff> {
+pub fn collection_diff(state: State<'_, AppState>, before: String, after: String) -> CmdResult<corelens_topology::diff::RunDiff> {
     let (bi, ai) = {
         let conn = state.db.lock().map_err(db_err)?;
         let bp = cdb::run_project(&conn, before.trim()).map_err(db_err)?.ok_or("The earlier run no longer exists.")?;
@@ -1103,15 +1103,15 @@ pub fn collection_diff(state: State<'_, AppState>, before: String, after: String
         }
         (cdb::topology_input(&conn, before.trim()).map_err(db_err)?, cdb::topology_input(&conn, after.trim()).map_err(db_err)?)
     };
-    let (gb, ga) = (coreview_topology::build(&bi), coreview_topology::build(&ai));
-    Ok(coreview_topology::diff::diff(coreview_topology::diff::Side { graph: &gb, devices: &bi }, coreview_topology::diff::Side { graph: &ga, devices: &ai }))
+    let (gb, ga) = (corelens_topology::build(&bi), corelens_topology::build(&ai));
+    Ok(corelens_topology::diff::diff(corelens_topology::diff::Side { graph: &gb, devices: &bi }, corelens_topology::diff::Side { graph: &ga, devices: &ai }))
 }
 
 // ------------------------------------------------------------------- path
 
 /// What a trace request may carry. The builder is pure and bounded;
 /// these limits keep one request from asking it for a runaway walk.
-fn check_path_request(r: &coreview_path::Request) -> CmdResult<()> {
+fn check_path_request(r: &corelens_path::Request) -> CmdResult<()> {
     let short = |s: &str, n: usize, what: &str| if s.len() > n { Err(format!("{what} is longer than {n} characters.")) } else { Ok(()) };
     if r.from.trim().is_empty() || r.to.trim().is_empty() {
         return Err("A trace needs where it starts and where it goes.".into());
@@ -1142,7 +1142,7 @@ fn check_path_request(r: &coreview_path::Request) -> CmdResult<()> {
 }
 
 /// The model of one run: its devices, and the graph P2 builds from them.
-fn path_model(state: &AppState, run_id: &str) -> CmdResult<coreview_path::Net> {
+fn path_model(state: &AppState, run_id: &str) -> CmdResult<corelens_path::Net> {
     let input = {
         let conn = state.db.lock().map_err(db_err)?;
         cdb::topology_input(&conn, run_id).map_err(db_err)?
@@ -1150,25 +1150,25 @@ fn path_model(state: &AppState, run_id: &str) -> CmdResult<coreview_path::Net> {
     if input.is_empty() {
         return Err("That collection run reached no device, so there is nothing to trace over.".into());
     }
-    let graph = coreview_topology::build(&input);
-    Ok(coreview_path::Net::build(&input, &graph))
+    let graph = corelens_topology::build(&input);
+    Ok(corelens_path::Net::build(&input, &graph))
 }
 
 /// The modeled path over a collection run — the way there,
 /// the way back and how they differ, and the comparison with a traceroute
 /// when the request carries one.
 #[tauri::command(async)]
-pub fn collection_path(state: State<'_, AppState>, run_id: String, request: coreview_path::Request) -> CmdResult<coreview_path::Outcome> {
+pub fn collection_path(state: State<'_, AppState>, run_id: String, request: corelens_path::Request) -> CmdResult<corelens_path::Outcome> {
     check_path_request(&request)?;
     let net = path_model(&state, run_id.trim())?;
-    Ok(coreview_path::run(&net, &request))
+    Ok(corelens_path::run(&net, &request))
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PathLiveInput {
     pub run_id: String,
-    pub request: coreview_path::Request,
+    pub request: corelens_path::Request,
     /// A saved login (must belong to the open project), else `credentials`.
     pub credential_id: Option<String>,
     pub port: u16,
@@ -1183,8 +1183,8 @@ pub struct LiveHop {
     pub device: String,
     pub host: Option<String>,
     pub os: Option<String>,
-    pub run: Option<coreview_collect::live::LiveRun>,
-    pub check: coreview_path::compare::LiveCheck,
+    pub run: Option<corelens_collect::live::LiveRun>,
+    pub check: corelens_path::compare::LiveCheck,
 }
 
 #[derive(Serialize)]
@@ -1208,7 +1208,7 @@ fn mac_for(os: &str, hex12: &str) -> String {
 }
 
 /// The values a live command's placeholders are filled from, for one hop.
-fn live_vars(hop: &coreview_path::walk::Hop, os: &str, request: &coreview_path::Request) -> std::collections::BTreeMap<String, String> {
+fn live_vars(hop: &corelens_path::walk::Hop, os: &str, request: &corelens_path::Request) -> std::collections::BTreeMap<String, String> {
     let mut v = std::collections::BTreeMap::new();
     let mut put = |k: &str, val: Option<String>| {
         if let Some(val) = val.filter(|x| !x.is_empty()) {
@@ -1227,7 +1227,7 @@ fn live_vars(hop: &coreview_path::walk::Hop, os: &str, request: &coreview_path::
     put("z2", hop.firewall.as_ref().and_then(|f| f.zone_out.clone()));
     let proto = request.protocol.as_deref().map(|p| p.trim().to_ascii_lowercase());
     put("proto", proto.clone());
-    put("p", proto.as_deref().and_then(coreview_path::firewall::proto_number).map(|n| n.to_string()));
+    put("p", proto.as_deref().and_then(corelens_path::firewall::proto_number).map(|n| n.to_string()));
     put("dport", request.port.map(|p| p.to_string()));
     put("dp", request.port.map(|p| p.to_string()));
     put("sport", request.source_port.map(|p| p.to_string()));
@@ -1236,7 +1236,7 @@ fn live_vars(hop: &coreview_path::walk::Hop, os: &str, request: &coreview_path::
 }
 
 /// What the comparison reads from one answer: its rows as route rows.
-fn evidence(a: &coreview_collect::live::LiveAnswer) -> coreview_path::compare::LiveEvidence {
+fn evidence(a: &corelens_collect::live::LiveAnswer) -> corelens_path::compare::LiveEvidence {
     let rows = normalise_all(&["route".to_string()], &a.rows);
     let mut next_hops = Vec::new();
     let mut interfaces = Vec::new();
@@ -1248,7 +1248,7 @@ fn evidence(a: &coreview_collect::live::LiveAnswer) -> coreview_path::compare::L
             interfaces.push(i.clone());
         }
     }
-    coreview_path::compare::LiveEvidence { command: a.command.clone(), status: a.status.clone(), next_hops, interfaces, raw: a.raw.clone() }
+    corelens_path::compare::LiveEvidence { command: a.command.clone(), status: a.status.clone(), next_hops, interfaces, raw: a.raw.clone() }
 }
 
 /// Each collected device on a modeled path asked, with its
@@ -1265,11 +1265,11 @@ pub async fn collection_live(app: AppHandle, state: State<'_, AppState>, input: 
         let conn = state.db.lock().map_err(db_err)?;
         cdb::list_devices(&conn, input.run_id.trim()).map_err(db_err)?.into_iter().filter_map(|d| d.context_kind.map(|k| (d.host, (k, d.contexts)))).collect()
     };
-    let outcome = coreview_path::run(&net, &coreview_path::Request { traceroute: None, no_reverse: true, ..input.request.clone() });
+    let outcome = corelens_path::run(&net, &corelens_path::Request { traceroute: None, no_reverse: true, ..input.request.clone() });
     let which = input.path.unwrap_or(0);
     let path = outcome.forward.paths.get(which).ok_or("That path is not in the trace.")?.clone();
     let chosen = input.credential_id.as_deref().map(str::trim).filter(|s| !s.is_empty());
-    let first: coreview_discover::ssh::Credentials = match chosen {
+    let first: corelens_discover::ssh::Credentials = match chosen {
         Some(id) => {
             let c = crate::vault_commands::ssh_credentials(&state, id)?;
             crate::vault_commands::note_use(&state, id, "Live path check", &format!("{} to {}", input.request.from.trim(), input.request.to.trim()));
@@ -1316,7 +1316,7 @@ pub async fn collection_live(app: AppHandle, state: State<'_, AppState>, input: 
         let os = bx.and_then(|b| b.os.clone());
         let catalog = os.as_deref().and_then(|o| catalogs.iter().find(|c| c.os == o));
         let (Some(host_s), Some(os_s), Some(catalog)) = (host.clone(), os.clone(), catalog) else {
-            hops.push(LiveHop { device: hop.device.clone(), host, os, run: None, check: coreview_path::compare::LiveCheck { agrees: None, detail: "Not asked: the collection did not record how to reach this device or which catalog it uses.".into() } });
+            hops.push(LiveHop { device: hop.device.clone(), host, os, run: None, check: corelens_path::compare::LiveCheck { agrees: None, detail: "Not asked: the collection did not record how to reach this device or which catalog it uses.".into() } });
             continue;
         };
         let known_host_key = host_keys.lock().ok().and_then(|k| k.known(&host_s, input.port));
@@ -1329,14 +1329,14 @@ pub async fn collection_live(app: AppHandle, state: State<'_, AppState>, input: 
             vars.insert("vr".into(), "default".into());
         }
         let order: Vec<usize> = std::iter::once(preferred).chain((0..auths.len()).filter(|i| *i != preferred)).collect();
-        let mut run = coreview_collect::live::ask(&mut sidecar, catalog, &target, &auths[order[0]], &options, &vars, context.clone()).await;
+        let mut run = corelens_collect::live::ask(&mut sidecar, catalog, &target, &auths[order[0]], &options, &vars, context.clone()).await;
         let mut taken = order[0];
         // Only a refused login moves on to the next.
         for &i in order.iter().skip(1) {
             if run.failure.as_deref() != Some("auth") {
                 break;
             }
-            run = coreview_collect::live::ask(&mut sidecar, catalog, &target, &auths[i], &options, &vars, context.clone()).await;
+            run = corelens_collect::live::ask(&mut sidecar, catalog, &target, &auths[i], &options, &vars, context.clone()).await;
             taken = i;
         }
         if run.failure.is_none() {
@@ -1357,8 +1357,8 @@ pub async fn collection_live(app: AppHandle, state: State<'_, AppState>, input: 
             }
         }
         let check = match &run.failure {
-            Some(f) => coreview_path::compare::LiveCheck { agrees: None, detail: format!("Not asked: the session failed ({f}).") },
-            None => coreview_path::compare::live_check(hop, &run.answers.iter().map(evidence).collect::<Vec<_>>()),
+            Some(f) => corelens_path::compare::LiveCheck { agrees: None, detail: format!("Not asked: the session failed ({f}).") },
+            None => corelens_path::compare::live_check(hop, &run.answers.iter().map(evidence).collect::<Vec<_>>()),
         };
         let sidecar_gone = run.failure.as_deref() == Some("sidecar");
         hops.push(LiveHop { device: hop.device.clone(), host: Some(host_s), os: Some(os_s), run: Some(run), check });
@@ -1380,13 +1380,13 @@ pub struct TopologyBuilt {
     /// The crawl run it was stored as — the newest run, so Path-Trace,
     /// Where-is, Tracert, the register and the change report read it too.
     pub crawl_run_id: String,
-    pub devices: Vec<coreview_discover::crawl::CrawledDevice>,
-    pub not_visited: Vec<coreview_discover::types::Neighbor>,
-    pub graph: coreview_topology::Graph,
+    pub devices: Vec<corelens_discover::crawl::CrawledDevice>,
+    pub not_visited: Vec<corelens_discover::types::Neighbor>,
+    pub graph: corelens_topology::Graph,
 }
 
 #[tauri::command(async)]
-pub fn collection_topology(state: State<'_, AppState>, run_id: String, options: Option<coreview_topology::crawl_view::ViewOptions>) -> CmdResult<TopologyBuilt> {
+pub fn collection_topology(state: State<'_, AppState>, run_id: String, options: Option<corelens_topology::crawl_view::ViewOptions>) -> CmdResult<TopologyBuilt> {
     let mut options = options.unwrap_or_default();
     let conn = state.db.lock().map_err(db_err)?;
     let project = cdb::run_project(&conn, &run_id).map_err(db_err)?.ok_or("That collection run no longer exists.")?;
@@ -1400,9 +1400,9 @@ pub fn collection_topology(state: State<'_, AppState>, run_id: String, options: 
     if input.is_empty() {
         return Err("That run reached no device, so there is nothing to draw.".into());
     }
-    let graph = coreview_topology::build(&input);
+    let graph = corelens_topology::build(&input);
     cdb::write_topology(&conn, &run_id, &graph).map_err(db_err)?;
-    let view = coreview_topology::crawl_view::view_with(&graph, &options);
+    let view = corelens_topology::crawl_view::view_with(&graph, &options);
     // Stored exactly as a crawl stores a run: devices one by one, the rest as the summary.
     let crawl_run_id = format!("topo-{run_id}-{}", crate::db::now_ms());
     let seed = format!("collection {run_id}");

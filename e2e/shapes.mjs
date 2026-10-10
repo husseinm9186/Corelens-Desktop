@@ -53,7 +53,7 @@ const inspectorTab = async (name) => {
 };
 
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -62,7 +62,7 @@ await page.addInitScript(({ p }) => {
       if (cmd === "plugin:event|listen") return Promise.resolve(next++);
       // Exports: the save dialog answers with a path, and what would be
       // written is kept for the checks to read.
-      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/coreview-shapes-test.svg");
+      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/corelens-shapes-test.svg");
       if (cmd === "pick_export_target") return Promise.resolve({ token: `t-${next++}`, path: args.folder ? `${args.folder}/${args.filename}` : `/tmp/${args.filename}` });
       if (cmd === "pick_export_folder") return Promise.resolve({ token: `f-${next++}`, path: args.folder ?? "/tmp/picked" });
       if (cmd === "save_export") {
@@ -239,7 +239,7 @@ check("and the inspector says why", /1 to 4094/.test(hint), JSON.stringify(hint)
 await ident.fill("20");
 await page.evaluate(() => window.__cvStore.getState().select(null, null));
 await page.waitForTimeout(300);
-await page.screenshot({ path: process.env.SHOT ?? "/tmp/coreview-shapes.png" });
+await page.screenshot({ path: process.env.SHOT ?? "/tmp/corelens-shapes.png" });
 
 // ------------------------------------------------------------- solid glyphs
 await page.evaluate(() => window.__cvStore.getState().select(null, null));
@@ -281,7 +281,7 @@ if (await solidItem.count()) {
       (await solidCount()) === glyphDevices.length - 1, `${await solidCount()}`);
   await page.evaluate(() => window.__cvStore.getState().select(null, null));
   await page.waitForTimeout(300);
-  await page.screenshot({ path: (process.env.SHOT ?? "/tmp/coreview-shapes.png").replace(".png", "-solid.png") });
+  await page.screenshot({ path: (process.env.SHOT ?? "/tmp/corelens-shapes.png").replace(".png", "-solid.png") });
 }
 
 // ------------------------------------------------------------- export warning

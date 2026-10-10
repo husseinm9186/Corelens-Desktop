@@ -1,4 +1,4 @@
-# Coreview discovery catalog — Ruckus / Brocade ICX FastIron (ruckus_icx)
+# Corelens discovery catalog — Ruckus / Brocade ICX FastIron (ruckus_icx)
 #
 # Filled 2026-10-01: ntc-templates' `brocade_fastiron` set (ICX is
 # FastIron; it carries LLDP, LAG and spanning tree, which the newer
@@ -7,7 +7,7 @@
 # device met yet.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Ruckus (CommScope)

@@ -1,12 +1,12 @@
-//! The stencil manifest: an optional `coreview-stencils.json` at the
+//! The stencil manifest: an optional `corelens-stencils.json` at the
 //! root of an icon library folder that says what each shape *is* — its device
 //! class, vendor, model, ports and rack units — and under what licence the
 //! folder's artwork is used.
 //!
-//! Coreview ships no vendor artwork. A manifest is how an operator's
+//! Corelens ships no vendor artwork. A manifest is how an operator's
 //! own stencils — including vendor packs they have the right to use — arrive
 //! on the canvas as properly described devices rather than as bare pictures.
-//! The licence statement is required because the operator, not Coreview, is
+//! The licence statement is required because the operator, not Corelens, is
 //! responsible for it, and an export of a project using these shapes names it
 //!
 //! Validation is strict and all-or-nothing: unknown fields, a wrong version, a
@@ -17,7 +17,7 @@
 //!
 //! ```json
 //! {
-//!   "coreviewStencils": 1,
+//!   "corelensStencils": 1,
 //!   "name": "Lab shapes",
 //!   "licence": "Drawn by the lab team; free to use internally",
 //!   "source": "optional: where the artwork came from",
@@ -34,7 +34,12 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 /// The file name the scan looks for, at the root of the library folder.
-pub const MANIFEST_FILE: &str = "coreview-stencils.json";
+pub const MANIFEST_FILE: &str = "corelens-stencils.json";
+/// The name a manifest had before the app was renamed, still read when the
+/// folder has no manifest under the current one, along with its
+/// `coreviewStencils` field: a folder someone wrote for the earlier name
+/// keeps working without being edited.
+pub const PREVIOUS_MANIFEST_FILES: &[&str] = &["coreview-stencils.json"];
 
 /// The one version this build reads.
 const VERSION: u32 = 1;
@@ -86,7 +91,8 @@ const MAX_RACK_UNITS: u32 = 60;
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct RawManifest {
-    coreview_stencils: u32,
+    #[serde(alias = "coreviewStencils")]
+    corelens_stencils: u32,
     #[serde(default)]
     name: Option<String>,
     licence: String,
@@ -170,12 +176,14 @@ impl Manifest {
 /// `Ok(None)` when there is none; `Err` with a reason fit to show the
 /// operator when there is one and it is refused.
 pub fn load(dir: &Path) -> Result<Option<Manifest>, String> {
-    let path = dir.join(MANIFEST_FILE);
-    if !path.is_file() {
+    let Some(name) = std::iter::once(MANIFEST_FILE)
+        .chain(PREVIOUS_MANIFEST_FILES.iter().copied())
+        .find(|name| dir.join(name).is_file())
+    else {
         return Ok(None);
-    }
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("{MANIFEST_FILE}: {e}"))?;
-    parse(&text, |file| dir.join(file).is_file()).map(Some).map_err(|e| format!("{MANIFEST_FILE}: {e}"))
+    };
+    let text = std::fs::read_to_string(dir.join(name)).map_err(|e| format!("{name}: {e}"))?;
+    parse(&text, |file| dir.join(file).is_file()).map(Some).map_err(|e| format!("{name}: {e}"))
 }
 
 fn text(field: &str, value: &Option<String>, max: usize) -> Result<Option<String>, String> {
@@ -192,10 +200,10 @@ fn text(field: &str, value: &Option<String>, max: usize) -> Result<Option<String
 pub fn parse(text_in: &str, exists: impl Fn(&str) -> bool) -> Result<Manifest, String> {
     let raw: RawManifest =
         serde_json::from_str(text_in).map_err(|e| format!("not a valid manifest: {e}"))?;
-    if raw.coreview_stencils != VERSION {
+    if raw.corelens_stencils != VERSION {
         return Err(format!(
-            "coreviewStencils is {}, and this version of Coreview reads {VERSION}",
-            raw.coreview_stencils
+            "corelensStencils is {}, and this version of Corelens reads {VERSION}",
+            raw.corelens_stencils
         ));
     }
     let licence = text("licence", &Some(raw.licence), MAX_LONG_TEXT)?
@@ -229,7 +237,7 @@ pub fn parse(text_in: &str, exists: impl Fn(&str) -> bool) -> Result<Manifest, S
         let class = text("class", &s.class, MAX_TEXT).map_err(at)?;
         if let Some(c) = &class {
             if !classes.contains(c.as_str()) {
-                return Err(at(format!("class \"{c}\" is not a Coreview device class")));
+                return Err(at(format!("class \"{c}\" is not a Corelens device class")));
             }
         }
         if let Some(p) = s.ports {
@@ -271,7 +279,7 @@ mod tests {
     use super::*;
 
     const GOOD: &str = r#"{
-      "coreviewStencils": 1,
+      "corelensStencils": 1,
       "name": "Lab shapes",
       "licence": "Drawn by the lab team",
       "shapes": [
@@ -320,26 +328,26 @@ mod tests {
 
     #[test]
     fn refuses_unknown_fields_anywhere() {
-        assert!(refused(r#"{"coreviewStencils":1,"licence":"x","shapes":[],"extra":1}"#).contains("extra"));
-        assert!(refused(r#"{"coreviewStencils":1,"licence":"x","shapes":[{"file":"a.svg","colour":"red"}]}"#)
+        assert!(refused(r#"{"corelensStencils":1,"licence":"x","shapes":[],"extra":1}"#).contains("extra"));
+        assert!(refused(r#"{"corelensStencils":1,"licence":"x","shapes":[{"file":"a.svg","colour":"red"}]}"#)
             .contains("colour"));
     }
 
     #[test]
     fn refuses_another_version() {
-        assert!(refused(r#"{"coreviewStencils":2,"licence":"x","shapes":[]}"#).contains("reads 1"));
+        assert!(refused(r#"{"corelensStencils":2,"licence":"x","shapes":[]}"#).contains("reads 1"));
     }
 
     #[test]
     fn requires_a_licence_statement() {
-        assert!(refused(r#"{"coreviewStencils":1,"shapes":[]}"#).contains("licence"));
-        assert!(refused(r#"{"coreviewStencils":1,"licence":"   ","shapes":[]}"#).contains("licence is required"));
+        assert!(refused(r#"{"corelensStencils":1,"shapes":[]}"#).contains("licence"));
+        assert!(refused(r#"{"corelensStencils":1,"licence":"   ","shapes":[]}"#).contains("licence is required"));
     }
 
     #[test]
     fn refuses_a_file_outside_the_folder() {
         for f in ["../x.svg", "sub/x.svg", "..\\x.svg", "..", "/etc/passwd"] {
-            let t = format!(r#"{{"coreviewStencils":1,"licence":"x","shapes":[{{"file":{}}}]}}"#,
+            let t = format!(r#"{{"corelensStencils":1,"licence":"x","shapes":[{{"file":{}}}]}}"#,
                 serde_json::to_string(f).unwrap());
             assert!(refused(&t).contains("plain file name"), "{f}");
         }
@@ -347,25 +355,25 @@ mod tests {
 
     #[test]
     fn refuses_a_missing_or_repeated_file() {
-        let t = r#"{"coreviewStencils":1,"licence":"x","shapes":[{"file":"gone.svg"}]}"#;
+        let t = r#"{"corelensStencils":1,"licence":"x","shapes":[{"file":"gone.svg"}]}"#;
         assert!(parse(t, |_| false).unwrap_err().contains("no such file"));
-        let t = r#"{"coreviewStencils":1,"licence":"x","shapes":[{"file":"a.svg"},{"file":"a.svg"}]}"#;
+        let t = r#"{"corelensStencils":1,"licence":"x","shapes":[{"file":"a.svg"},{"file":"a.svg"}]}"#;
         assert!(refused(t).contains("listed twice"));
     }
 
     #[test]
     fn refuses_an_unknown_class_and_names_it() {
-        let t = r#"{"coreviewStencils":1,"licence":"x","shapes":[{"file":"a.svg","class":"toaster"}]}"#;
+        let t = r#"{"corelensStencils":1,"licence":"x","shapes":[{"file":"a.svg","class":"toaster"}]}"#;
         let e = refused(t);
         assert!(e.contains("toaster") && e.contains("shape 1 (a.svg)"), "{e}");
         // A plain drawing shape is not a device class.
-        let t = r#"{"coreviewStencils":1,"licence":"x","shapes":[{"file":"a.svg","class":"rectangle"}]}"#;
+        let t = r#"{"corelensStencils":1,"licence":"x","shapes":[{"file":"a.svg","class":"rectangle"}]}"#;
         assert!(refused(t).contains("rectangle"));
     }
 
     #[test]
     fn refuses_numbers_out_of_range_and_a_naming_without_the_number() {
-        let base = |shape: &str| format!(r#"{{"coreviewStencils":1,"licence":"x","shapes":[{shape}]}}"#);
+        let base = |shape: &str| format!(r#"{{"corelensStencils":1,"licence":"x","shapes":[{shape}]}}"#);
         assert!(refused(&base(r#"{"file":"a.svg","ports":5000}"#)).contains("ports"));
         assert!(refused(&base(r#"{"file":"a.svg","ports":-1}"#)).contains("valid manifest"));
         assert!(refused(&base(r#"{"file":"a.svg","rackUnits":61}"#)).contains("rackUnits"));
@@ -374,7 +382,7 @@ mod tests {
 
     #[test]
     fn refuses_control_characters_in_text() {
-        let t = r#"{"coreviewStencils":1,"licence":"x","shapes":[{"file":"a.svg","vendor":"AB"}]}"#;
+        let t = r#"{"corelensStencils":1,"licence":"x","shapes":[{"file":"a.svg","vendor":"AB"}]}"#;
         assert!(refused(t).contains("control character"));
     }
 
@@ -382,6 +390,31 @@ mod tests {
     fn no_manifest_is_not_an_error() {
         let dir = tempfile::tempdir().unwrap();
         assert!(load(dir.path()).unwrap().is_none());
+    }
+
+    /// A folder described for the app's earlier name loads unchanged; when
+    /// both names are there, the current one is the one read.
+    #[test]
+    fn a_manifest_written_under_the_earlier_name_still_loads() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.svg"), "<svg/>").unwrap();
+        std::fs::write(
+            dir.path().join(PREVIOUS_MANIFEST_FILES[0]),
+            r#"{"coreviewStencils":1,"name":"Old","licence":"x","shapes":[{"file":"a.svg","class":"router"}]}"#,
+        )
+        .unwrap();
+        assert!(load(dir.path()).unwrap().expect("read").get("a.svg").is_some(), "the old manifest describes a.svg");
+
+        std::fs::write(
+            dir.path().join(MANIFEST_FILE),
+            r#"{"corelensStencils":1,"name":"New","licence":"x","shapes":[]}"#,
+        )
+        .unwrap();
+        assert!(load(dir.path()).unwrap().expect("read").get("a.svg").is_none(), "the current manifest, which does not, wins");
+
+        std::fs::remove_file(dir.path().join(MANIFEST_FILE)).unwrap();
+        std::fs::write(dir.path().join(PREVIOUS_MANIFEST_FILES[0]), "{").unwrap();
+        assert!(load(dir.path()).unwrap_err().starts_with(PREVIOUS_MANIFEST_FILES[0]), "a refusal names the file it read");
     }
 
     #[test]

@@ -1,6 +1,6 @@
 // The notices that have to ship with an installer (corrected).
 //
-// Coreview's own licence is proprietary — free to use, everything else
+// Corelens's own licence is proprietary — free to use, everything else
 // reserved. That changes nothing about the components it is built on. MIT says
 // "the above copyright notice and this permission notice shall be included in
 // all copies"; Apache-2.0 §4 says the same in more words. A *list of package
@@ -21,7 +21,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-/** Licences that would actually stop Coreview being distributed as proprietary.
+/** Licences that would actually stop Corelens being distributed as proprietary.
  *  None are present today; this fails the run loudly if one ever arrives. */
 const COPYLEFT = /\b(AGPL|GPL-[23]|GPL-2\.0|GPL-3\.0|SSPL|OSL|EUPL|CPAL)\b/i;
 /** File-level copyleft: fine to link, but the source must be pointed at. */
@@ -223,16 +223,16 @@ const texts = (rows) =>
 
 writeFileSync("THIRD-PARTY-NOTICES.md", `# Third-party notices
 
-Coreview is proprietary software, free to use — see \`LICENSE\`. It is built on
+Corelens is proprietary software, free to use — see \`LICENSE\`. It is built on
 the open-source components listed here, which keep their own licences. Nothing
-in Coreview's licence changes them, and the notices those licences require are
+in Corelens's licence changes them, and the notices those licences require are
 reproduced in full below, which is why this file is installed alongside the
 application rather than only kept in the repository.
 
 Generated from the real dependency trees by \`scripts/third-party-notices.mjs\`.
 Run it again whenever dependencies change.
 
-**No component is under a licence that prevents Coreview being distributed as
+**No component is under a licence that prevents Corelens being distributed as
 proprietary software.** There is no GPL, AGPL or SSPL anywhere in either tree —
 the generator fails rather than writes this file if one ever appears.
 
@@ -241,7 +241,7 @@ ${fileCopyleft.length ? `## Mozilla Public License 2.0 components
 ${fileCopyleft.length} component${fileCopyleft.length === 1 ? " is" : "s are"} under the MPL-2.0, which is
 copyleft *per file*: linking them into a larger proprietary work is expressly
 allowed, and the only obligation is to make the source of any **modified**
-MPL-covered file available. Coreview uses them unmodified, as published. Their
+MPL-covered file available. Corelens uses them unmodified, as published. Their
 source is at the addresses below.
 
 ${fileCopyleft.map((c) => `- **${c.name} ${c.version}** — ${c.url || "see crates.io"}`).join("\n")}
@@ -267,7 +267,7 @@ in the \`sidecar\` folder of the installation directory (\`Lib\\site-packages\`)
 where they can be replaced with a modified version without touching
 anything else — which is what the LGPL asks of a program that uses a
 library under it. Their source is at the addresses above, and on request
-from the author of Coreview.
+from the author of Corelens.
 
 ` : ""}## Collector sidecar — ${sidecar.length} components in the Windows installer
 

@@ -21,7 +21,7 @@
 │                      db.rs        (rusqlite: projects, sessions, events, samples)               │
 │                      main.rs      (window lifecycle; stop-on-close, stop-on-exit)               │
 │                                                                                                │
-│  crates/coreview-probe/   validate.rs  target parsing — the security boundary                   │
+│  crates/corelens-probe/   validate.rs  target parsing — the security boundary                   │
 │                           icmp.rs      ping argv construction + output parsing                  │
 │                           net.rs       TCP connect, DNS resolution                              │
 │                           state.rs     threshold state machine                                  │
@@ -69,7 +69,7 @@ probe_samples(id, session_id, probe_id, timestamp_ms, status, outcome, rtt_ms, s
 shape migrations. Both are checked on open.
 
 The document contains `nodes`, `edges`, `probes` and `canvas`. Node and edge
-shapes match React Flow's, with Coreview fields under `data`.
+shapes match React Flow's, with Corelens fields under `data`.
 
 ## Probe lifecycle
 
@@ -134,7 +134,7 @@ misleading.
 
 ## Shapes and stencils
 
-Coreview draws its own shapes and treats vendor and model as data (the
+Corelens draws its own shapes and treats vendor and model as data (the
 working explanation is `docs/BRAND_AND_LICENSING.md`).
 
 - **Built-in shapes** are React components in `src/components/icons.tsx`, one
@@ -145,7 +145,7 @@ working explanation is `docs/BRAND_AND_LICENSING.md`).
   bundled as a Tauri resource, and a Rust test fails if artwork reappears.
 - **User stencils** are scanned in Rust (`src-tauri/src/icons.rs`) from a folder
   the operator chooses, sanitised, and sent over IPC as SVG text. An optional
-  `coreview-stencils.json` (`src-tauri/src/stencil_manifest.rs`) is validated in
+  `corelens-stencils.json` (`src-tauri/src/stencil_manifest.rs`) is validated in
   Rust — unknown fields refused, paths confined to the folder, classes checked
   against a list a TypeScript test keeps identical to the device types — and
   its description travels with each icon. No new IPC command carries it; it is a
@@ -164,7 +164,7 @@ working explanation is `docs/BRAND_AND_LICENSING.md`).
    values are rendered as React text nodes, never as HTML. CSV export escapes
    leading formula characters.
 5. **Secrets.** A probe has no credential field. Device, SNMP, API and Meraki
-   logins live in the encrypted vault (`crates/coreview-discover/src/vault.rs`,
+   logins live in the encrypted vault (`crates/corelens-discover/src/vault.rs`,
    driven by `src-tauri/src/vault_commands.rs`): Argon2id derives the key from
    a passphrase that is never stored, XChaCha20-Poly1305 seals each entry, and
    the webview only ever holds an id. Live SSH sessions belong to the window

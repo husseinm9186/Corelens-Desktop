@@ -9,7 +9,7 @@
 //
 // The backend is stubbed — a real device is not available in a test — but the
 // stub is the real protocol: base64 in `ssh_send`, base64 out on
-// `coreview://ssh`, and a session id the window has to keep straight when two
+// `corelens://ssh`, and a session id the window has to keep straight when two
 // are open at once.
 //
 //     npm run dev            # in another terminal
@@ -76,9 +76,9 @@ await page.addInitScript(({ p }) => {
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   // Pushes bytes to the window as the real session task does.
   window.__fromDevice = (id, text) => {
-    const handler = listeners["coreview://ssh"];
+    const handler = listeners["corelens://ssh"];
     if (handler && callbacks[handler]) {
-      callbacks[handler]({ event: "coreview://ssh", id: handler,
+      callbacks[handler]({ event: "corelens://ssh", id: handler,
         payload: { kind: "data", id, bytes: btoa(text) } });
     }
   };
@@ -89,21 +89,21 @@ await page.addInitScript(({ p }) => {
   // A login-stage event, keyed by address, as ssh_open now emits
   // before a session id exists.
   window.__loginStage = (address, stage) => {
-    const handler = listeners["coreview://ssh"];
+    const handler = listeners["corelens://ssh"];
     if (handler && callbacks[handler]) {
-      callbacks[handler]({ event: "coreview://ssh", id: handler, payload: { kind: "progress", address, stage } });
+      callbacks[handler]({ event: "corelens://ssh", id: handler, payload: { kind: "progress", address, stage } });
     }
   };
   window.__deviceIsAlive = (id, at) => {
-    const handler = listeners["coreview://ssh"];
+    const handler = listeners["corelens://ssh"];
     if (handler && callbacks[handler]) {
-      callbacks[handler]({ event: "coreview://ssh", id: handler, payload: { kind: "alive", id, at } });
+      callbacks[handler]({ event: "corelens://ssh", id: handler, payload: { kind: "alive", id, at } });
     }
   };
   window.__deviceHungUp = (id, reason) => {
-    const handler = listeners["coreview://ssh"];
+    const handler = listeners["corelens://ssh"];
     if (handler && callbacks[handler]) {
-      callbacks[handler]({ event: "coreview://ssh", id: handler,
+      callbacks[handler]({ event: "corelens://ssh", id: handler,
         payload: { kind: "closed", id, reason } });
     }
   };
@@ -132,18 +132,18 @@ await page.addInitScript(({ p }) => {
         window.__logStarts.push(args);
         if (!args.folder) return Promise.reject("No configuration folder has been chosen yet.");
         const path = `${args.folder}/${args.device}/20260919-000000-session.txt`;
-        const handler = listeners["coreview://ssh"];
+        const handler = listeners["corelens://ssh"];
         if (handler && callbacks[handler]) {
-          callbacks[handler]({ event: "coreview://ssh", id: handler,
+          callbacks[handler]({ event: "corelens://ssh", id: handler,
             payload: { kind: "logging", id: args.id, path } });
         }
         return Promise.resolve(path);
       }
       if (cmd === "ssh_log_stop") {
         window.__logStops.push(args.id);
-        const handler = listeners["coreview://ssh"];
+        const handler = listeners["corelens://ssh"];
         if (handler && callbacks[handler]) {
-          callbacks[handler]({ event: "coreview://ssh", id: handler,
+          callbacks[handler]({ event: "corelens://ssh", id: handler,
             payload: { kind: "logging", id: args.id, path: null } });
         }
         return Promise.resolve();

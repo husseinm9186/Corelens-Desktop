@@ -16,10 +16,10 @@ const root = new URL('../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
 
 const rules: Rules = (() => {
-  const scope: { coreviewIsolation?: Rules } = {};
+  const scope: { corelensIsolation?: Rules } = {};
   // The file as the frame loads it, run against a stand-in for `window`.
   new Function('window', read('isolation/rules.js'))(scope);
-  return scope.coreviewIsolation!;
+  return scope.corelensIsolation!;
 })();
 
 /** Every `#[tauri::command]` and the names the page sends its arguments by. */

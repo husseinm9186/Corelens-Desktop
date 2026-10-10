@@ -32,7 +32,7 @@ const project = {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -197,7 +197,7 @@ const back = { panel: await box(".cv-panel"), canvas: await box(".cv-canvas") };
 check("Dock below puts it back under the canvas", back.panel.y >= back.canvas.y + back.canvas.height - 1 && back.panel.width > 1200,
   JSON.stringify(back));
 check("and that is remembered too, keyed by the tab",
-  (await st(() => JSON.parse(localStorage.getItem("coreview.view.dockPlacements") ?? "{}"))).objects === "bottom");
+  (await st(() => JSON.parse(localStorage.getItem("corelens.view.dockPlacements") ?? "{}"))).objects === "bottom");
 
 await browser.close();
 if (failures) {

@@ -273,7 +273,7 @@ mod tests {
     }
 
     /// A real workbook, given by path: `CV_XLSX=book.xlsx cargo test -p
-    /// coreview real_workbook -- --ignored --nocapture`.
+    /// corelens real_workbook -- --ignored --nocapture`.
     #[test]
     #[ignore]
     fn a_real_workbook_when_given_one() {

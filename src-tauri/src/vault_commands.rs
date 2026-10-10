@@ -18,9 +18,9 @@
 //! The unlocked key lives in memory for the length of the app session and is
 //! zeroed when it is dropped. It is never written anywhere.
 
-use coreview_discover::snmp::{AuthKind, PrivKind, SnmpAuth};
-use coreview_discover::ssh::{Credentials, Secret};
-use coreview_discover::vault::{self, SealedSecret, VaultHeader, VaultKey};
+use corelens_discover::snmp::{AuthKind, PrivKind, SnmpAuth};
+use corelens_discover::ssh::{Credentials, Secret};
+use corelens_discover::vault::{self, SealedSecret, VaultHeader, VaultKey};
 use serde::Deserialize;
 use tauri::State;
 
@@ -76,6 +76,9 @@ pub fn remember_vault_key(state: State<'_, AppState>) -> CmdResult<()> {
 #[tauri::command(async)]
 pub fn forget_vault_key(state: State<'_, AppState>) -> CmdResult<()> {
     crate::keychain::forget(&crate::keychain::entry()?)?;
+    for old in crate::keychain::previous_entries() {
+        let _ = crate::keychain::forget(&old);
+    }
     let conn = state.db.lock().map_err(db_err)?;
     db::set_setting(&conn, KEYCHAIN_SETTING, None).map_err(db_err)
 }
@@ -95,7 +98,7 @@ pub fn unlock_vault_from_keychain(state: State<'_, AppState>) -> CmdResult<Strin
             None => return Ok("off".into()),
         }
     };
-    let outcome = crate::keychain::recall(&crate::keychain::entry()?, &header)?;
+    let outcome = crate::keychain::recall_or_adopt(&crate::keychain::entry()?, &crate::keychain::previous_entries(), &header)?;
     let conn = state.db.lock().map_err(db_err)?;
     Ok(match outcome {
         crate::keychain::Recalled::Opened(key) => {
@@ -201,6 +204,9 @@ pub fn discard_vault(state: State<'_, AppState>) -> CmdResult<usize> {
     if kept_in_keychain(&conn)? {
         if let Ok(entry) = crate::keychain::entry() {
             let _ = crate::keychain::forget(&entry);
+        }
+        for old in crate::keychain::previous_entries() {
+            let _ = crate::keychain::forget(&old);
         }
         db::set_setting(&conn, KEYCHAIN_SETTING, None).map_err(db_err)?;
     }
@@ -512,7 +518,7 @@ pub fn ssh_credentials(state: &AppState, id: &str) -> CmdResult<Credentials> {
 }
 
 /// A saved SFTP login (kind `sftp`): the server a device is told to send
-/// its configuration to under a backup over SNMP, and that Coreview then
+/// its configuration to under a backup over SNMP, and that Corelens then
 /// reads the file from. A kind of its own so that it is never offered to a
 /// device as an SSH login. Not a command, for the same reason as
 /// `ssh_credentials`.
@@ -535,7 +541,7 @@ pub fn sftp_credentials(state: &AppState, id: &str) -> CmdResult<(String, Secret
 
 /// A saved API login (kind `api`), for the REST collectors. Not a
 /// command, for the same reason as `ssh_credentials`.
-pub fn api_credentials(state: &AppState, id: &str) -> CmdResult<coreview_collect::api::ApiLogin> {
+pub fn api_credentials(state: &AppState, id: &str) -> CmdResult<corelens_collect::api::ApiLogin> {
     let guard = state.vault_key.lock().map_err(db_err)?;
     let key = guard.as_ref().ok_or_else(|| vault::VaultError::Locked.to_string())?;
     let stored = {
@@ -549,7 +555,7 @@ pub fn api_credentials(state: &AppState, id: &str) -> CmdResult<coreview_collect
     }
     // An API login's `detail` is its HTTPS port; blank is 443.
     let port = stored.detail.trim().parse::<u16>().ok().filter(|p| *p != 0);
-    Ok(coreview_collect::api::ApiLogin { username: stored.username, secret: open_secret(key, &stored.secret)?, port })
+    Ok(corelens_collect::api::ApiLogin { username: stored.username, secret: open_secret(key, &stored.secret)?, port })
 }
 
 /// Notes that a saved credential was offered to `target`, in the local

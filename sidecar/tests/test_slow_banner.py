@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from coreview_sidecar.session import Session, SessionError
+from corelens_sidecar.session import Session, SessionError
 
 AUTH = {"username": "reader", "password": "not-a-real-password"}
 

@@ -17,9 +17,9 @@ use crate::collection::{CollectionInput, PathLiveInput};
 use crate::discovery::{BackupInput, CrawlInput, CredentialInput};
 use crate::vault_commands::SaveCredential;
 use crate::visio::VisioDrawing;
-use coreview_discover::checks::Check;
-use coreview_probe::sweep::SweepOptions;
-use coreview_probe::types::ProbeConfig;
+use corelens_discover::checks::Check;
+use corelens_probe::sweep::SweepOptions;
+use corelens_probe::types::ProbeConfig;
 
 fn fixture(name: &str) -> Value {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/ipc").join(format!("{name}.json"));
@@ -97,8 +97,8 @@ fn every_input_reads_the_frontends_payload_and_nothing_more() {
     contract::<BackupInput>("backup_input");
     contract::<SweepOptions>("sweep_options");
     contract::<CollectionInput>("collection_input");
-    contract::<coreview_topology::crawl_view::ViewOptions>("topology_view_options");
-    contract::<coreview_path::Request>("path_request");
+    contract::<corelens_topology::crawl_view::ViewOptions>("topology_view_options");
+    contract::<corelens_path::Request>("path_request");
     contract::<PathLiveInput>("path_live_input");
     contract::<SaveCredential>("save_credential");
     contract::<Check>("check");
@@ -139,8 +139,8 @@ proptest! {
         survives::<BackupInput>(&v);
         survives::<SweepOptions>(&v);
         survives::<CollectionInput>(&v);
-        survives::<coreview_topology::crawl_view::ViewOptions>(&v);
-        survives::<coreview_path::Request>(&v);
+        survives::<corelens_topology::crawl_view::ViewOptions>(&v);
+        survives::<corelens_path::Request>(&v);
         survives::<PathLiveInput>(&v);
         survives::<SaveCredential>(&v);
         survives::<Check>(&v);
@@ -167,7 +167,7 @@ proptest! {
         survives::<SaveCredential>(&payload);
         survives::<Check>(&payload);
         survives::<VisioDrawing>(&payload);
-        survives::<coreview_path::Request>(&payload);
+        survives::<corelens_path::Request>(&payload);
         survives::<PathLiveInput>(&payload);
     }
 }

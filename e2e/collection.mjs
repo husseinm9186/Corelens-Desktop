@@ -135,7 +135,7 @@ await page.addInitScript(({ p, r, d, a, sh, tp, rd }) => {
       if (cmd === "list_collection_runs") return Promise.resolve(r);
       if (cmd === "collection_run") return Promise.resolve(d);
       if (cmd === "collection_table") return Promise.resolve(args.table === "arp" ? a : []);
-      if (cmd === "collection_raw") return Promise.resolve("Cisco IOS Software, C2960X Software\nnot-a-real-secret was <removed-by-coreview>");
+      if (cmd === "collection_raw") return Promise.resolve("Cisco IOS Software, C2960X Software\nnot-a-real-secret was <removed-by-corelens>");
       if (cmd === "start_collection") return Promise.resolve("col-2");
       return Promise.resolve([]);
     },
@@ -171,7 +171,7 @@ check("a reply that was not kept says so", (await log.locator("tbody tr").nth(2)
 await log.locator("tbody tr").nth(1).getByRole("button", { name: "Show reply" }).click();
 await page.waitForSelector('[data-region="collect-raw"]');
 check("a kept reply is read from the run's folder by its reference",
-  (await region.locator('[data-region="collect-raw"] pre').textContent()).includes("<removed-by-coreview>")
+  (await region.locator('[data-region="collect-raw"] pre').textContent()).includes("<removed-by-corelens>")
   && (await page.evaluate(() => window.__calls.some((c) => c.cmd === "collection_raw" && c.args.runId === "col-1" && c.args.rawRef === "192.0.2.10/002-show-version.txt"))));
 
 const tables = region.locator('[data-region="collect-tables"]');
@@ -269,16 +269,16 @@ check("nothing typed travels when a saved login is chosen", !!started && !("pass
 // The run outlives the tab. A step the collector reports while
 // another tab is shown is in the live log when Collect is shown again, and
 // the finish is still acted on.
-await page.evaluate(() => window.__cvEmit("coreview://collection", { kind: "started", runId: "col-2" }));
-await page.evaluate(() => window.__cvEmit("coreview://collection", { kind: "device", runId: "col-2", deviceId: "dev-9", host: "192.0.2.11" }));
+await page.evaluate(() => window.__cvEmit("corelens://collection", { kind: "started", runId: "col-2" }));
+await page.evaluate(() => window.__cvEmit("corelens://collection", { kind: "device", runId: "col-2", deviceId: "dev-9", host: "192.0.2.11" }));
 await page.locator(".cv-panel .cv-tabs button", { hasText: "Backups" }).click();
 await page.waitForTimeout(300);
-await page.evaluate(() => window.__cvEmit("coreview://collection", { kind: "step", runId: "col-2", deviceId: "dev-9", cmd: "show version", context: null, status: "ok", rows: 1, durationMs: 42 }));
+await page.evaluate(() => window.__cvEmit("corelens://collection", { kind: "step", runId: "col-2", deviceId: "dev-9", cmd: "show version", context: null, status: "ok", rows: 1, durationMs: 42 }));
 await page.locator(".cv-panel .cv-tabs button", { hasText: "Discover devices" }).click();
 await advanced();
 await page.waitForTimeout(400);
 check("a run keeps going while the tab is away: the step reported meanwhile is in the live log", /show version/.test(await page.locator('[data-region="collect"]').innerText()) && (await page.evaluate(() => window.__cvStore.getState().collectionRun.busy)) === true, (await page.locator('[data-region="collect"]').innerText()).slice(0, 200));
-await page.evaluate(() => window.__cvEmit("coreview://collection", { kind: "finished", runId: "col-2", devices: 1, failed: 0, cancelled: false }));
+await page.evaluate(() => window.__cvEmit("corelens://collection", { kind: "finished", runId: "col-2", devices: 1, failed: 0, cancelled: false }));
 await page.waitForTimeout(400);
 check("and its finish is acted on when the tab is back", (await page.evaluate(() => window.__cvStore.getState().collectionRun.busy)) === false && (await page.evaluate(() => window.__calls.filter((c) => c.cmd === "list_collection_runs").length)) >= 2);
 

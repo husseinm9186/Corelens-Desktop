@@ -1,20 +1,22 @@
-# Installing Coreview on Windows
+# Installing Corelens Desktop on Windows
 
-Coreview's Windows installer is signed with the **Coreview certificate** —
-`CN=COREVIEW-APP Code Signing`, issued by Coreview's own root,
-`CN=COREVIEW-APP-Root-CA` (valid to August 2036). It is not a certificate
+Corelens Desktop's Windows installer is signed with the app's own
+certificate — `CN=COREVIEW-APP Code Signing`, issued by its own root,
+`CN=COREVIEW-APP-Root-CA` (valid to August 2036). The certificates were
+issued when the app was called Coreview and keep that name; a machine that
+already trusts them trusts Corelens Desktop's installer unchanged. It is not a certificate
 from a public authority, so a Windows machine does not trust it until the
 root is added. This page is how a customer's administrator does that, what
 it changes, and what it does not.
 
 ## What comes with each build
 
-From a green CI run's `coreview-windows-v<version>` artifact (for example
-`coreview-windows-v2.7.1`):
+From a green CI run's `corelens-windows-v<version>` artifact (for example
+`corelens-windows-v2.7.1`):
 
 | File | What it is |
 | --- | --- |
-| `Coreview_<version>_x64-setup.exe` | The installer. Signed, timestamped. |
+| `Corelens-Desktop_<version>_x64-setup.exe` | The installer. Signed, timestamped. |
 | `SHA256SUMS.txt` | The installer's SHA-256, recorded after the VirusTotal scan passed. |
 | `coreview-root-ca.crt` | The root's **public** certificate (also in the repository at `brand/`). |
 | `coreview-code-signing.cer` | The signing certificate's **public** half. |
@@ -25,7 +27,7 @@ No private key is ever in any of these.
 ## 1. Check the file is the one that was built
 
 ```powershell
-(Get-FileHash .\Coreview_2.7.1_x64-setup.exe -Algorithm SHA256).Hash.ToLower()
+(Get-FileHash .\Corelens_2.7.1_x64-setup.exe -Algorithm SHA256).Hash.ToLower()
 Get-Content .\SHA256SUMS.txt
 ```
 
@@ -67,7 +69,7 @@ certificate under **Trusted Publishers**.
 Check it took:
 
 ```powershell
-Get-AuthenticodeSignature .\Coreview_2.7.1_x64-setup.exe | Format-List Status, SignerCertificate
+Get-AuthenticodeSignature .\Corelens_2.7.1_x64-setup.exe | Format-List Status, SignerCertificate
 ```
 
 `Status : Valid`, signer `CN=COREVIEW-APP Code Signing`. Before step 2 the
@@ -86,7 +88,7 @@ Being plain about this, because it is the question every administrator asks:
   looks at files that carry the *Mark of the Web* — files downloaded through
   a browser. So:
   - on one machine, clear the mark before running it:
-    `Unblock-File .\Coreview_2.7.1_x64-setup.exe` (or *Properties →
+    `Unblock-File .\Corelens_2.7.1_x64-setup.exe` (or *Properties →
     Unblock*);
   - across an estate, deploy the installer the way managed software is
     deployed — Intune, Configuration Manager, a file share, a GPO software
@@ -103,7 +105,7 @@ Being plain about this, because it is the question every administrator asks:
 
 If the SmartScreen prompt itself must go away for machines nobody manages,
 that takes a certificate from a public authority; the decision on record
-(2026-09-29) is to stay on the Coreview certificate.
+(2026-09-29) is to stay on the Corelens certificate.
 
 - **Chrome may refuse the download outright** — "This file is dangerous",
   with no *Keep* button. That is Google Safe Browsing's download
@@ -113,7 +115,7 @@ that takes a certificate from a public authority; the decision on record
   build has passed VirusTotal before it was published, so it is not a
   detection. Three ways past it, from best to worst:
   1. Fetch the artifact without a browser. From a terminal with the GitHub
-     CLI signed in: `gh run download <run id> -n coreview-windows-v<version>
+     CLI signed in: `gh run download <run id> -n corelens-windows-v<version>
      -R <owner>/<repo>` (the run id is in the Actions URL). Nothing is
      flagged, and the file arrives without the Mark of the Web.
   2. Download with Edge, which warns but offers *Keep*.
@@ -129,12 +131,34 @@ that takes a certificate from a public authority; the decision on record
 Run the installer (per-machine; it asks for elevation). It installs the
 collector sidecar — a private copy of Python with its own libraries — in
 its own folder inside the installation directory. It is used only by
-Coreview, is not put on `PATH`, and is removed with Coreview.
+Corelens, is not put on `PATH`, and is removed with Corelens.
 
-**Updating from inside the app** (Tools → Settings → **Check for updates**)
+**Updating from inside the app** (Settings → **Check for updates**)
 downloads the next version's installer — the same signed `-setup.exe` that
 is on the Releases page — checks its updater signature against the key
 built into the app, and runs it. It asks for elevation exactly as a manual
 install does, and everything in sections 1 to 3 applies to it unchanged.
 Nothing is checked or downloaded unless the button is pressed or the
 automatic check beside it has been switched on; it is off by default.
+
+## Coming from Coreview
+
+Corelens Desktop is the same app under a new name, and installs beside
+Coreview rather than over it — Windows sees a different product. Whether it
+arrives through Coreview's **Check for updates** or from the installer:
+
+1. Close Coreview, so what is copied is what was last saved.
+2. Install Corelens Desktop and start it. On its first start it copies
+   Coreview's data — `%LOCALAPPDATA%\Coreview` into
+   `%LOCALAPPDATA%\Corelens Desktop`, and the window's own storage from
+   `%LOCALAPPDATA%\net.coreview.app` into
+   `%LOCALAPPDATA%\com.corelens.desktop` — and moves a vault key kept in
+   Windows Credential Manager under *Coreview* to *Corelens Desktop*.
+   It copies only when its own folders do not exist yet, so it never
+   overwrites anything.
+3. Check the projects, folders and saved logins are there.
+4. Uninstall **Coreview** from *Settings → Apps*. Leave *Delete the
+   application data* unticked. Coreview's data folder is not touched either
+   way; delete `%LOCALAPPDATA%\Coreview` and
+   `%LOCALAPPDATA%\net.coreview.app` yourself once you are satisfied, or
+   keep them as a backup.

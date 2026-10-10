@@ -16,7 +16,7 @@ export function Palette() {
   const q = query.trim().toLowerCase();
 
   const drag = (e: React.DragEvent, payload: string) => {
-    e.dataTransfer.setData('application/coreview', payload);
+    e.dataTransfer.setData('application/corelens', payload);
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -208,7 +208,7 @@ function CustomShapesSection({
   );
 }
 
-/** Stencils bundled as a resource. None ship — Coreview's own
+/** Stencils bundled as a resource. None ship — Corelens's own
  *  shapes are the palette groups above — so this section shows only if a
  *  build carries some. Absent in the browser build, where there is no
  *  resource to read. */
@@ -395,7 +395,7 @@ function IconLibrarySection({
       {!dir && (
         <div className="cv-palette-note">
           <p className="cv-muted">
-            {t('palette.pointCoreviewAtA')}
+            {t('palette.pointCorelensAtA')}
           </p>
           <input
             className="cv-input"

@@ -30,7 +30,7 @@ const project = {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -101,7 +101,7 @@ const hasClass = async (sel, cls) => (await page.locator(sel).first().getAttribu
   await side.click();
   await page.waitForTimeout(400);
   check("docking it below moves it to the bottom", !(await hasClass(".cv-body", "is-dock-right")));
-  check("and it is remembered for that tab", (await st(() => JSON.parse(localStorage.getItem("coreview.view.dockPlacements") ?? "{}"))).crawl === "bottom");
+  check("and it is remembered for that tab", (await st(() => JSON.parse(localStorage.getItem("corelens.view.dockPlacements") ?? "{}"))).crawl === "bottom");
   // SSH is untouched by Discover's override.
   await openTab("SSH");
   check("the terminal still opens on the right", await hasClass(".cv-body", "is-dock-right"));

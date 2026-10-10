@@ -1,6 +1,6 @@
-# Coreview discovery catalog — MikroTik RouterOS (mikrotik_routeros)
+# Corelens discovery catalog — MikroTik RouterOS (mikrotik_routeros)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: MikroTik
@@ -26,7 +26,7 @@ session:
     - /quit
   paging:
     suffix: " without-paging"
-    source: Coreview routeros dialect; RouterOS has no session-wide paging switch
+    source: Corelens routeros dialect; RouterOS has no session-wide paging switch
   prompt_echo_twice:
     source: scrapli_community mikrotik_routeros sync_driver.send_command
 role_hint: []
@@ -43,7 +43,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (4 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: interface_print
     cmd: /interface print
     gate: always

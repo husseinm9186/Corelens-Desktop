@@ -144,7 +144,7 @@ describe('the Meraki health report', () => {
 
     it('escapes a customer name that would otherwise break the XML', () => {
       // An organisation name comes from the API — a customer's own string,
-      // never one Coreview wrote — and lands in markup.
+      // never one Corelens wrote — and lands in markup.
       const svg = reportSvg(report([], { organization: 'A & B <Ltd>', network: '"HQ"' }));
       expect(svg).toContain('A &amp; B &lt;Ltd&gt;');
       expect(svg).not.toContain('<Ltd>');
@@ -204,8 +204,8 @@ describe('the Meraki health report', () => {
       const svg = reportSvg(
         report([check({ id: 'a', status: 'attention', steps: ['Do the thing.'] })]),
       );
-      expect(svg).not.toContain('Coreview');
-      expect(svg).not.toContain('coreview');
+      expect(svg).not.toContain('Corelens');
+      expect(svg).not.toContain('corelens');
     });
   });
 });

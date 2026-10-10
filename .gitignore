@@ -6,6 +6,7 @@ src-tauri/gen/
 *.local
 .DS_Store
 .vscode/
+*.corelens
 *.coreview
 *.livetopo
 *.deb

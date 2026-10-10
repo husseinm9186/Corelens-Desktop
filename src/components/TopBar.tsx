@@ -316,7 +316,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
   };
 
   /** The drawing as Visio shapes and connectors — what a colleague
-   *  who does not have Coreview can actually open and edit. */
+   *  who does not have Corelens can actually open and edit. */
   const exportVisio = async () => {
     setBusy('vsdx');
     try {
@@ -630,7 +630,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
       const target = await ipc.pickExportFolder(folder);
       if (!target) return;
       const dir = await ipc.saveProjectFolder(target.token, slug(meta.name) || 'project', json, yaml);
-      useStore.getState().setStatusMessage(`Saved ${dir} — project.coreview opens in Coreview; project.yaml is the readable copy`);
+      useStore.getState().setStatusMessage(`Saved ${dir} — project.corelens opens in Corelens; project.yaml is the readable copy`);
     } catch (err) {
       useStore.getState().setStatusMessage(err instanceof Error ? err.message : String(err));
     }
@@ -649,7 +649,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
       ? { ...project, vault: await ipc.exportVault() }
       : project;
     await runExport(
-      withCredentials ? `${slug(meta.name)}-with-credentials.coreview` : `${slug(meta.name)}.coreview`,
+      withCredentials ? `${slug(meta.name)}-with-credentials.corelens` : `${slug(meta.name)}.corelens`,
       () => JSON.stringify(payload, null, 2),
       'application/json',
       true,
@@ -675,7 +675,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
     <header className="cv-topbar">
       <div className="cv-topbar-left">
         {/* The mark, drawn rather than imported, beside the name. */}
-        <span className="cv-brand" title="Coreview — © 2026 Almoola">
+        <span className="cv-brand" title="Corelens Desktop — © 2026 Almoola">
           <svg className="cv-brand-mark" viewBox="0 0 512 512" aria-hidden focusable="false">
             <g stroke="currentColor" strokeWidth="26" strokeLinecap="round" fill="none">
               <path d="M256 196V150M256 316v46M196 256h-46M316 256h46" />
@@ -690,7 +690,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
               <rect x="50" y="206" width="100" height="84" rx="18" />
             </g>
           </svg>
-          <span className="cv-sr">Coreview</span>
+          <span className="cv-sr">Corelens Desktop</span>
         </span>
         <span className="cv-project-name" title={meta.description}>
           {meta.name}
@@ -950,11 +950,11 @@ export function TopBar({ onExit }: { onExit: () => void }) {
             <button type="button" onClick={() => setReporting(true)}>
               Report as PDF…
             </button>
-            <button type="button" onClick={() => void exportFolder()} title="project.coreview and a readable project.yaml, in a folder of their own — for Git. Never includes saved credentials.">
+            <button type="button" onClick={() => void exportFolder()} title="project.corelens and a readable project.yaml, in a folder of their own — for Git. Never includes saved credentials.">
               Project as a folder (for version control)
             </button>
             <button type="button" onClick={() => void exportPackage(false)}>
-              Project package (.coreview)
+              Project package (.corelens)
             </button>
             <button
               type="button"
@@ -1053,8 +1053,8 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="cv-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="cv-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="About Coreview">
-        <h2>About Coreview</h2>
+      <div className="cv-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="About Corelens Desktop">
+        <h2>About Corelens Desktop</h2>
         <p className="cv-mono cv-help">
           Version {info?.version ?? '…'} · built {__BUILT_ON__}
         </p>
@@ -1067,7 +1067,7 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
         </p>
         <h3>Licence</h3>
         <p>
-          <strong>Coreview is free.</strong> Use it for anything lawful, at work or at home, on as
+          <strong>Corelens is free.</strong> Use it for anything lawful, at work or at home, on as
           many machines as you like. No licence key, no activation, no registration. What you make
           with it is yours.
         </p>
@@ -1082,15 +1082,15 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
         </p>
         <h3>Open-source components</h3>
         <p className="cv-help">
-          Coreview is built on open-source components that keep their own licences, reproduced in
+          Corelens is built on open-source components that keep their own licences, reproduced in
           full in <code>THIRD-PARTY-NOTICES.md</code>, which is installed beside the application.
-          None of them is under a licence that restricts how Coreview itself may be used.
+          None of them is under a licence that restricts how Corelens itself may be used.
         </p>
         <h3>Where your data lives</h3>
         <p className="cv-mono cv-help">{info?.dataDir ?? '…'}</p>
         <h3>Privacy</h3>
         <p>
-          Diagrams, notes, probe configuration and results stay on this machine. Coreview has no
+          Diagrams, notes, probe configuration and results stay on this machine. Corelens has no
           account, no cloud sync and no telemetry. It never contacts a server of its own. The one
           request it can make that you did not point at your own network is a check for a newer
           release on GitHub, and only when you press the button under Settings or switch

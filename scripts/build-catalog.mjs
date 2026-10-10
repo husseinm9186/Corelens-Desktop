@@ -241,7 +241,7 @@ const SESSION_EXTRA = {
       in_global: true,
       source: 'netmiko fortinet_ssh.py disable_paging / cleanup; scrapli_community prepare_session / cleanup_session; spec prep',
     },
-    kex_note: 'netmiko fortinet_ssh.py preferred_kex: group14-sha1, group-exchange-sha1, group-exchange-sha256, group1-sha1 — Coreview already offers these',
+    kex_note: 'netmiko fortinet_ssh.py preferred_kex: group14-sha1, group-exchange-sha1, group-exchange-sha256, group1-sha1 — Corelens already offers these',
   },
   panos: {
     paging: { off: ['set cli scripting-mode on', 'set cli pager off', 'set cli config-output-format set'], source: 'scrapli_community paloalto_panos on_open; netmiko paloalto_panos.py session_preparation; spec prep (config-output-format set)' },
@@ -257,7 +257,7 @@ const SESSION_EXTRA = {
     structured: { api: 'XML API type=op, identical commands as <show><system><info></info></system></show>', source: 'spec' },
   },
   aoscx: {
-    paging: { off: ['no page'], source: 'scrapli_community aruba_aoscx on_open; netmiko aruba_aoscx.py session_preparation; Coreview arubacx dialect (verified on the lab 6200F)' },
+    paging: { off: ['no page'], source: 'scrapli_community aruba_aoscx on_open; netmiko aruba_aoscx.py session_preparation; Corelens arubacx dialect (verified on the lab 6200F)' },
     ansi: { strip: true, source: 'netmiko aruba_aoscx.py ansi_escape_codes = True' },
   },
   aoss: {
@@ -268,7 +268,7 @@ const SESSION_EXTRA = {
       privilege_exec: { pattern: '^[\\w.\\-@/:()]{1,63}#\\s?$', escalate: 'enable', escalate_auth: true, escalate_prompt: '(username|login|user name|password)', source: 'netmiko hp_procurve.py enable: may ask for the username before the password' },
     },
     default_privilege: 'privilege_exec',
-    paging: { off: ['terminal width 511', 'no page'], needs_enable: true, source: 'netmiko hp_procurve.py session_preparation ("requires elevated privileges to disable output paging"); Coreview arubasw dialect (verified on the lab 2930M)' },
+    paging: { off: ['terminal width 511', 'no page'], needs_enable: true, source: 'netmiko hp_procurve.py session_preparation ("requires elevated privileges to disable output paging"); Corelens arubasw dialect (verified on the lab 2930M)' },
     on_close: { steps: ['logout'], confirm: { prompt: 'Do you want', answer: 'y' }, source: 'netmiko hp_procurve.py cleanup' },
     ansi: { strip: true, source: 'netmiko hp_procurve.py ansi_escape_codes = True' },
     ssh_note: 'netmiko hp_procurve.py disables rsa-sha2-256/512 pubkey algorithms; kex quirks on old firmware are not handled yet',
@@ -292,9 +292,9 @@ const SESSION_EXTRA = {
     paging: { off: ['config paging disable'], restore: ['config paging enable'], source: 'scrapli_community cisco_aireos on_open; netmiko cisco_wlc_ssh.py session_preparation / cleanup' },
     on_close: { steps: ['logout'], confirm: { prompt: 'save', answer: 'n' }, source: 'netmiko cisco_wlc_ssh.py cleanup' },
   },
-  hpe_comware: { paging: { off: ['screen-length disable'], source: 'scrapli_community hp_comware on_open; Coreview comware dialect' } },
-  huawei_vrp: { paging: { off: ['screen-length 0 temporary'], source: 'scrapli_community huawei_vrp on_open; Coreview huawei dialect' } },
-  mikrotik_routeros: { paging: { suffix: ' without-paging', source: 'Coreview routeros dialect; RouterOS has no session-wide paging switch' }, prompt_echo_twice: { source: 'scrapli_community mikrotik_routeros sync_driver.send_command' } },
+  hpe_comware: { paging: { off: ['screen-length disable'], source: 'scrapli_community hp_comware on_open; Corelens comware dialect' } },
+  huawei_vrp: { paging: { off: ['screen-length 0 temporary'], source: 'scrapli_community huawei_vrp on_open; Corelens huawei dialect' } },
+  mikrotik_routeros: { paging: { suffix: ' without-paging', source: 'Corelens routeros dialect; RouterOS has no session-wide paging switch' }, prompt_echo_twice: { source: 'scrapli_community mikrotik_routeros sync_driver.send_command' } },
 };
 
 // ------------------------------------------------------------- feeds, weight
@@ -383,11 +383,11 @@ const slug = (s) => s.replace(/\{(\w+)\}/g, '$1').replace(/[^a-z0-9]+/gi, '_').r
 // ----------------------------------------------------------------- build
 
 /**
- * Coreview readers that met real hardware, per OS — the rest of
+ * Corelens readers that met real hardware, per OS — the rest of
  * the existing crawl was built from documentation
  * and may not claim `lab` here.
  */
-const COREVIEW_LAB = {
+const CORELENS_LAB = {
   cisco_ios: ['show version', 'show inventory', 'show cdp neighbors detail', 'show lldp neighbors detail', 'show mac address-table', 'show etherchannel summary', 'show ip interface brief', 'show ip arp', 'show arp', 'show ip route', 'show interfaces status'],
   cisco_nxos: ['show version', 'show inventory', 'show cdp neighbors detail', 'show lldp neighbors detail', 'show ip interface brief', 'show ip route'],
   fortios: ['get system status', 'get system interface physical', 'get system arp', 'get router info routing-table all', 'diagnose lldprx neighbors summary', 'execute switch-controller get-conn-status'],
@@ -416,9 +416,9 @@ function parserOf(os, row) {
 }
 
 function verifiedOf(os, row, parser) {
-  const coreview = row.coreview === 'yes' && (COREVIEW_LAB[os] ?? []).includes(row.command);
-  if (row.template && row.fixtures > 0) return { verified: 'lab', evidence: `ntc-templates tests (${row.fixtures} captures)${coreview ? '; Coreview ' + os + ' reader' : ''}` };
-  if (coreview) return { verified: 'lab', evidence: `Coreview ${os} reader, met real hardware` };
+  const corelens = row.corelens === 'yes' && (CORELENS_LAB[os] ?? []).includes(row.command);
+  if (row.template && row.fixtures > 0) return { verified: 'lab', evidence: `ntc-templates tests (${row.fixtures} captures)${corelens ? '; Corelens ' + os + ' reader' : ''}` };
+  if (corelens) return { verified: 'lab', evidence: `Corelens ${os} reader, met real hardware` };
   if (parser.parser === 'raw' || parser.parser === 'regex') return { verified: 'docs', evidence: 'a configuration; no parser to verify' };
   if (row.template) return { verified: 'docs', evidence: 'ntc-templates template without a test fixture' };
   if (parser.parser === 'json' || parser.parser === 'xml' || parser.parser === 'api') return { verified: 'docs', evidence: `structured output (${row.native}); field mapping from documentation` };
@@ -504,7 +504,7 @@ function build(os) {
     const v = verifiedOf(os, r, parser);
     entry.verified = v.verified;
     entry.evidence = v.evidence;
-    if (r.coreview === 'yes') entry.coreview_reader = true;
+    if (r.corelens === 'yes') entry.corelens_reader = true;
     if (r.flags.includes('verify')) entry.note = 'the spec marks this command "verify": its spelling is not confirmed';
     if (r.flags.includes('alternate spelling')) entry.note = 'an older spelling; sent only when the newer one is rejected';
     commands.push(entry);
@@ -528,9 +528,9 @@ function build(os) {
   if (meta.structured) doc.structured_output = meta.structured;
   if (meta.stub) doc.note = 'Phase-2 stub: the commands are catalogued, the session block is taken from scrapli; parsers come with Phase 2.';
   const header = [
-    `# Coreview discovery catalog — ${meta.vendor} ${meta.name} (${os})`,
+    `# Corelens discovery catalog — ${meta.vendor} ${meta.name} (${os})`,
     '#',
-    '# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview\'s discovery',
+    '# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens\'s discovery',
     '# specification, ntc-templates\' index',
     `# (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers`,
     `# (scrapli ${sessions._versions.scrapli}, scrapli_community ${sessions._versions.scrapli_community}) plus netmiko 4.8.0 where`,
@@ -538,7 +538,7 @@ function build(os) {
     '# command to the ntc index and the read-only allowlist.',
     '#',
     '# verified: lab = a real capture parses (ntc-templates\' tests, or a',
-    '# Coreview reader that met real hardware); docs = documented,',
+    '# Corelens reader that met real hardware); docs = documented,',
     '# structured, or a template with no fixture; unverified = no template, no',
     '# structured output, no capture yet. Never invent a command.',
     '',

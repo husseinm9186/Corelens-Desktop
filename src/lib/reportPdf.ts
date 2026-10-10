@@ -368,12 +368,12 @@ export function reportPages(r: ReportInput): string[] {
     doc.newPage(SECTION_LABEL.appendix);
     doc.heading('Appendix');
     doc.subheading('How to read this report');
-    doc.text('Every result was produced by a check run from the machine where Coreview was running. A healthy result proves that machine could reach the target with the configured method at that moment. It does not prove that every drawn link on the way is healthy, nor that application traffic flows end to end. A link\'s state follows the health rule chosen for it.');
+    doc.text('Every result was produced by a check run from the machine where Corelens was running. A healthy result proves that machine could reach the target with the configured method at that moment. It does not prove that every drawn link on the way is healthy, nor that application traffic flows end to end. A link\'s state follows the health rule chosen for it.');
     doc.text('Availability is the share of checks that were healthy or warning, of those that ran, over the samples held when the report was made. Inventory, ports and neighbours are what the last crawl read from each device; a device that has not been crawled shows what was drawn or imported.');
     doc.subheading('Statuses');
     doc.text((Object.keys(STATUS_LABEL) as HealthStatus[]).map((k) => STATUS_LABEL[k]).join(' · '));
     doc.subheading('Made by');
-    doc.text(`Coreview, ${when}. Template: ${r.template.name}. Sections: ${contents.join(', ')}.`);
+    doc.text(`Corelens, ${when}. Template: ${r.template.name}. Sections: ${contents.join(', ')}.`);
   }
 
   return doc.finish(cover);

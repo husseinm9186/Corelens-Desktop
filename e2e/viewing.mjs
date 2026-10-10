@@ -32,14 +32,14 @@ const project = {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
     transformCallback() { return next++; },
     invoke(cmd, args) {
       if (cmd === "plugin:event|listen") return Promise.resolve(next++);
-      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/coreview-viewing-test.svg");
+      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/corelens-viewing-test.svg");
       if (cmd === "pick_export_target") return Promise.resolve({ token: `t-${next++}`, path: args.folder ? `${args.folder}/${args.filename}` : `/tmp/${args.filename}` });
       if (cmd === "pick_export_folder") return Promise.resolve({ token: `f-${next++}`, path: args.folder ?? "/tmp/picked" });
       if (cmd === "save_export") {

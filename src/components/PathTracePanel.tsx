@@ -8,7 +8,7 @@
  *
  * The routing data comes from a saved crawl run — the same runs the Compare
  * screen reads — so tracing does not touch the network and works on a
- * `.coreview` file opened on a train. What the engine will not do is guess:
+ * `.corelens` file opened on a train. What the engine will not do is guess:
  * a device whose table was never collected, a named VRF, or anything VXLAN
  * stops with "insufficient", named and explained.
  */

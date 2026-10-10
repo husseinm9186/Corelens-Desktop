@@ -4,9 +4,9 @@
 
 use std::sync::{Arc, Mutex};
 
-use coreview_probe::engine::{run_once, EngineEvent, SessionState};
-use coreview_probe::sweep::{parse_sweepable_cidr, sweep_many, SweepEvent, SweepOptions, MAX_SWEEP_HOSTS};
-use coreview_probe::{run_traceroute, Engine, ProbeConfig, ProbeResult, ProbeSnapshot, TracerouteResult};
+use corelens_probe::engine::{run_once, EngineEvent, SessionState};
+use corelens_probe::sweep::{parse_sweepable_cidr, sweep_many, SweepEvent, SweepOptions, MAX_SWEEP_HOSTS};
+use corelens_probe::{run_traceroute, Engine, ProbeConfig, ProbeResult, ProbeSnapshot, TracerouteResult};
 use base64::Engine as _;
 use rusqlite::Connection;
 use serde::Serialize;
@@ -27,7 +27,7 @@ pub struct AppState {
     pub jobs: Arc<crate::jobs::Jobs>,
     /// The unlocked vault key, for as long as the app is running. Never
     /// written anywhere, and zeroed when it is dropped.
-    pub vault_key: Mutex<Option<coreview_discover::vault::VaultKey>>,
+    pub vault_key: Mutex<Option<corelens_discover::vault::VaultKey>>,
     /// How often each kind of network job may start.
     pub limiter: crate::ratelimit::RateLimiter,
     /// The interactive SSH sessions the window has open. Belongs to
@@ -232,7 +232,7 @@ pub async fn test_probe_now(state: State<'_, AppState>, config: ProbeConfig) -> 
 /// Validate a target without probing it — used for live inspector feedback.
 #[tauri::command]
 pub fn validate_target(target: String) -> CmdResult<String> {
-    coreview_probe::parse_target(&target)
+    corelens_probe::parse_target(&target)
         .map(|t| t.as_str())
         .map_err(|e| e.to_string())
 }
@@ -478,7 +478,7 @@ pub fn pump_events(app: AppHandle, mut rx: tokio::sync::mpsc::UnboundedReceiver<
                     }
                 }
             }
-            let _ = app.emit("coreview://engine", &event);
+            let _ = app.emit("corelens://engine", &event);
         }
     });
 }
@@ -553,7 +553,7 @@ pub fn diagram_pdf_pages(svgs: Vec<String>) -> CmdResult<Vec<u8>> {
 }
 
 /// The diagram as a Visio drawing. Shapes and connectors, not a
-/// picture: a colleague without Coreview can open it and move things.
+/// picture: a colleague without Corelens can open it and move things.
 #[tauri::command(async)]
 pub fn diagram_vsdx(drawing: crate::visio::VisioDrawing) -> CmdResult<Vec<u8>> {
     crate::visio::to_vsdx(&drawing)
@@ -677,24 +677,24 @@ fn write_export(path: &std::path::Path, contents_b64: &str) -> CmdResult<()> {
 /// dialog showed an empty folder and Open stayed greyed out.
 /// Reads a Visio drawing as a topology.
 ///
-/// A `.vsdx` is far larger than a Coreview project — the sample drawings run
+/// A `.vsdx` is far larger than a Corelens project — the sample drawings run
 /// to several MB of embedded artwork — so this gets its own, bigger limit
 /// rather than borrowing the one below, which exists to reject a file that is
 /// obviously not a project.
 /// A draw.io drawing, read into the same preview a Visio one gets.
 #[tauri::command(async)]
-pub fn import_drawio(path: String) -> CmdResult<coreview_formats::visio_import::VisioImport> {
+pub fn import_drawio(path: String) -> CmdResult<corelens_formats::visio_import::VisioImport> {
     const MAX: u64 = 64 * 1024 * 1024;
     let size = std::fs::metadata(&path).map_err(|e| format!("Could not read {path}: {e}"))?.len();
     if size > MAX {
         return Err(format!("{path} is {} MB, which is larger than any drawing this can read.", size / (1024 * 1024)));
     }
     let text = std::fs::read_to_string(&path).map_err(|e| format!("Could not read {path}: {e}"))?;
-    coreview_formats::drawio_import::import_drawio(&text)
+    corelens_formats::drawio_import::import_drawio(&text)
 }
 
 #[tauri::command(async)]
-pub fn import_visio(path: String) -> CmdResult<coreview_formats::visio_import::VisioImport> {
+pub fn import_visio(path: String) -> CmdResult<corelens_formats::visio_import::VisioImport> {
     const MAX: u64 = 128 * 1024 * 1024;
     let size = std::fs::metadata(&path)
         .map_err(|e| format!("Could not read {path}: {e}"))?
@@ -706,18 +706,18 @@ pub fn import_visio(path: String) -> CmdResult<coreview_formats::visio_import::V
         ));
     }
     let bytes = std::fs::read(&path).map_err(|e| format!("Could not read {path}: {e}"))?;
-    coreview_formats::visio_import::import_vsdx(&bytes)
+    corelens_formats::visio_import::import_vsdx(&bytes)
 }
 
 /// Where the isolation frame sends a message it refused. Nothing the
 /// page asked for runs; the call fails with why.
 #[tauri::command]
 pub fn ipc_refused(command: String, reason: String) -> CmdResult<()> {
-    eprintln!("coreview: refused a call to {command}: {reason}");
-    Err(format!("{command} was refused before it reached Coreview: {reason}."))
+    eprintln!("corelens: refused a call to {command}: {reason}");
+    Err(format!("{command} was refused before it reached Corelens: {reason}."))
 }
 
-/// A project as a folder — `project.coreview` and `project.yaml` —
+/// A project as a folder — `project.corelens` and `project.yaml` —
 /// inside `folder/name`, for version control. The name becomes one folder, so
 /// anything that would climb out of the chosen folder is refused. Each file is
 /// written beside itself and renamed into place, so a crash never leaves half
@@ -733,7 +733,7 @@ pub fn write_project_folder(folder: &str, name: &str, json: &str, yaml: &str) ->
     }
     let dir = base.join(name);
     std::fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
-    for (file, body) in [("project.coreview", json), ("project.yaml", yaml)] {
+    for (file, body) in [("project.corelens", json), ("project.yaml", yaml)] {
         let target = dir.join(file);
         let tmp = dir.join(format!(".{file}.part"));
         std::fs::write(&tmp, body).map_err(|e| format!("Could not write {}: {e}", target.display()))?;
@@ -769,7 +769,7 @@ pub fn read_import(path: String) -> CmdResult<String> {
         .len();
     if size > MAX {
         return Err(format!(
-            "{path} is {} MB. A Coreview project is not that large, so this is not one.",
+            "{path} is {} MB. A Corelens project is not that large, so this is not one.",
             size / (1024 * 1024)
         ));
     }
@@ -786,7 +786,7 @@ mod export_tests {
         let base = std::env::temp_dir().join(format!("cv-folder-{}", std::process::id()));
         std::fs::create_dir_all(&base).unwrap();
         let dir = super::write_project_folder(base.to_str().unwrap(), "lab-network", "{}\n", "a: 1\n").unwrap();
-        assert_eq!(std::fs::read_to_string(std::path::Path::new(&dir).join("project.coreview")).unwrap(), "{}\n");
+        assert_eq!(std::fs::read_to_string(std::path::Path::new(&dir).join("project.corelens")).unwrap(), "{}\n");
         assert_eq!(std::fs::read_to_string(std::path::Path::new(&dir).join("project.yaml")).unwrap(), "a: 1\n");
         assert!(!std::path::Path::new(&dir).join(".project.yaml.part").exists());
         for bad in ["..", "../escape", "a/b", "", "."] {
@@ -831,15 +831,15 @@ mod export_tests {
     #[test]
     fn a_save_location_is_used_once_and_only_when_a_dialog_gave_it() {
         let targets = super::ExportTargets::default();
-        let token = targets.keep(std::path::PathBuf::from("/tmp/coreview-lt456/out.svg"));
-        assert_eq!(targets.take(&token).unwrap(), std::path::PathBuf::from("/tmp/coreview-lt456/out.svg"));
+        let token = targets.keep(std::path::PathBuf::from("/tmp/corelens-lt456/out.svg"));
+        assert_eq!(targets.take(&token).unwrap(), std::path::PathBuf::from("/tmp/corelens-lt456/out.svg"));
         assert!(targets.take(&token).unwrap_err().contains("already written"), "spent");
         assert!(targets.take("made-up").unwrap_err().contains("not one a dialog chose"));
     }
 
     #[test]
     fn writes_decoded_bytes_to_the_given_path() {
-        let dir = std::env::temp_dir().join(format!("coreview-export-{}", Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("corelens-export-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("diagram.png");
         // PNG magic, so this also covers the binary case rather than only text.
@@ -854,7 +854,7 @@ mod export_tests {
 
     #[test]
     fn rejects_a_payload_that_is_not_base64() {
-        let path = std::env::temp_dir().join("coreview-should-not-appear");
+        let path = std::env::temp_dir().join("corelens-should-not-appear");
         std::fs::remove_file(&path).ok();
 
         let err = write_export(&path, "not base64!!").unwrap_err();
@@ -866,7 +866,7 @@ mod export_tests {
 
     #[test]
     fn reports_the_path_when_the_directory_does_not_exist() {
-        let path = std::env::temp_dir().join("coreview-no-such-dir").join("x.svg");
+        let path = std::env::temp_dir().join("corelens-no-such-dir").join("x.svg");
         let err = write_export(&path, "").unwrap_err();
         assert!(err.contains("Could not write"), "unexpected error: {err}");
     }
@@ -940,7 +940,7 @@ pub fn set_setting(
     // the encrypted vault and are referenced from here only by the id of the
     // credential that holds them (`scanCredentialId`, `scanSnmpCredentialId`).
     // This table is plain text in the same database as the projects, and
-    // nothing typed into Coreview is ever written where it could leave the
+    // nothing typed into Corelens is ever written where it could leave the
     // machine.
     const ALLOWED: [&str; 32] = [
         // The shadow-mode feature flag, per project.
@@ -1011,7 +1011,7 @@ pub fn set_setting(
         "updateCheckOnStart",
     ];
     if !ALLOWED.contains(&key.as_str()) {
-        return Err(format!("{key} is not a setting Coreview stores"));
+        return Err(format!("{key} is not a setting Corelens stores"));
     }
     let conn = state.db.lock().map_err(db_err)?;
     // A key that shapes the work belongs to the project doing it.
@@ -1038,9 +1038,9 @@ pub fn check_folder_writable(path: String) -> CmdResult<()> {
     if !dir.is_dir() {
         return Err(format!("{path} is not a folder"));
     }
-    let probe = dir.join(".coreview-write-test");
+    let probe = dir.join(".corelens-write-test");
     std::fs::write(&probe, b"")
-        .map_err(|e| format!("Coreview cannot write into {path}: {e}"))?;
+        .map_err(|e| format!("Corelens cannot write into {path}: {e}"))?;
     let _ = std::fs::remove_file(&probe);
     Ok(())
 }
@@ -1050,7 +1050,7 @@ pub fn check_folder_writable(path: String) -> CmdResult<()> {
 /// Starts a ping sweep of one subnet, streaming results as hosts answer.
 ///
 /// Returns as soon as the sweep is scheduled; progress and hits arrive on the
-/// `coreview://sweep` event. A /24 takes the better part of a minute even at
+/// `corelens://sweep` event. A /24 takes the better part of a minute even at
 /// full concurrency, and a caller blocked on the whole thing could not draw a
 /// progress bar or offer a Stop button.
 ///
@@ -1102,7 +1102,7 @@ pub async fn start_sweep(
                 SweepEvent::Progress { done, total } => progress.set("Sweeping", u64::from(*done), Some(u64::from(*total))),
                 _ => {}
             }
-            let _ = emitter.emit("coreview://sweep", &event);
+            let _ = emitter.emit("corelens://sweep", &event);
         }
     });
 

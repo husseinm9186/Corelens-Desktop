@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Juniper Junos (juniper_junos)
+# Corelens discovery catalog — Juniper Junos (juniper_junos)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Juniper
@@ -117,7 +117,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (5 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_chassis_hardware
     cmd: show chassis hardware
     gate: always
@@ -128,7 +128,7 @@ commands:
     timeout: 30
     verified: docs
     evidence: structured output (`| display xml`); field mapping from documentation
-    coreview_reader: true
+    corelens_reader: true
   - id: show_system_information
     cmd: show system information
     gate: always
@@ -151,7 +151,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (3 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_interfaces_descriptions
     cmd: show interfaces descriptions
     gate: always
@@ -185,7 +185,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (2 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_lacp_interfaces
     cmd: show lacp interfaces
     gate: always
@@ -198,7 +198,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_virtual_chassis
     cmd: show virtual-chassis
     gate: cap.stack
@@ -209,7 +209,7 @@ commands:
     timeout: 30
     verified: docs
     evidence: structured output (`| display xml`); field mapping from documentation
-    coreview_reader: true
+    corelens_reader: true
   - id: show_chassis_routing_engine
     cmd: show chassis routing-engine
     gate: cap.stack
@@ -275,7 +275,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (3 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_route_instance
     cmd: show route instance
     gate: cap.routing
@@ -498,7 +498,7 @@ commands:
     timeout: 120
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_configuration_display_set
     cmd: show configuration | display set
     gate: always
@@ -519,7 +519,7 @@ commands:
     timeout: 120
     verified: docs
     evidence: structured output (`| display xml`); field mapping from documentation
-    coreview_reader: true
+    corelens_reader: true
   - id: show_route_protocol_static
     cmd: show route protocol static
     gate: cap.routing
@@ -552,7 +552,7 @@ commands:
     verified: docs
     evidence: structured output (`| display xml`); field mapping from documentation
   # What the operational commands do not carry — read from the
-  # configuration as XML by Coreview's junos readers. The suffix is
+  # configuration as XML by Corelens's junos readers. The suffix is
   # written here because a reader's command is sent as it stands.
   - id: show_configuration_security_address_book
     cmd: show configuration security address-book | display xml
@@ -563,8 +563,8 @@ commands:
     weight: light
     timeout: 60
     verified: docs
-    evidence: Coreview junos reader; Junos configuration schema `security address-book` (addresses, DNS names, ranges, address-sets)
-    coreview_reader: true
+    evidence: Corelens junos reader; Junos configuration schema `security address-book` (addresses, DNS names, ranges, address-sets)
+    corelens_reader: true
   - id: show_configuration_firewall
     cmd: show configuration firewall | display xml
     gate: cap.pbr
@@ -574,8 +574,8 @@ commands:
     weight: light
     timeout: 60
     verified: docs
-    evidence: Coreview junos reader; Junos configuration schema `firewall family inet filter` terms with `then routing-instance` or `next-ip`
-    coreview_reader: true
+    evidence: Corelens junos reader; Junos configuration schema `firewall family inet filter` terms with `then routing-instance` or `next-ip`
+    corelens_reader: true
 live_path:
   - id: show_route_dst_table_ri_inet_0
     cmd: show route {dst} table {ri}.inet.0

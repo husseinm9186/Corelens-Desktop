@@ -119,12 +119,12 @@ export function rackElevationDxf(racks: readonly Rack[], devices: readonly Racka
   const date = (options.date ?? new Date()).toISOString().slice(0, 10);
   const tb = { x: totalW - 360, y: -140, w: 360, h: 120 };
   ents.push(rect('TITLE', tb.x, tb.y, tb.w, tb.h));
-  ents.push(text('TITLE', tb.x + 10, tb.y + tb.h - 24, 12, options.project ?? 'Coreview'));
+  ents.push(text('TITLE', tb.x + 10, tb.y + tb.h - 24, 12, options.project ?? 'Corelens'));
   ents.push(text('TITLE', tb.x + 10, tb.y + tb.h - 48, 9, racks.map((k) => k.name).join(', ')));
   const places = [...new Set(racks.map(placeOf).filter(Boolean))].join('; ');
   ents.push(text('TITLE', tb.x + 10, tb.y + tb.h - 68, 8, places || ''));
   ents.push(text('TITLE', tb.x + 10, tb.y + tb.h - 88, 8, `${face} elevation · 1 U = ${U_MM} mm · opening ${OPENING_MM} mm`));
-  ents.push(text('TITLE', tb.x + 10, tb.y + tb.h - 108, 8, `${date}${options.revision ? ` · rev ${options.revision}` : ''} · Coreview`));
+  ents.push(text('TITLE', tb.x + 10, tb.y + tb.h - 108, 8, `${date}${options.revision ? ` · rev ${options.revision}` : ''} · Corelens`));
 
   const head = [
     pair(0, 'SECTION'), pair(2, 'HEADER'), pair(9, '$ACADVER'), pair(1, 'AC1009'), pair(9, '$INSUNITS'), pair(70, 4), pair(0, 'ENDSEC'),

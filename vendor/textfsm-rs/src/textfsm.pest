@@ -11,7 +11,7 @@ value_definition = { "Value" ~ options? ~ identifier ~ regex_pattern ~ NEWLINE }
 options = @{ option ~ ("," ~ option)* }
 option = @{ "Required" | "List" | "Filldown" | "Fillup" | "Key" }
 identifier = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
-// COREVIEW PATCH 2 (LT-525): Python TextFSM accepts any Value regex that
+// CORELENS PATCH 2 (LT-525): Python TextFSM accepts any Value regex that
 // starts with "(" and ends with ")" — e.g. `([^\s].+?)(?=\s+(Up|Down))`, a
 // group followed by a look-ahead. The regex runs to the last ")" on the line.
 regex_pattern = @{ "(" ~ (!(")" ~ (" " | "\t")* ~ NEWLINE) ~ !NEWLINE ~ ANY)* ~ ")" }

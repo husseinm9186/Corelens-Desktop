@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Cisco IOS / IOS-XE (cisco_ios)
+# Corelens discovery catalog — Cisco IOS / IOS-XE (cisco_ios)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Cisco
@@ -108,8 +108,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (9 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (9 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_inventory
     cmd: show inventory
     gate: always
@@ -119,8 +119,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (1 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (1 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_ip_interface_brief
     cmd: show ip interface brief
     gate: always
@@ -131,8 +131,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (1 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (1 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_interfaces_description
     cmd: show interfaces description
     gate: always
@@ -152,8 +152,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (2 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (2 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_lldp_neighbors_detail
     cmd: show lldp neighbors detail
     gate: always
@@ -164,8 +164,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (9 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (9 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_switch
     cmd: show switch
     gate: cap.stack
@@ -178,7 +178,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (6 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_module
     cmd: show module
     gate: cap.stack
@@ -213,7 +213,7 @@ commands:
     timeout: 30
     verified: unverified
     evidence: no template, no structured output, no capture yet
-    coreview_reader: true
+    corelens_reader: true
   - id: show_interfaces_status
     cmd: show interfaces status
     gate: cap.switching
@@ -223,8 +223,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (4 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (4 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_interfaces_switchport
     cmd: show interfaces switchport
     gate: cap.switching
@@ -296,8 +296,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (2 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (2 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_ip_dhcp_snooping_binding
     cmd: show ip dhcp snooping binding
     gate: cap.switching
@@ -350,7 +350,7 @@ commands:
     timeout: 30
     verified: unverified
     evidence: no template, no structured output, no capture yet
-    coreview_reader: true
+    corelens_reader: true
   - id: show_vrf
     cmd: show vrf
     gate: cap.vrf
@@ -361,7 +361,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (6 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_ip_vrf
     cmd: show ip vrf
     gate: cap.vrf
@@ -372,7 +372,7 @@ commands:
     timeout: 30
     verified: unverified
     evidence: no template, no structured output, no capture yet
-    coreview_reader: true
+    corelens_reader: true
     note: an older spelling; sent only when the newer one is rejected
   - id: show_ip_protocols_vrf_vrf
     cmd: show ip protocols vrf {vrf}
@@ -625,8 +625,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: lab
-    evidence: ntc-templates tests (1 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (1 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_running_config
     cmd: show running-config
     gate: always
@@ -646,8 +646,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: lab
-    evidence: ntc-templates tests (11 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (11 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_mac_address_table_2
     cmd: show mac-address-table
     gate: cap.switching
@@ -678,8 +678,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: lab
-    evidence: ntc-templates tests (4 captures); Coreview cisco_ios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (4 captures); Corelens cisco_ios reader
+    corelens_reader: true
   - id: show_ip_route_static
     cmd: show ip route static
     gate: cap.routing

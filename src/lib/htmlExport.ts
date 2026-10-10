@@ -1,7 +1,7 @@
 /**
  * The project as one interactive HTML file.
  *
- * For someone who has neither Coreview nor Visio nor a network connection: a
+ * For someone who has neither Corelens nor Visio nor a network connection: a
  * single file that opens in any browser, offline, with every page's drawing,
  * page tabs, drag to pan, wheel or buttons to zoom, a search across every
  * device, and a device's details on a click. Nothing is fetched — no fonts,
@@ -189,7 +189,7 @@ export function interactiveHtml(title: string, subtitle: string, pages: HtmlPage
 <style>${STYLE}</style>
 </head>
 <body>
-<header><h1>${esc(title)}</h1><p>${esc(subtitle)}${subtitle ? ' · ' : ''}Exported ${esc(generatedAt.toISOString().slice(0, 16).replace('T', ' '))} UTC from Coreview</p></header>
+<header><h1>${esc(title)}</h1><p>${esc(subtitle)}${subtitle ? ' · ' : ''}Exported ${esc(generatedAt.toISOString().slice(0, 16).replace('T', ' '))} UTC from Corelens</p></header>
 <nav><div class="tabs" role="tablist" aria-label="Pages">${tabs}</div>
 <div class="tools"><input id="search" type="search" placeholder="Find a device or address" aria-label="Find a device or address">
 <button type="button" id="zoom-out" aria-label="Zoom out">−</button><button type="button" id="fit">Fit</button><button type="button" id="zoom-in" aria-label="Zoom in">+</button></div></nav>

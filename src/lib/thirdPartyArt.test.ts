@@ -20,7 +20,7 @@ const device = (id: string, over: Partial<DeviceNodeData> = {}): TopoNode =>
 const note = { id: 'n', type: 'note', position: { x: 0, y: 0 }, data: { body: 'x' } } as unknown as TopoNode;
 
 describe('third-party artwork in a project', () => {
-  it('is a picture that is not Coreview’s own', () => {
+  it('is a picture that is not Corelens’s own', () => {
     expect(usesImportedArtwork({})).toBe(false);
     expect(usesImportedArtwork({ imageDataUrl: IMG })).toBe(true);
     expect(usesImportedArtwork({ imageDataUrl: IMG, ownArtwork: true })).toBe(false);

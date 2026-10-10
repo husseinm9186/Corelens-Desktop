@@ -6,14 +6,14 @@
 //! open shell sitting as tabs beside each other.
 //!
 //! What is here is the machinery, and it is deliberately thin. Each session is
-//! a task owning a `coreview_discover::ssh::Shell`; the task selects between
+//! a task owning a `corelens_discover::ssh::Shell`; the task selects between
 //! bytes arriving from the device and instructions arriving from the window,
 //! and forwards each to the other. Nothing here interprets what passes: the
 //! device's escape sequences are the device's business and the terminal
 //! emulator in the front end is what draws them.
 //!
 //! **A session is never part of a project.** It belongs to the window: it is
-//! not written to the database, not saved into a `.coreview` file, and closing
+//! not written to the database, not saved into a `.corelens` file, and closing
 //! the project closes the sessions. There is nothing to persist — a live TCP
 //! connection cannot be saved — and pretending otherwise is how a document
 //! ends up holding a hostname and a username it should not.
@@ -27,9 +27,9 @@ use base64::Engine as _;
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::mpsc;
 
-use coreview_discover::backup::{backup_path_named, BackupKind};
-use coreview_discover::sessionlog::SessionLog;
-use coreview_discover::ssh::{Shell, SshError, SshOptions};
+use corelens_discover::backup::{backup_path_named, BackupKind};
+use corelens_discover::sessionlog::SessionLog;
+use corelens_discover::ssh::{Shell, SshError, SshOptions};
 
 use crate::commands::AppState;
 
@@ -177,7 +177,7 @@ pub async fn ssh_open(
     // The chosen login, then every other SSH login the project keeps, for
     // a device that refuses it.
     let chain = crate::vault_commands::ssh_login_chain(&state, &credential_id)?;
-    let logins: Vec<coreview_discover::ssh::Credentials> = chain.iter().map(|(_, c)| c.clone()).collect();
+    let logins: Vec<corelens_discover::ssh::Credentials> = chain.iter().map(|(_, c)| c.clone()).collect();
     let store = crate::discovery::load_host_keys(&state)?;
 
     let options = SshOptions {
@@ -189,11 +189,11 @@ pub async fn ssh_open(
     // instead of a frozen "Connecting…". Keyed by address: the session id
     // does not exist until the shell is open. The forwarder ends when the
     // sender is dropped, which is when the open call returns.
-    let (progress_tx, mut progress_rx) = mpsc::channel::<coreview_discover::ssh::SshProgress>(16);
+    let (progress_tx, mut progress_rx) = mpsc::channel::<corelens_discover::ssh::SshProgress>(16);
     let progress_app = app.clone();
     let progress_address = address.clone();
     let progress_task = tauri::async_runtime::spawn(async move {
-        use coreview_discover::ssh::SshProgress::*;
+        use corelens_discover::ssh::SshProgress::*;
         while let Some(p) = progress_rx.recv().await {
             let stage = match p {
                 Connecting { .. } => "connecting",
@@ -203,11 +203,11 @@ pub async fn ssh_open(
                 OpeningShell { .. } => "openingShell",
                 Ready { .. } | Running { .. } => continue,
             };
-            let _ = progress_app.emit("coreview://ssh", SessionEvent::Progress { address: progress_address.clone(), stage: stage.to_string() });
+            let _ = progress_app.emit("corelens://ssh", SessionEvent::Progress { address: progress_address.clone(), stage: stage.to_string() });
         }
     });
 
-    let opened = coreview_discover::ssh::open_shell_first_accepted(
+    let opened = corelens_discover::ssh::open_shell_first_accepted(
         &address,
         &logins,
         options,
@@ -263,21 +263,21 @@ pub async fn ssh_open(
                             let readable = shaper.feed(&bytes);
                             if !readable.is_empty() {
                                 if let Err(e) = file.write_all(&readable) {
-                                    let _ = emitter.emit("coreview://ssh", SessionEvent::Warning {
+                                    let _ = emitter.emit("corelens://ssh", SessionEvent::Warning {
                                         id: session_id.clone(),
                                         message: format!("The session log at {} could not be written: {e}", path.display()),
                                     });
                                     // Stop rather than warn on every chunk. The
                                     // session itself is not in trouble.
                                     log = None;
-                                    let _ = emitter.emit("coreview://ssh", SessionEvent::Logging {
+                                    let _ = emitter.emit("corelens://ssh", SessionEvent::Logging {
                                         id: session_id.clone(),
                                         path: None,
                                     });
                                 }
                             }
                         }
-                        let _ = emitter.emit("coreview://ssh", SessionEvent::Data {
+                        let _ = emitter.emit("corelens://ssh", SessionEvent::Data {
                             id: session_id.clone(),
                             bytes: base64::engine::general_purpose::STANDARD.encode(&bytes),
                         });
@@ -289,7 +289,7 @@ pub async fn ssh_open(
                     if let Err(e) = shell.keepalive().await {
                         break describe(e);
                     }
-                    let _ = emitter.emit("coreview://ssh", SessionEvent::Alive {
+                    let _ = emitter.emit("corelens://ssh", SessionEvent::Alive {
                         id: session_id.clone(),
                         at: now_ms(),
                     });
@@ -313,13 +313,13 @@ pub async fn ssh_open(
                                 shaper = SessionLog::new();
                                 let said = path.display().to_string();
                                 log = Some((path, file));
-                                let _ = emitter.emit("coreview://ssh", SessionEvent::Logging {
+                                let _ = emitter.emit("corelens://ssh", SessionEvent::Logging {
                                     id: session_id.clone(),
                                     path: Some(said),
                                 });
                             }
                             Err(e) => {
-                                let _ = emitter.emit("coreview://ssh", SessionEvent::Warning {
+                                let _ = emitter.emit("corelens://ssh", SessionEvent::Warning {
                                     id: session_id.clone(),
                                     message: format!("The session log at {} could not be opened: {e}", path.display()),
                                 });
@@ -328,7 +328,7 @@ pub async fn ssh_open(
                     }
                     Some(Instruction::LogStop) => {
                         log = None;
-                        let _ = emitter.emit("coreview://ssh", SessionEvent::Logging {
+                        let _ = emitter.emit("corelens://ssh", SessionEvent::Logging {
                             id: session_id.clone(),
                             path: None,
                         });
@@ -343,7 +343,7 @@ pub async fn ssh_open(
         };
         shell.close().await;
         let _ = emitter.emit(
-            "coreview://ssh",
+            "corelens://ssh",
             SessionEvent::Closed {
                 id: session_id.clone(),
                 reason,
@@ -619,7 +619,7 @@ pub fn argv_for(template: &str, user: &str, host: &str, port: u16) -> Result<Vec
 /// `-pw` and every equivalent put the password on a command line, where any
 /// other account on the machine can read it straight out of the process list —
 /// which is the opposite of there being a vault at all. The username
-/// and the address go; the client asks for the rest. Coreview knows nothing
+/// and the address go; the client asks for the rest. Corelens knows nothing
 /// about the session after this: no log, no colouring, no keepalive. Those are
 /// what the panel is for.
 #[tauri::command(async)]

@@ -67,8 +67,8 @@ import { t } from '../i18n';
 import { DeviceGlyph, DEVICE_LABEL } from './icons';
 
 export const UNIT_PX = 14;
-const DRAG_TYPE = 'application/x-coreview-device';
-const DRAG_FURNITURE = 'application/x-coreview-furniture';
+const DRAG_TYPE = 'application/x-corelens-device';
+const DRAG_FURNITURE = 'application/x-corelens-furniture';
 const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25, 1.5, 2];
 /** The colours a box can be given. */
 const SWATCHES = ['#5ea1ff', '#3fb66a', '#e8a33d', '#e4564a', '#b07ff0', '#2cc6c6', '#f06fae', '#c9a227', '#98a3b3'];

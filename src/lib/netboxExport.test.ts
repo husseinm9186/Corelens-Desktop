@@ -67,7 +67,7 @@ describe('the NetBox export', () => {
     expect(out.vlans).toEqual([{ id: expect.any(Number), vid: 10, name: 'STAFF', site: { name: 'Head office' }, status: 'active' }]);
     const ids = [...out.devices, ...out.interfaces, ...out.ip_addresses, ...out.cables, ...out.vlans].map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(out._coreview.exported).toBe('1970-01-01T00:00:00.000Z');
+    expect(out._corelens.exported).toBe('1970-01-01T00:00:00.000Z');
   });
 
   it('reads straight back in through the NetBox reader, in JSON and in YAML', () => {

@@ -26,8 +26,8 @@ const stale = await page.evaluate(() =>
     .filter((c) => c.startsWith("lt-")));
 // Legacy localStorage adoption: the seed used the OLD key only.
 const adopted = await page.evaluate(() => ({
-  newKey: !!localStorage.getItem("coreview.projects.v1"),
-  projects: Object.keys(JSON.parse(localStorage.getItem("coreview.projects.v1") || "{}")).length,
+  newKey: !!localStorage.getItem("corelens.projects.v1"),
+  projects: Object.keys(JSON.parse(localStorage.getItem("corelens.projects.v1") || "{}")).length,
 }));
 console.log(JSON.stringify({ staleClasses: [...new Set(stale)], adopted, errors }));
 await browser.close();

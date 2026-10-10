@@ -35,6 +35,9 @@ export function pickArtifacts(names) {
   if (macSig.length !== 1) missing.push('the macOS archive\'s signature (*.app.tar.gz.sig)');
   if (dmg.length !== 1) missing.push('the macOS disk image (*.dmg)');
   if (missing.length) throw new Error(`cannot write a release without ${missing.join(', ')}`);
+  // GitHub would upload these under another name than the manifest gives.
+  const spaced = [...windows, ...windowsSig, ...mac, ...macSig, ...dmg].filter((n) => /\s/.test(n));
+  if (spaced.length) throw new Error(`a release file's name has a space (run scripts/asset-names.mjs first): ${spaced.join(', ')}`);
   const extras = one((n) => /^SHA256SUMS\.txt$|\.cdx\.json$|\.crt$|\.cer$/i.test(n));
   return { windows: windows[0], windowsSig: windowsSig[0], mac: mac[0], macSig: macSig[0], dmg: dmg[0], extras };
 }

@@ -1,5 +1,5 @@
 //! Local SQLite persistence. One database per installation, under
-//! %LOCALAPPDATA%\Coreview\coreview.db. No server, no network.
+//! %LOCALAPPDATA%\Corelens Desktop\corelens.db. No server, no network.
 //!
 //! Storage strategy: project *metadata*, *sessions*, *events* and *samples* are
 //! normalized because they are queried, filtered and exported. The diagram
@@ -108,6 +108,17 @@ fn base_dir_for(
     }
 }
 
+/// The folder under the platform's data home that holds everything the
+/// operator types: the database, logs, transcripts, diagnostics.
+pub const DATA_FOLDER: &str = "Corelens Desktop";
+/// The database inside it.
+pub const DB_FILE: &str = "corelens.db";
+
+/// The names the app had before, newest first, each with the stem its
+/// database file carried. Their folders are read once, on the first start
+/// under the current name, and never written to again.
+const PREVIOUS_NAMES: &[(&str, &str)] = &[("Coreview", "coreview"), ("LiveTopo", "livetopo")];
+
 pub fn data_dir() -> PathBuf {
     let base = base_dir_for(
         DataHome::here(),
@@ -116,17 +127,36 @@ pub fn data_dir() -> PathBuf {
         std::env::var_os("HOME").map(PathBuf::from),
     )
     .unwrap_or_else(|| PathBuf::from("."));
-    let dir = base.join("Coreview");
-    adopt_livetopo_data(&base, &dir);
-    // Everything a Mac wrote before this went to the XDG folder, and
-    // that includes the database. Moving without carrying it across would look
-    // exactly like every project having been deleted.
-    if DataHome::here() == DataHome::MacOs {
-        if let Some(old) = dirs_next_local().map(|b| b.join("Coreview")) {
-            adopt_from(&old, &dir);
+    let dir = base.join(DATA_FOLDER);
+    // Everything a Mac wrote before Application Support was used went to the
+    // XDG folder, and that includes the database.
+    let earlier_mac_home = if DataHome::here() == DataHome::MacOs { dirs_next_local() } else { None };
+    adopt_previous(&base, earlier_mac_home.as_deref(), &dir);
+    dir
+}
+
+/// Carries the newest data folder an earlier name left behind into the
+/// current one.
+///
+/// Renaming the product without this would leave every project on disk but
+/// invisible, which looks exactly like data loss. Deliberately conservative:
+/// it acts only when the current folder does not exist at all, so it can
+/// never overwrite newer data, and it copies rather than moves — the old
+/// folder is still there, untouched, for the earlier version to open if it
+/// is reinstalled. A failure is silent on purpose; a first run that starts
+/// empty is recoverable, one that refuses to start is not.
+fn adopt_previous(base: &Path, earlier_mac_home: Option<&Path>, new_dir: &Path) {
+    for (folder, stem) in PREVIOUS_NAMES {
+        for home in std::iter::once(base).chain(earlier_mac_home) {
+            let old_dir = home.join(folder);
+            if new_dir.exists() {
+                return;
+            }
+            if old_dir.is_dir() {
+                adopt_renamed(&old_dir, new_dir, stem);
+            }
         }
     }
-    dir
 }
 
 /// Copies a whole data folder across, once, and never over anything already
@@ -152,39 +182,90 @@ fn adopt_from(old_dir: &Path, new_dir: &Path) {
     }
 }
 
-/// Carries a pre-rename database over to the new name.
+/// `adopt_from`, with the database renamed on the way.
 ///
-/// The app was called LiveTopo until 0.2.0 and kept its database in a folder
-/// of that name. Renaming the product without this would leave every existing
-/// project on disk but invisible, which looks exactly like data loss.
-///
-/// Deliberately conservative: it only acts when there is a LiveTopo folder and
-/// no Coreview folder at all, so it can never overwrite newer data, and it
-/// copies rather than moves — if anything here is wrong, the original is still
-/// sitting there untouched. A failure is silent on purpose; a first run that
-/// starts empty is recoverable, one that refuses to start is not.
-fn adopt_livetopo_data(base: &Path, new_dir: &Path) {
-    let old_dir = base.join("LiveTopo");
+/// The database file was renamed along with everything else, so the copy has
+/// to be renamed too. Copying `coreview.db` verbatim leaves it sitting next to
+/// a freshly created empty `corelens.db`, which is the data loss this exists
+/// to prevent. The `-wal` and `-shm` siblings are carried under the same
+/// mapping so SQLite sees a coherent set rather than a database with a
+/// stranded journal.
+fn adopt_renamed(old_dir: &Path, new_dir: &Path, old_stem: &str) {
     if new_dir.exists() || !old_dir.is_dir() {
         return;
     }
     if std::fs::create_dir_all(new_dir).is_err() {
         return;
     }
-    let Ok(entries) = std::fs::read_dir(&old_dir) else { return };
+    let Ok(entries) = std::fs::read_dir(old_dir) else { return };
     for entry in entries.flatten() {
-        if !entry.file_type().is_ok_and(|t| t.is_file()) {
-            continue;
+        let Ok(kind) = entry.file_type() else { continue };
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let to = new_dir.join(renamed_db_file(&name, old_stem));
+        if kind.is_dir() {
+            adopt_from(&entry.path(), &to);
+        } else if kind.is_file() {
+            let _ = std::fs::copy(entry.path(), to);
         }
-        // The database file was renamed along with everything else, so the
-        // copy has to be renamed too. Copying livetopo.db verbatim leaves it
-        // sitting next to a freshly created empty coreview.db, which is the
-        // data loss this whole function exists to prevent. The -wal and -shm
-        // siblings are carried across under the same mapping so SQLite sees a
-        // coherent set rather than a database with a stranded journal.
-        let name = entry.file_name();
-        let renamed = name.to_string_lossy().replace("livetopo", "coreview");
-        let _ = std::fs::copy(entry.path(), new_dir.join(renamed));
+    }
+}
+
+/// The database and its journal under the current name; anything else as it
+/// was.
+fn renamed_db_file(name: &str, old_stem: &str) -> String {
+    match name.strip_prefix(old_stem) {
+        Some(rest) if rest.starts_with(".db") => format!("{}{rest}", DB_FILE.trim_end_matches(".db")),
+        _ => name.to_string(),
+    }
+}
+
+/// The bundle identifier, which names the folder the window's own storage
+/// lives in: view settings, undo history, recovery copies.
+pub const IDENTIFIER: &str = "com.corelens.desktop";
+/// The identifiers the app had before.
+const PREVIOUS_IDENTIFIERS: &[&str] = &["net.coreview.app"];
+
+/// Where the webview keeps its storage, per platform: WebView2's profile
+/// under `%LOCALAPPDATA%`, WebKitGTK's under the XDG data home, WKWebView's
+/// under `~/Library/WebKit`. Each is a folder named by the identifier.
+fn webview_homes(
+    home: DataHome,
+    local_app_data: Option<PathBuf>,
+    xdg_data_home: Option<PathBuf>,
+    user_home: Option<PathBuf>,
+) -> Option<PathBuf> {
+    match home {
+        DataHome::MacOs => user_home.map(|h| h.join("Library/WebKit")),
+        _ => base_dir_for(home, local_app_data, xdg_data_home, user_home),
+    }
+}
+
+/// Carries the window's storage from an earlier identifier, before the
+/// window opens.
+///
+/// A new identifier is a new, empty webview profile: without this the
+/// remembered view settings, every project's undo history and any
+/// recovery copy would be gone the first time the renamed app starts. Same
+/// rules as the data folder — once, copied, never over anything there.
+pub fn adopt_webview_data() {
+    let Some(home) = webview_homes(
+        DataHome::here(),
+        std::env::var_os("LOCALAPPDATA").map(PathBuf::from),
+        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
+        std::env::var_os("HOME").map(PathBuf::from),
+    ) else {
+        return;
+    };
+    adopt_webview_from(&home);
+}
+
+fn adopt_webview_from(home: &Path) {
+    let new_dir = home.join(IDENTIFIER);
+    for old in PREVIOUS_IDENTIFIERS {
+        if new_dir.exists() {
+            return;
+        }
+        adopt_from(&home.join(old), &new_dir);
     }
 }
 
@@ -1646,7 +1727,7 @@ pub fn list_credentials_for(conn: &Connection, open: Option<&str>) -> rusqlite::
 
 #[cfg(test)]
 mod tests {
-    /// On macOS everything went to `~/.local/share/Coreview` — a
+    /// On macOS everything went to `~/.local/share/Corelens` — a
     /// dotfolder Finder hides — so a debug log written there could not be
     /// found, which looks exactly like one that was never written.
     ///
@@ -1685,14 +1766,14 @@ mod tests {
     #[test]
     fn the_folder_that_was_there_before_is_adopted_whole() {
         let root = tempfile::tempdir().expect("tempdir");
-        let old = root.path().join("old/Coreview");
+        let old = root.path().join("old/Corelens Desktop");
         std::fs::create_dir_all(old.join("logs")).expect("old");
-        std::fs::write(old.join("coreview.db"), b"a database").expect("db");
+        std::fs::write(old.join("corelens.db"), b"a database").expect("db");
         std::fs::write(old.join("logs/crawl-1.log"), b"a log").expect("log");
-        let new = root.path().join("new/Coreview");
+        let new = root.path().join("new/Corelens Desktop");
 
         super::adopt_from(&old, &new);
-        assert_eq!(std::fs::read(new.join("coreview.db")).expect("db came across"), b"a database");
+        assert_eq!(std::fs::read(new.join("corelens.db")).expect("db came across"), b"a database");
         assert_eq!(
             std::fs::read(new.join("logs/crawl-1.log")).expect("subfolders come across too"),
             b"a log",
@@ -1700,9 +1781,9 @@ mod tests {
 
         // Already there: nothing is touched, so a later run cannot overwrite
         // newer data with older.
-        std::fs::write(new.join("coreview.db"), b"newer").expect("newer");
+        std::fs::write(new.join("corelens.db"), b"newer").expect("newer");
         super::adopt_from(&old, &new);
-        assert_eq!(std::fs::read(new.join("coreview.db")).expect("db"), b"newer");
+        assert_eq!(std::fs::read(new.join("corelens.db")).expect("db"), b"newer");
     }
 
     /// Everything the operator types lives in one file, and that file
@@ -1720,7 +1801,7 @@ mod tests {
         let text = dir.to_string_lossy().to_string();
 
         assert!(
-            text.ends_with("Coreview"),
+            text.ends_with(super::DATA_FOLDER),
             "the data directory must be the app's own folder, got {text}"
         );
 
@@ -1736,7 +1817,7 @@ mod tests {
 
         // And it is an absolute path, so it does not follow the working
         // directory the app happens to be launched from.
-        assert!(dir.is_absolute() || text == "./Coreview", "not a fixed location: {text}");
+        assert!(dir.is_absolute() || text == "./Corelens", "not a fixed location: {text}");
     }
 
     /// The vault is in that same database rather than a file of its own, so
@@ -1744,7 +1825,7 @@ mod tests {
     #[test]
     fn the_vault_lives_in_the_same_database_as_everything_else() {
         let dir = tempfile::tempdir().expect("tempdir");
-        let path = dir.path().join("coreview.db");
+        let path = dir.path().join("corelens.db");
         let conn = super::open(&path).expect("open");
         let tables: Vec<String> = conn
             .prepare("SELECT name FROM sqlite_master WHERE type='table'")
@@ -2094,50 +2175,164 @@ mod tests {
         assert_eq!(all.get("iconLibraryDir").map(String::as_str), Some("/i"));
     }
 
+    fn tmp_base() -> PathBuf {
+        std::env::temp_dir().join(format!("cv-adopt-{}", uuid::Uuid::new_v4()))
+    }
+
+    /// An installed Coreview's folder, database and all, opens under the
+    /// current name on the first start.
     #[test]
-    fn adopts_a_pre_rename_database() {
-        let base = std::env::temp_dir().join(format!("cv-adopt-{}", uuid::Uuid::new_v4()));
+    fn adopts_the_folder_the_app_had_before_its_last_rename() {
+        let base = tmp_base();
+        let old = base.join("Coreview");
+        std::fs::create_dir_all(old.join("logs")).unwrap();
+        std::fs::create_dir_all(old.join("diagnostics/collection-1")).unwrap();
+        std::fs::write(old.join("coreview.db"), b"old-bytes").unwrap();
+        std::fs::write(old.join("coreview.db-wal"), b"old-wal").unwrap();
+        std::fs::write(old.join("coreview.db-shm"), b"old-shm").unwrap();
+        std::fs::write(old.join("logs/crawl-1.log"), b"a log").unwrap();
+        std::fs::write(old.join("diagnostics/collection-1/run.json"), b"{}").unwrap();
+
+        let new_dir = base.join(DATA_FOLDER);
+        adopt_previous(&base, None, &new_dir);
+
+        // Renamed, not just copied: the app opens corelens.db, so a verbatim
+        // copy would leave the projects stranded beside an empty database.
+        assert_eq!(std::fs::read(new_dir.join(DB_FILE)).unwrap(), b"old-bytes");
+        assert_eq!(std::fs::read(new_dir.join("corelens.db-wal")).unwrap(), b"old-wal");
+        assert_eq!(std::fs::read(new_dir.join("corelens.db-shm")).unwrap(), b"old-shm");
+        assert!(!new_dir.join("coreview.db").exists());
+        assert_eq!(std::fs::read(new_dir.join("logs/crawl-1.log")).unwrap(), b"a log");
+        assert_eq!(std::fs::read(new_dir.join("diagnostics/collection-1/run.json")).unwrap(), b"{}");
+        // Copied, not moved: the earlier version still finds its data.
+        assert_eq!(std::fs::read(old.join("coreview.db")).unwrap(), b"old-bytes");
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn adopts_a_livetopo_database_when_there_is_nothing_newer() {
+        let base = tmp_base();
         let old = base.join("LiveTopo");
         std::fs::create_dir_all(&old).unwrap();
         std::fs::write(old.join("livetopo.db"), b"old-bytes").unwrap();
         std::fs::write(old.join("livetopo.db-wal"), b"old-wal").unwrap();
 
-        let new_dir = base.join("Coreview");
-        adopt_livetopo_data(&base, &new_dir);
+        let new_dir = base.join(DATA_FOLDER);
+        adopt_previous(&base, None, &new_dir);
 
-        // Renamed, not just copied: the app opens coreview.db, so a verbatim
-        // copy would leave the projects stranded beside an empty database.
-        assert_eq!(std::fs::read(new_dir.join("coreview.db")).unwrap(), b"old-bytes");
-        assert_eq!(std::fs::read(new_dir.join("coreview.db-wal")).unwrap(), b"old-wal");
+        assert_eq!(std::fs::read(new_dir.join(DB_FILE)).unwrap(), b"old-bytes");
+        assert_eq!(std::fs::read(new_dir.join("corelens.db-wal")).unwrap(), b"old-wal");
         assert!(!new_dir.join("livetopo.db").exists());
-        // Copied, not moved: the original stays put in case this went wrong.
         assert!(old.join("livetopo.db").exists());
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    /// Both earlier names on disk: the newer one is what the operator was
+    /// last using, so it is the one carried across, and only it.
+    #[test]
+    fn the_newest_earlier_name_wins() {
+        let base = tmp_base();
+        std::fs::create_dir_all(base.join("Coreview")).unwrap();
+        std::fs::create_dir_all(base.join("LiveTopo")).unwrap();
+        std::fs::write(base.join("Coreview/coreview.db"), b"newer").unwrap();
+        std::fs::write(base.join("LiveTopo/livetopo.db"), b"older").unwrap();
+
+        let new_dir = base.join(DATA_FOLDER);
+        adopt_previous(&base, None, &new_dir);
+
+        assert_eq!(std::fs::read(new_dir.join(DB_FILE)).unwrap(), b"newer");
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    /// A Mac that last ran a build which wrote to the XDG folder.
+    #[test]
+    fn a_mac_folder_under_the_earlier_home_is_adopted_too() {
+        let base = tmp_base();
+        let xdg = base.join("xdg");
+        std::fs::create_dir_all(xdg.join("Coreview")).unwrap();
+        std::fs::write(xdg.join("Coreview/coreview.db"), b"from-xdg").unwrap();
+
+        let support = base.join("Application Support");
+        let new_dir = support.join(DATA_FOLDER);
+        adopt_previous(&support, Some(&xdg), &new_dir);
+
+        assert_eq!(std::fs::read(new_dir.join(DB_FILE)).unwrap(), b"from-xdg");
         std::fs::remove_dir_all(&base).ok();
     }
 
     #[test]
     fn never_overwrites_data_that_is_already_there() {
-        let base = std::env::temp_dir().join(format!("cv-adopt-{}", uuid::Uuid::new_v4()));
-        let old = base.join("LiveTopo");
-        let new_dir = base.join("Coreview");
-        std::fs::create_dir_all(&old).unwrap();
+        let base = tmp_base();
+        let new_dir = base.join(DATA_FOLDER);
+        std::fs::create_dir_all(base.join("Coreview")).unwrap();
+        std::fs::create_dir_all(base.join("LiveTopo")).unwrap();
         std::fs::create_dir_all(&new_dir).unwrap();
-        std::fs::write(old.join("livetopo.db"), b"old-bytes").unwrap();
-        std::fs::write(new_dir.join("coreview.db"), b"current-bytes").unwrap();
+        std::fs::write(base.join("Coreview/coreview.db"), b"old-bytes").unwrap();
+        std::fs::write(base.join("LiveTopo/livetopo.db"), b"older-bytes").unwrap();
+        std::fs::write(new_dir.join(DB_FILE), b"current-bytes").unwrap();
 
-        adopt_livetopo_data(&base, &new_dir);
+        adopt_previous(&base, None, &new_dir);
 
-        assert_eq!(std::fs::read(new_dir.join("coreview.db")).unwrap(), b"current-bytes");
+        assert_eq!(std::fs::read(new_dir.join(DB_FILE)).unwrap(), b"current-bytes");
         std::fs::remove_dir_all(&base).ok();
     }
 
     #[test]
     fn does_nothing_when_there_is_no_old_install() {
-        let base = std::env::temp_dir().join(format!("cv-adopt-{}", uuid::Uuid::new_v4()));
-        let new_dir = base.join("Coreview");
-        adopt_livetopo_data(&base, &new_dir);
+        let base = tmp_base();
+        let new_dir = base.join(DATA_FOLDER);
+        adopt_previous(&base, None, &new_dir);
         assert!(!new_dir.exists());
         std::fs::remove_dir_all(&base).ok();
+    }
+
+    /// The window's storage under the old identifier opens under the new
+    /// one.
+    #[test]
+    fn the_webview_profile_comes_across_with_the_identifier() {
+        let base = tmp_base();
+        let old = base.join("net.coreview.app/EBWebView/Default/Local Storage");
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(old.join("leveldb.log"), b"kept views").unwrap();
+
+        adopt_webview_from(&base);
+
+        let came = base.join(IDENTIFIER).join("EBWebView/Default/Local Storage/leveldb.log");
+        assert_eq!(std::fs::read(came).unwrap(), b"kept views");
+        assert!(old.join("leveldb.log").exists(), "copied, not moved");
+
+        // Once only: a later start never brings the old profile back over
+        // what the renamed app has written since.
+        std::fs::write(base.join(IDENTIFIER).join("newer"), b"x").unwrap();
+        std::fs::write(old.join("leveldb.log"), b"stale").unwrap();
+        adopt_webview_from(&base);
+        assert_eq!(std::fs::read(base.join(IDENTIFIER).join("EBWebView/Default/Local Storage/leveldb.log")).unwrap(), b"kept views");
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn the_webview_lives_where_each_platform_keeps_it() {
+        let p = |s: &str| Some(PathBuf::from(s));
+        assert_eq!(webview_homes(DataHome::Windows, p("C:/L"), None, p("C:/U")), p("C:/L"));
+        assert_eq!(webview_homes(DataHome::Xdg, None, None, p("/home/u")), p("/home/u/.local/share"));
+        assert_eq!(webview_homes(DataHome::MacOs, None, None, p("/Users/u")), p("/Users/u/Library/WebKit"));
+    }
+
+    /// The identifier the code carries storage to is the one the bundle
+    /// is built with.
+    #[test]
+    fn the_identifier_is_the_bundle_s() {
+        let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        assert_eq!(conf["identifier"], IDENTIFIER);
+        assert!(!PREVIOUS_IDENTIFIERS.contains(&IDENTIFIER));
+    }
+
+    #[test]
+    fn only_the_database_is_renamed() {
+        assert_eq!(renamed_db_file("coreview.db", "coreview"), "corelens.db");
+        assert_eq!(renamed_db_file("coreview.db-journal", "coreview"), "corelens.db-journal");
+        assert_eq!(renamed_db_file("coreview-notes.txt", "coreview"), "coreview-notes.txt");
+        assert_eq!(renamed_db_file("logs", "coreview"), "logs");
     }
     use super::*;
 

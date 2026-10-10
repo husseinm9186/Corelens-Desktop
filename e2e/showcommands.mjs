@@ -63,8 +63,8 @@ const context = await browser.newContext({ viewport: { width: 1700, height: 1100
 let page = await context.newPage();
 
 await context.addInitScript(({ p }) => {
-  if (!localStorage.getItem("coreview.projects.v1")) {
-    localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  if (!localStorage.getItem("corelens.projects.v1")) {
+    localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   }
   const listeners = {}, callbacks = {};
   let next = 1;
@@ -72,7 +72,7 @@ await context.addInitScript(({ p }) => {
   // again on every navigation and would otherwise wipe them.
   const SKEY = "cv.e2e.show.settings";
   const stored = JSON.parse(localStorage.getItem(SKEY) ?? "{}");
-  window.__cvSettings = { backupFolder: "/tmp/coreview-e2e-not-a-real-folder", ...stored };
+  window.__cvSettings = { backupFolder: "/tmp/corelens-e2e-not-a-real-folder", ...stored };
   window.__cvCalls = [];
   window.__cvRefuse = false;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };

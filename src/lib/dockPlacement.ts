@@ -40,7 +40,7 @@ export function dockWidthClass(tab: DockTab): 'is-dock-wide' | 'is-dock-narrow' 
 /** Reads the remembered overrides. Window state, like the panels' own. */
 export function readDockPlacements(): Partial<Record<DockTab, DockSide>> {
   try {
-    const raw = JSON.parse(localStorage.getItem('coreview.view.dockPlacements') ?? '{}');
+    const raw = JSON.parse(localStorage.getItem('corelens.view.dockPlacements') ?? '{}');
     if (!raw || typeof raw !== 'object') return {};
     const out: Partial<Record<DockTab, DockSide>> = {};
     for (const [k, v] of Object.entries(raw)) if (v === 'bottom' || v === 'right') out[k as DockTab] = v;

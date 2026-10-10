@@ -29,7 +29,7 @@
  *
  *     node scripts/import-shapes.mjs <file-or-folder> <output-folder>
  *
- * Then point Coreview's icon library at the output folder.
+ * Then point Corelens's icon library at the output folder.
  */
 import { execFileSync } from 'node:child_process';
 import {
@@ -314,4 +314,4 @@ if (unreadable.length) {
   for (const u of unreadable.slice(0, 40)) console.log(`  ${u}`);
   if (unreadable.length > 40) console.log(`  ...and ${unreadable.length - 40} more`);
 }
-console.log(`\nPoint Coreview's icon library at ${outDir} to use them.`);
+console.log(`\nPoint Corelens's icon library at ${outDir} to use them.`);

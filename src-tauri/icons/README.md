@@ -1,13 +1,13 @@
-Generated from `brand/coreview-mark.svg`, which is the source of truth — the
+Generated from `brand/corelens-mark.svg`, which is the source of truth — the
 mark is drawn as geometry so it holds together from a 16px tray entry to a
-1024px tile, and because Coreview ships no third-party artwork.
+1024px tile, and because Corelens ships no third-party artwork.
 
 To regenerate after changing the SVG:
 
-    convert -background none -density 400 brand/coreview-mark.svg \
+    convert -background none -density 400 brand/corelens-mark.svg \
       -resize 1024x1024 /tmp/icon-1024.png
     npx tauri icon /tmp/icon-1024.png
 
-That writes every size Tauri bundles, plus Android and iOS sets. Coreview is a
+That writes every size Tauri bundles, plus Android and iOS sets. Corelens is a
 desktop application with no mobile target, so those two folders are deleted
 again afterwards rather than committed.

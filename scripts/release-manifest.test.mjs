@@ -5,34 +5,44 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { assetName } from './asset-names.mjs';
 import { manifest, notesFor, pickArtifacts, trustedComment } from './release-manifest.mjs';
 
 const NAMES = [
-  'Coreview_2.9.0_x64-setup.exe',
-  'Coreview_2.9.0_x64-setup.exe.sig',
+  'Corelens-Desktop_2.9.0_x64-setup.exe',
+  'Corelens-Desktop_2.9.0_x64-setup.exe.sig',
   'SHA256SUMS.txt',
-  'coreview-rust.cdx.json',
+  'corelens-rust.cdx.json',
   'coreview-root-ca.crt',
-  'Coreview_2.9.0_universal.dmg',
-  'Coreview.app.tar.gz',
-  'Coreview.app.tar.gz.sig',
+  'Corelens-Desktop_2.9.0_universal.dmg',
+  'Corelens-Desktop.app.tar.gz',
+  'Corelens-Desktop.app.tar.gz.sig',
 ];
 
 describe('pickArtifacts', () => {
   it('finds each installer, its signature and the extras worth attaching', () => {
     const picked = pickArtifacts(NAMES);
-    expect(picked.windows).toBe('Coreview_2.9.0_x64-setup.exe');
-    expect(picked.windowsSig).toBe('Coreview_2.9.0_x64-setup.exe.sig');
-    expect(picked.mac).toBe('Coreview.app.tar.gz');
-    expect(picked.macSig).toBe('Coreview.app.tar.gz.sig');
-    expect(picked.dmg).toBe('Coreview_2.9.0_universal.dmg');
-    expect(picked.extras).toEqual(['SHA256SUMS.txt', 'coreview-rust.cdx.json', 'coreview-root-ca.crt']);
+    expect(picked.windows).toBe('Corelens-Desktop_2.9.0_x64-setup.exe');
+    expect(picked.windowsSig).toBe('Corelens-Desktop_2.9.0_x64-setup.exe.sig');
+    expect(picked.mac).toBe('Corelens-Desktop.app.tar.gz');
+    expect(picked.macSig).toBe('Corelens-Desktop.app.tar.gz.sig');
+    expect(picked.dmg).toBe('Corelens-Desktop_2.9.0_universal.dmg');
+    expect(picked.extras).toEqual(['SHA256SUMS.txt', 'corelens-rust.cdx.json', 'coreview-root-ca.crt']);
   });
 
   it('refuses a release the app could not verify', () => {
     expect(() => pickArtifacts(NAMES.filter((n) => !n.endsWith('.sig')))).toThrow(/signature/);
     expect(() => pickArtifacts(NAMES.filter((n) => !n.endsWith('.dmg')))).toThrow(/disk image/);
-    expect(() => pickArtifacts([...NAMES, 'Coreview_2.9.1_x64-setup.exe'])).toThrow(/Windows installer/);
+    expect(() => pickArtifacts([...NAMES, 'Corelens-Desktop_2.9.1_x64-setup.exe'])).toThrow(/Windows installer/);
+  });
+
+  // The bundler names files after the product, which has a space; GitHub
+  // would upload them under another name than the manifest's URL.
+  it('refuses a file name with a space, and the rename takes the space out', () => {
+    const spaced = NAMES.map((n) => n.replace('Corelens-Desktop', 'Corelens Desktop'));
+    expect(() => pickArtifacts(spaced)).toThrow(/space/);
+    expect(pickArtifacts(spaced.map(assetName)).windows).toBe('Corelens-Desktop_2.9.0_x64-setup.exe');
+    expect(assetName('Corelens Desktop.app.tar.gz.sig')).toBe('Corelens-Desktop.app.tar.gz.sig');
   });
 });
 
@@ -53,12 +63,12 @@ describe('manifest', () => {
     expect(made.notes).toBe('Fixes.\n');
     expect(made.platforms['windows-x86_64']).toEqual({
       signature: 'dW50cnVzdGVk',
-      url: 'https://github.com/owner/name/releases/download/v2.9.0/Coreview_2.9.0_x64-setup.exe',
+      url: 'https://github.com/owner/name/releases/download/v2.9.0/Corelens-Desktop_2.9.0_x64-setup.exe',
     });
     // The universal archive serves both Mac targets.
     expect(made.platforms['darwin-aarch64']).toEqual({
       signature: 'bWFj',
-      url: 'https://github.com/owner/name/releases/download/v2.9.0/Coreview.app.tar.gz',
+      url: 'https://github.com/owner/name/releases/download/v2.9.0/Corelens-Desktop.app.tar.gz',
     });
     expect(made.platforms['darwin-x86_64']).toEqual(made.platforms['darwin-aarch64']);
     expect(Object.keys(made.platforms)).toHaveLength(3);

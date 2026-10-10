@@ -1,4 +1,4 @@
-# Coreview discovery catalog — ArubaOS Mobility Controller (aruba_os)
+# Corelens discovery catalog — ArubaOS Mobility Controller (aruba_os)
 #
 # 2026-10-01: the wireless controllers (7000/7200, 9000, Mobility
 # Master) — not ArubaOS-Switch (aoss) nor AOS-CX (aoscx). ntc-templates'
@@ -6,7 +6,7 @@
 # — `enable` then `no paging`. No device met yet.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Aruba (HPE)

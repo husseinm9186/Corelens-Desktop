@@ -2,7 +2,7 @@
 // collection, calculated by the Rust path builder.
 //
 // The stubbed backend answers `collection_path` with the very JSON the builder
-// wrote in its own tests (crates/coreview-path/fixtures), so what is driven here
+// wrote in its own tests (crates/corelens-path/fixtures), so what is driven here
 // is the page reading the builder's real output: the request it sends, the hop
 // table and highlight it already had, and what P3 adds — decisions, switches,
 // firewall verdicts and NAT, the way back, the traceroute comparison, the live
@@ -15,7 +15,7 @@ import { chromium } from "playwright";
 
 const URL = process.env.CV_URL ?? "http://localhost:5173/";
 const NOW = 1756000000000;
-const fixture = (name) => JSON.parse(readFileSync(new globalThis.URL(`../crates/coreview-path/fixtures/${name}.json`, import.meta.url), "utf8"));
+const fixture = (name) => JSON.parse(readFileSync(new globalThis.URL(`../crates/corelens-path/fixtures/${name}.json`, import.meta.url), "utf8"));
 const core = fixture("path-outcome");
 const firewall = fixture("path-outcome-firewall");
 

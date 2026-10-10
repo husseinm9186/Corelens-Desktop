@@ -1,6 +1,6 @@
 /**
  * The path the Rust builder calculates over a collection run
- * (`crates/coreview-path`), in the forms the page needs.
+ * (`crates/corelens-path`), in the forms the page needs.
  *
  * Path-Trace already highlights a path, draws an application page from it and
  * writes its report from `TraceResult`. `asTraceResult` turns the builder's

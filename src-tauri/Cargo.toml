@@ -1,7 +1,7 @@
 [package]
-name = "coreview"
+name = "corelens"
 version = "2.12.0"
-description = "Coreview — local-first network diagram designer with live connectivity validation"
+description = "Corelens — local-first network diagram designer with live connectivity validation"
 authors = ["Mohammed Almoola <https://www.linkedin.com/in/malmoola>"]
 edition = "2021"
 license = "LicenseRef-Almoola-Free-Proprietary"
@@ -13,14 +13,14 @@ rust-version = "1.77"
 tauri-build = { version = "2", features = ["isolation"] }
 
 [dependencies]
-coreview-formats = { path = "../crates/coreview-formats" }
-coreview-probe = { path = "../crates/coreview-probe" }
-coreview-discover = { path = "../crates/coreview-discover" }
-coreview-meraki = { path = "../crates/coreview-meraki" }
-coreview-catalog = { path = "../crates/coreview-catalog" }
-coreview-collect = { path = "../crates/coreview-collect" }
-coreview-topology = { path = "../crates/coreview-topology" }
-coreview-path = { path = "../crates/coreview-path" }
+corelens-formats = { path = "../crates/corelens-formats" }
+corelens-probe = { path = "../crates/corelens-probe" }
+corelens-discover = { path = "../crates/corelens-discover" }
+corelens-meraki = { path = "../crates/corelens-meraki" }
+corelens-catalog = { path = "../crates/corelens-catalog" }
+corelens-collect = { path = "../crates/corelens-collect" }
+corelens-topology = { path = "../crates/corelens-topology" }
+corelens-path = { path = "../crates/corelens-path" }
 # Every message from the page passes a sandboxed frame first.
 tauri = { version = "2", features = ["isolation"] }
 tauri-plugin-dialog = "2"

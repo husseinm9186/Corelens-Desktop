@@ -5,7 +5,7 @@
 // in Settings. This is the half that was missing: type the login on the device
 // itself, press Save, and press Clear to take it away again. The thing that
 // must stay true throughout is that secrets are never committed — the secret goes to the vault and the
-// document gets an id, so a `.coreview` file can be handed to somebody without
+// document gets an id, so a `.corelens` file can be handed to somebody without
 // handing over the login.
 //
 //     npm run dev            # in another terminal

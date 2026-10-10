@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Fortinet FortiOS (fortios)
+# Corelens discovery catalog — Fortinet FortiOS (fortios)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Fortinet
@@ -74,7 +74,7 @@ session:
       - end
     in_global: true
     source: netmiko fortinet_ssh.py disable_paging / cleanup; scrapli_community prepare_session / cleanup_session; spec prep
-  kex_note: "netmiko fortinet_ssh.py preferred_kex: group14-sha1, group-exchange-sha1, group-exchange-sha256, group1-sha1 — Coreview already offers these"
+  kex_note: "netmiko fortinet_ssh.py preferred_kex: group14-sha1, group-exchange-sha1, group-exchange-sha256, group1-sha1 — Corelens already offers these"
 role_hint:
   - match: FortiGate|FortiWiFi|FGT|FWF
     role: firewall
@@ -163,8 +163,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: Coreview fortios reader, met a FortiGate 60F on FortiOS 7.6.7 in a lab, where ntc's template refused 7.6's new lines
-    coreview_reader: true
+    evidence: Corelens fortios reader, met a FortiGate 60F on FortiOS 7.6.7 in a lab, where ntc's template refused 7.6's new lines
+    corelens_reader: true
   - id: get_system_ha_status
     cmd: get system ha status
     gate: always
@@ -176,7 +176,7 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: Coreview fortios reader; standalone met a FortiGate 60F on FortiOS 7.6.7 in a lab, cluster member lines from ntc-templates' captured fixtures
+    evidence: Corelens fortios reader; standalone met a FortiGate 60F on FortiOS 7.6.7 in a lab, cluster member lines from ntc-templates' captured fixtures
   - id: get_system_performance_status
     cmd: get system performance status
     gate: always
@@ -200,8 +200,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (4 captures); Coreview fortios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (4 captures); Corelens fortios reader
+    corelens_reader: true
   - id: show_system_interface
     cmd: show system interface
     gate: always
@@ -226,8 +226,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (1 captures); Coreview fortios reader
-    coreview_reader: true
+    evidence: ntc-templates tests (1 captures); Corelens fortios reader
+    corelens_reader: true
   - id: get_wireless_controller_wtp_status
     cmd: get wireless-controller wtp-status
     gate: always
@@ -238,8 +238,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: Coreview fortios reader (the classic crawler's), met a FortiGate 60F on FortiOS 7.6.7 managing three FortiAPs in a lab
-    coreview_reader: true
+    evidence: Corelens fortios reader (the classic crawler's), met a FortiGate 60F on FortiOS 7.6.7 managing three FortiAPs in a lab
+    corelens_reader: true
   - id: diagnose_ip_address_list
     cmd: diagnose ip address list
     gate: always
@@ -263,8 +263,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: Coreview fortios reader, met real hardware
-    coreview_reader: true
+    evidence: Corelens fortios reader, met real hardware
+    corelens_reader: true
   - id: diagnose_lldprx_neighbors
     cmd: diagnose lldprx neighbors
     gate: always
@@ -290,7 +290,7 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: Coreview fortios reader, met a FortiGate 60F on FortiOS 7.6.7 in a lab
+    evidence: Corelens fortios reader, met a FortiGate 60F on FortiOS 7.6.7 in a lab
   - id: show_system_zone
     cmd: show system zone
     gate: always
@@ -353,8 +353,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: Coreview fortios reader (REST), met the lab's FortiGate 60F on FortiOS 7.6.7 — the list, then `?mkey=<name>` for each object's addresses
-    coreview_reader: true
+    evidence: Corelens fortios reader (REST), met the lab's FortiGate 60F on FortiOS 7.6.7 — the list, then `?mkey=<name>` for each object's addresses
+    corelens_reader: true
   - id: show_firewall_vip
     cmd: show firewall vip
     gate: always
@@ -481,8 +481,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: Coreview fortios reader, met real hardware; the REST reply's fields met the lab's FortiGate 60F on 7.6.7 with an idle managed switch
-    coreview_reader: true
+    evidence: Corelens fortios reader, met real hardware; the REST reply's fields met the lab's FortiGate 60F on 7.6.7 with an idle managed switch
+    corelens_reader: true
   - id: api_v2_monitor_system_status
     cmd: /api/v2/monitor/system/status
     gate: always
@@ -628,8 +628,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: lab
-    evidence: Coreview fortios reader, met a FortiGate 60F on FortiOS 7.6.7 in a lab, where ntc's template refused the reply
-    coreview_reader: true
+    evidence: Corelens fortios reader, met a FortiGate 60F on FortiOS 7.6.7 in a lab, where ntc's template refused the reply
+    corelens_reader: true
   - id: get_router_info_routing_table_database
     cmd: get router info routing-table database
     gate: always
@@ -651,8 +651,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview fortinet reader; Fortinet documentation `get router info kernel` — the kernel's forwarding table
-    coreview_reader: true
+    evidence: Corelens fortinet reader; Fortinet documentation `get router info kernel` — the kernel's forwarding table
+    corelens_reader: true
   - id: show_router_static
     cmd: show router static
     gate: always
@@ -677,7 +677,7 @@ commands:
     timeout: 120
     verified: docs
     evidence: structured output (REST /api/v2/cmdb/router/policy); field mapping from documentation
-    coreview_reader: true
+    corelens_reader: true
   - id: diagnose_firewall_proute_list
     cmd: diagnose firewall proute list
     gate: always
@@ -779,8 +779,8 @@ commands:
     weight: light
     timeout: 60
     verified: docs
-    evidence: Coreview fortinet reader; FortiOS `show system interface` configuration layout (`set vrf N`)
-    coreview_reader: true
+    evidence: Corelens fortinet reader; FortiOS `show system interface` configuration layout (`set vrf N`)
+    corelens_reader: true
 live_path:
   - id: get_router_info_routing_table_details_dst
     cmd: get router info routing-table details {dst}

@@ -1,4 +1,4 @@
-# Coreview discovery catalog — Ubiquiti EdgeOS (ubiquiti_edgeos)
+# Corelens discovery catalog — Ubiquiti EdgeOS (ubiquiti_edgeos)
 #
 # Filled 2026-10-01: ntc-templates' `ubiquiti_edgerouter` set,
 # fixtures vendored; the session is Vyatta's shell (scrapli's vyos_vyos
@@ -6,7 +6,7 @@
 # `show lldp neighbors detail` has no template and stays unverified.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Ubiquiti

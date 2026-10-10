@@ -3,7 +3,7 @@
 import pytest
 from scrapli.exceptions import ScrapliTimeout
 
-from coreview_sidecar.session import Session, SessionError
+from corelens_sidecar.session import Session, SessionError
 
 AUTH = {"username": "reader", "password": "not-a-real-password"}
 TIMEOUTS = {"connect_ms": 1000, "auth_ms": 1000}

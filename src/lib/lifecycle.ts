@@ -2,7 +2,7 @@
  * A lifecycle table the operator supplies.
  *
  * Device42 and SolarWinds report end-of-sale and end-of-support by looking
- * the model up with the vendor. Coreview makes no such call and never will;
+ * the model up with the vendor. Corelens makes no such call and never will;
  * what it can do is read a table the operator keeps — a CSV of model,
  * end-of-sale date, end-of-support date — and say which drawn devices are
  * past either date. The table is the operator's own, stored in the project,

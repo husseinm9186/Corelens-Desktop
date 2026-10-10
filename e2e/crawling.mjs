@@ -259,7 +259,7 @@ check("and sends what was chosen with the run", JSON.stringify(started?.input?.d
 
 // ------------------------------------------------ live table
 await page.evaluate(() => {
-  const emit = (e) => window.__cvEmit("coreview://crawl", e);
+  const emit = (e) => window.__cvEmit("corelens://crawl", e);
   emit({ kind: "started", seed: "192.0.2.10" });
   emit({ kind: "queued", address: "192.0.2.10", hops: 0 });
   emit({ kind: "visiting", address: "192.0.2.10", hops: 0 });
@@ -284,7 +284,7 @@ check("the live table has a row per device with where it is", JSON.stringify(liv
 check("a pending push factor is announced — it never was",
   (await panel.locator(".cv-discover-push").textContent()) === "Approve the sign-in on your phone");
 check("and a failure reaches the status line", /192\.0\.2\.12 could not be reached/.test(await panel.locator(".cv-discover-status").textContent()));
-await page.evaluate((r) => window.__cvEmit("coreview://crawl-result", r), crawlResult);
+await page.evaluate((r) => window.__cvEmit("corelens://crawl-result", r), crawlResult);
 await page.waitForTimeout(800);
 // The run is written by Rust as it goes, so the page no longer sends
 // the result back; what it sends is which project the run belongs to.
@@ -399,7 +399,7 @@ check("with trunk VLANs compressed", (await section.locator("td[title]").first()
 // ------------------------------------------------ the collector path
 await page.locator("button", { hasText: "Discover devices" }).first().click();
 await page.waitForTimeout(300);
-await page.evaluate(() => window.__cvEmit("coreview://crawl", { kind: "finished", reached: 0, failed: 0, cancelled: false }));
+await page.evaluate(() => window.__cvEmit("corelens://crawl", { kind: "finished", reached: 0, failed: 0, cancelled: false }));
 await page.waitForTimeout(200);
 await panel.locator('[data-field="discover-engine"]').selectOption("collector");
 await panel.locator("label", { hasText: "Seed devices" }).locator("input").first().fill("192.0.2.10");
@@ -415,13 +415,13 @@ check("the collector starts from the seed and follows neighbours within the pane
   JSON.stringify(collected?.input));
 check("and no crawl is started beside it", (await page.evaluate(() => window.__calls.filter((c) => c.cmd === "start_crawl").length)) === 1);
 await page.evaluate(() => {
-  window.__cvEmit("coreview://collection", { kind: "started", runId: "col-9", targets: 1 });
-  window.__cvEmit("coreview://collection", { kind: "device", runId: "col-9", deviceId: "dev-192-0-2-10", host: "192.0.2.10", phase: "connecting" });
+  window.__cvEmit("corelens://collection", { kind: "started", runId: "col-9", targets: 1 });
+  window.__cvEmit("corelens://collection", { kind: "device", runId: "col-9", deviceId: "dev-192-0-2-10", host: "192.0.2.10", phase: "connecting" });
 });
 await page.waitForTimeout(200);
 check("its progress is shown", /Collecting 192\.0\.2\.10/.test(await panel.textContent()));
 // The last command a device answered, so a stall says where.
-await page.evaluate(() => window.__cvEmit("coreview://collection", { kind: "step", runId: "col-9", deviceId: "dev-192-0-2-10", stepId: "show_version", cmd: "show version", status: "ok", rows: 1, durationMs: 40, context: null }));
+await page.evaluate(() => window.__cvEmit("corelens://collection", { kind: "step", runId: "col-9", deviceId: "dev-192-0-2-10", stepId: "show_version", cmd: "show version", status: "ok", rows: 1, durationMs: 40, context: null }));
 await page.waitForTimeout(200);
 check("and the last command the device answered", /Collecting 192\.0\.2\.10 — last answered: show version/.test(await panel.textContent()));
 // Stop is the collector's own.
@@ -434,14 +434,14 @@ check("the classic-only controls are disabled under the collector", await panel.
 // objects: this stub does not answer what the sweep's subnet list asks.)
 await page.locator(".cv-panel .cv-tabs button", { hasText: "Monitored objects" }).click();
 await page.waitForTimeout(300);
-await page.evaluate(() => window.__cvEmit("coreview://collection", { kind: "device", runId: "col-9", deviceId: "dev-192-0-2-11", host: "192.0.2.11", phase: "connecting" }));
+await page.evaluate(() => window.__cvEmit("corelens://collection", { kind: "device", runId: "col-9", deviceId: "dev-192-0-2-11", host: "192.0.2.11", phase: "connecting" }));
 await page.locator(".cv-panel .cv-tabs button", { hasText: "Discover devices" }).first().click();
 await page.waitForTimeout(400);
 check("after a tab change the run is still shown as running, with its latest progress", (await panel.locator("button", { hasText: /^Stop$/ }).count()) === 1 && /Collecting 192\.0\.2\.11/.test(await panel.textContent()));
 // A device that failed is listed with why.
-await page.evaluate(() => window.__cvEmit("coreview://collection", { kind: "deviceDone", runId: "col-9", deviceId: "dev-192-0-2-11", host: "192.0.2.11", os: null, failure: "auth", commands: 0 }));
+await page.evaluate(() => window.__cvEmit("corelens://collection", { kind: "deviceDone", runId: "col-9", deviceId: "dev-192-0-2-11", host: "192.0.2.11", os: null, failure: "auth", commands: 0 }));
 await page.waitForTimeout(100);
-await page.evaluate(() => window.__cvEmit("coreview://collection", { kind: "finished", runId: "col-9", devices: 2, failed: 1, cancelled: false }));
+await page.evaluate(() => window.__cvEmit("corelens://collection", { kind: "finished", runId: "col-9", devices: 2, failed: 1, cancelled: false }));
 await page.waitForTimeout(500);
 const topo = await lastCall("collection_topology");
 check("when it finishes, the topology of that run is built", topo?.runId === "col-9", JSON.stringify(topo));

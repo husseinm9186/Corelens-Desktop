@@ -23,7 +23,7 @@ type Rec = Record<string, unknown>;
 
 export interface NetboxExport {
   /** Where it came from, so a reader can tell this from an API dump. */
-  _coreview: { project: string; exported: string; note: string };
+  _corelens: { project: string; exported: string; note: string };
   devices: Rec[];
   interfaces: Rec[];
   ip_addresses: Rec[];
@@ -119,10 +119,10 @@ export function netboxExport(doc: ProjectDocument, meta: Pick<ProjectMeta, 'name
   }
 
   return {
-    _coreview: {
+    _corelens: {
       project: meta.name,
       exported: exportedAt.toISOString(),
-      note: 'Devices, interfaces, addresses, cables and VLANs as NetBox and Nautobot read them. Written by Coreview; nothing here was fetched from a server.',
+      note: 'Devices, interfaces, addresses, cables and VLANs as NetBox and Nautobot read them. Written by Corelens; nothing here was fetched from a server.',
     },
     devices,
     interfaces,

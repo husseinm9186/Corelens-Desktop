@@ -1,14 +1,14 @@
-# Coreview discovery catalog — SONiC, community and Enterprise (sonic)
+# Corelens discovery catalog — SONiC, community and Enterprise (sonic)
 #
 # 2026-09-30: the third OS an SN2010 can run. **Built from
 # the SONiC command reference**; the
-# classic crawler's dialect (coreview-discover sonic.rs) was built
+# classic crawler's dialect (corelens-discover sonic.rs) was built
 # the same way. SONiC's `show` commands answer from bash on both editions,
 # so the shell is never changed; routing is FRR, read by the frr readers.
 # Every entry is `verified: docs` until a capture.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: SONiC
@@ -50,8 +50,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview sonic reader; SONiC command reference `show version`
-    coreview_reader: true
+    evidence: Corelens sonic reader; SONiC command reference `show version`
+    corelens_reader: true
   - id: show_interfaces_status
     cmd: show interfaces status
     gate: always
@@ -61,8 +61,8 @@ commands:
     weight: light
     timeout: 60
     verified: docs
-    evidence: Coreview sonic reader; SONiC command reference `show interfaces status`
-    coreview_reader: true
+    evidence: Corelens sonic reader; SONiC command reference `show interfaces status`
+    corelens_reader: true
   - id: show_ip_interfaces
     cmd: show ip interfaces
     gate: always
@@ -73,8 +73,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview sonic reader; SONiC command reference `show ip interfaces`
-    coreview_reader: true
+    evidence: Corelens sonic reader; SONiC command reference `show ip interfaces`
+    corelens_reader: true
   - id: ip_j_addr
     cmd: ip -j addr
     gate: always
@@ -85,8 +85,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview linux reader (iproute2 JSON, as the hosts catalog) — the MAC of every interface
-    coreview_reader: true
+    evidence: Corelens linux reader (iproute2 JSON, as the hosts catalog) — the MAC of every interface
+    corelens_reader: true
   - id: show_arp
     cmd: show arp
     gate: always
@@ -96,8 +96,8 @@ commands:
     weight: light
     timeout: 60
     verified: docs
-    evidence: Coreview sonic reader; SONiC command reference `show arp`
-    coreview_reader: true
+    evidence: Corelens sonic reader; SONiC command reference `show arp`
+    corelens_reader: true
   - id: show_mac
     cmd: show mac
     gate: always
@@ -107,8 +107,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview sonic reader; SONiC command reference `show mac`
-    coreview_reader: true
+    evidence: Corelens sonic reader; SONiC command reference `show mac`
+    corelens_reader: true
   - id: show_interfaces_portchannel
     cmd: show interfaces portchannel
     gate: always
@@ -118,8 +118,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview sonic reader; SONiC command reference `show interfaces portchannel`
-    coreview_reader: true
+    evidence: Corelens sonic reader; SONiC command reference `show interfaces portchannel`
+    corelens_reader: true
   - id: show_lldp_table
     cmd: show lldp table
     gate: always
@@ -129,8 +129,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview sonic reader; SONiC command reference `show lldp table`
-    coreview_reader: true
+    evidence: Corelens sonic reader; SONiC command reference `show lldp table`
+    corelens_reader: true
   - id: show_vrf
     cmd: show vrf
     gate: always
@@ -140,8 +140,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview sonic reader; SONiC command reference `show vrf`
-    coreview_reader: true
+    evidence: Corelens sonic reader; SONiC command reference `show vrf`
+    corelens_reader: true
   - id: show_ip_route_vrf_all
     cmd: show ip route vrf all
     gate: always
@@ -151,8 +151,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview frr reader; FRR documentation `show ip route vrf all`, which SONiC's show prints
-    coreview_reader: true
+    evidence: Corelens frr reader; FRR documentation `show ip route vrf all`, which SONiC's show prints
+    corelens_reader: true
   - id: show_ipv6_route_vrf_all
     cmd: show ipv6 route vrf all
     gate: always
@@ -162,8 +162,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview frr reader; FRR documentation `show ipv6 route`
-    coreview_reader: true
+    evidence: Corelens frr reader; FRR documentation `show ipv6 route`
+    corelens_reader: true
   - id: show_ip_bgp_summary
     cmd: show ip bgp summary
     gate: always
@@ -173,8 +173,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview frr reader; FRR documentation `show ip bgp summary`
-    coreview_reader: true
+    evidence: Corelens frr reader; FRR documentation `show ip bgp summary`
+    corelens_reader: true
   - id: show_ip_ospf_neighbor
     cmd: show ip ospf neighbor
     gate: always
@@ -184,8 +184,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview frr reader; FRR documentation `show ip ospf neighbor`
-    coreview_reader: true
+    evidence: Corelens frr reader; FRR documentation `show ip ospf neighbor`
+    corelens_reader: true
   - id: show_runningconfiguration_all
     cmd: show runningconfiguration all
     gate: always
@@ -214,6 +214,6 @@ live_path:
     feeds:
       - path_probe
     verified: docs
-    evidence: Coreview frr reader; FRR `show ip route vrf <name> <ip>`
+    evidence: Corelens frr reader; FRR `show ip route vrf <name> <ip>`
     phase: 3
 note: 'built from the SONiC command reference. `show vlan brief` draws its table in box characters and is not read yet.'

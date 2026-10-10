@@ -116,7 +116,7 @@ describe('against the real deck, when it is present', () => {
   // The deck is a vendor file that is never committed. Point this at a
   // local copy to run these checks; without it they skip, which is why the path
   // is an environment variable rather than someone's home directory.
-  const deck = process.env.COREVIEW_PPTX_FIXTURE ?? '';
+  const deck = process.env.CORELENS_PPTX_FIXTURE ?? '';
 
   it.runIf(existsSync(deck))('reads every slide and names most pictures', () => {
     const work = mkdtempSync(join(tmpdir(), 'cv-deck-'));

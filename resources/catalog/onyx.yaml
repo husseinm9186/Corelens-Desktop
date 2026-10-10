@@ -1,11 +1,11 @@
-# Coreview discovery catalog — NVIDIA Onyx / Mellanox MLNX-OS Ethernet (onyx)
+# Corelens discovery catalog — NVIDIA Onyx / Mellanox MLNX-OS Ethernet (onyx)
 #
 # 2026-09-30: the SN2010/SN2100/SN2700 Spectrum switches on NVIDIA's
 # own CLI. **Built from NVIDIA's Onyx User Manual at the operator's
 # instruction** — the Rev 5.7 manual (3.6.8008 examples), the 3.8.2004
 # manual and the 3.10.4504/3.10.4800 pages, many of whose examples NVIDIA has
 # emptied; the readers say which layout they take. ntc-templates has no Onyx
-# template, so every parser is a Coreview reader (coreview-collect
+# template, so every parser is a Corelens reader (corelens-collect
 # readers/onyx.rs). Nothing here has met a device: every entry is
 # `verified: docs` until the operator's support capture replaces the readers'
 # fixtures. Session rules from netmiko's mellanox_mlnxos_ssh.py and
@@ -13,7 +13,7 @@
 # `terminal length` turns paging off without config mode, `exit` logs out.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: NVIDIA
@@ -81,8 +81,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM Rev 5.7 and 3.10 `show version` examples
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM Rev 5.7 and 3.10 `show version` examples
+    corelens_reader: true
   - id: show_inventory
     cmd: show inventory
     gate: always
@@ -92,8 +92,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show inventory` example
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show inventory` example
+    corelens_reader: true
   - id: show_system_type
     cmd: show system type
     gate: always
@@ -103,8 +103,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show system type`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show system type`
+    corelens_reader: true
   - id: show_hosts
     cmd: show hosts
     gate: always
@@ -114,8 +114,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show hosts`, 3.6.8 and 3.8 layouts
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show hosts`, 3.6.8 and 3.8 layouts
+    corelens_reader: true
   - id: show_interfaces_status
     cmd: show interfaces status
     gate: always
@@ -125,8 +125,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show interfaces status` (3.6.4006+; MTU column 3.9.0300+), both layouts
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show interfaces status` (3.6.4006+; MTU column 3.9.0300+), both layouts
+    corelens_reader: true
   - id: show_interfaces_ethernet
     cmd: show interfaces ethernet
     gate: always
@@ -137,8 +137,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show interfaces ethernet <inf>` long form — MAC, MTU, speed, switchport mode, addresses of a routed port
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show interfaces ethernet <inf>` long form — MAC, MTU, speed, switchport mode, addresses of a routed port
+    corelens_reader: true
   - id: show_interfaces_port_channel
     cmd: show interfaces port-channel
     gate: cap.switching
@@ -149,8 +149,8 @@ commands:
     weight: light
     timeout: 60
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show interfaces port-channel <n>` long form
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show interfaces port-channel <n>` long form
+    corelens_reader: true
   - id: show_interfaces_vlan
     cmd: show interfaces vlan
     gate: cap.routing
@@ -161,8 +161,8 @@ commands:
     weight: light
     timeout: 60
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show interfaces vlan <id>`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show interfaces vlan <id>`
+    corelens_reader: true
   - id: show_interfaces_switchport
     cmd: show interfaces switchport
     gate: cap.switching
@@ -172,8 +172,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show interfaces switchport`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show interfaces switchport`
+    corelens_reader: true
   - id: show_vlan
     cmd: show vlan
     gate: cap.switching
@@ -183,8 +183,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show vlan` (3.10 example lost; the 3.6/3.8 layout)
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show vlan` (3.10 example lost; the 3.6/3.8 layout)
+    corelens_reader: true
   - id: show_mac_address_table
     cmd: show mac-address-table
     gate: cap.switching
@@ -194,8 +194,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show mac-address-table`, 3.6 and 3.8+ layouts and the `Port\Next Hop` form
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show mac-address-table`, 3.6 and 3.8+ layouts and the `Port\Next Hop` form
+    corelens_reader: true
   - id: show_lldp_remote
     cmd: show lldp remote
     gate: cap.lldp
@@ -205,8 +205,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show lldp remote` (3.6.3004+)
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show lldp remote` (3.6.3004+)
+    corelens_reader: true
   - id: show_ip_interface_brief
     cmd: show ip interface brief
     gate: cap.routing
@@ -217,8 +217,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM 3.8 `show ip interface brief`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM 3.8 `show ip interface brief`
+    corelens_reader: true
   - id: show_ip_route_vrf_all
     cmd: show ip route vrf all
     gate: cap.routing
@@ -228,8 +228,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show ip route [vrf all]`, the 3.6.5000+ layout with Flag and AD/M and the earlier one without
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show ip route [vrf all]`, the 3.6.5000+ layout with Flag and AD/M and the earlier one without
+    corelens_reader: true
   - id: show_ipv6_route_vrf_all
     cmd: show ipv6 route vrf all
     gate: cap.routing
@@ -239,8 +239,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show ipv6 route`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show ipv6 route`
+    corelens_reader: true
   - id: show_ip_arp_vrf_all
     cmd: show ip arp vrf all
     gate: cap.routing
@@ -250,8 +250,8 @@ commands:
     weight: light
     timeout: 60
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show ip arp [vrf all]`, with and without the 3.9.0500 Flags column
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show ip arp [vrf all]`, with and without the 3.9.0500 Flags column
+    corelens_reader: true
   - id: show_vrf_all
     cmd: show vrf all
     gate: cap.routing
@@ -261,8 +261,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show vrf` (3.9.1900 example lost; the earlier block layout)
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show vrf` (3.9.1900 example lost; the earlier block layout)
+    corelens_reader: true
   - id: show_ip_ospf_neighbors
     cmd: show ip ospf neighbors
     gate: cap.ospf
@@ -272,8 +272,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show ip ospf neighbors`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show ip ospf neighbors`
+    corelens_reader: true
   - id: show_ip_bgp_vrf_all_summary
     cmd: show ip bgp vrf all summary
     gate: cap.bgp
@@ -283,8 +283,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show ip bgp vrf all summary`, the 3.6.8100+ layout with unnumbered peers
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show ip bgp vrf all summary`, the 3.6.8100+ layout with unnumbered peers
+    corelens_reader: true
   - id: show_interfaces_port_channel_summary
     cmd: show interfaces port-channel summary
     gate: cap.switching
@@ -294,8 +294,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show interfaces port-channel summary`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show interfaces port-channel summary`
+    corelens_reader: true
   - id: show_interfaces_mlag_port_channel_summary
     cmd: show interfaces mlag-port-channel summary
     gate: cap.vpc_mlag_vsx
@@ -305,8 +305,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show interfaces mlag-port-channel summary`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show interfaces mlag-port-channel summary`
+    corelens_reader: true
   - id: show_mlag
     cmd: show mlag
     gate: cap.vpc_mlag_vsx
@@ -316,8 +316,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show mlag` — members by system-id, the IPL and the peer address
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show mlag` — members by system-id, the IPL and the peer address
+    corelens_reader: true
   - id: show_mlag_vip
     cmd: show mlag-vip
     gate: cap.vpc_mlag_vsx
@@ -327,8 +327,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show mlag-vip`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show mlag-vip`
+    corelens_reader: true
   - id: show_vrrp
     cmd: show vrrp
     gate: cap.fhrp
@@ -338,8 +338,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show vrrp`, the 3.6 and 3.9.1000 tables
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show vrrp`, the 3.6 and 3.9.1000 tables
+    corelens_reader: true
   - id: show_magp
     cmd: show magp
     gate: cap.fhrp
@@ -349,8 +349,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show magp` — NVIDIA's active-active gateway
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show magp` — NVIDIA's active-active gateway
+    corelens_reader: true
   - id: show_interfaces_nve
     cmd: show interfaces nve
     gate: cap.vxlan_evpn
@@ -360,8 +360,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show interfaces nve`, the 3.6 controller layout and the 3.10 EVPN one
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show interfaces nve`, the 3.6 controller layout and the 3.10 EVPN one
+    corelens_reader: true
   - id: show_interfaces_nve_1_peers
     cmd: show interfaces nve 1 peers
     gate: cap.vxlan_evpn
@@ -371,8 +371,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM 3.10 `show interfaces nve <1-64> peers` — an Onyx switch has one NVE interface in practice, and it is nve 1
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM 3.10 `show interfaces nve <1-64> peers` — an Onyx switch has one NVE interface in practice, and it is nve 1
+    corelens_reader: true
   - id: show_ip_bgp_evpn_summary
     cmd: show ip bgp evpn summary
     gate: cap.vxlan_evpn
@@ -382,8 +382,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show ip bgp evpn summary`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show ip bgp evpn summary`
+    corelens_reader: true
   - id: show_spanning_tree
     cmd: show spanning-tree
     gate: cap.switching
@@ -393,8 +393,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show spanning-tree`
-    coreview_reader: true
+    evidence: Corelens onyx reader; Onyx UM `show spanning-tree`
+    corelens_reader: true
   - id: show_running_config
     cmd: show running-config
     gate: always
@@ -413,6 +413,6 @@ live_path:
     feeds:
       - path_probe
     verified: docs
-    evidence: Coreview onyx reader; Onyx UM `show ip route [vrf <name>] <ip>`
+    evidence: Corelens onyx reader; Onyx UM `show ip route [vrf <name>] <ip>`
     phase: 3
 note: 'built from NVIDIA''s Onyx User Manual; the SN2010s in the operator''s lab are its first chance to meet hardware. An SN2010 on Cumulus or SONiC is another catalog.'

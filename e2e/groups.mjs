@@ -50,21 +50,21 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1700, height: 1200 } });
 
 await page.addInitScript(({ p }) => {
-  if (!localStorage.getItem("coreview.projects.v1")) {
-    localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  if (!localStorage.getItem("corelens.projects.v1")) {
+    localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   }
   const listeners = {}, callbacks = {};
   let next = 1;
   const SKEY = "cv.e2e.groups.settings";
-  window.__cvSettings = { backupFolder: "/tmp/coreview-e2e-not-a-real-folder",
+  window.__cvSettings = { backupFolder: "/tmp/corelens-e2e-not-a-real-folder",
     ...JSON.parse(localStorage.getItem(SKEY) ?? "{}") };
   window.__cvCalls = [];
   window.__cvRefuse = false;
   // Deliver a backend event exactly as Tauri would: to the registered handler,
   // with the enum tagged adjacently.
   window.__cvEmit = (payload) => {
-    const id = listeners["coreview://backup"];
-    callbacks[id]?.({ event: "coreview://backup", id: 0, payload });
+    const id = listeners["corelens://backup"];
+    callbacks[id]?.({ event: "corelens://backup", id: 0, payload });
   };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {

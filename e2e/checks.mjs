@@ -49,12 +49,12 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1700, height: 1100 } });
 
 await page.addInitScript(({ p, runs, answers }) => {
-  if (!localStorage.getItem("coreview.projects.v1")) {
-    localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  if (!localStorage.getItem("corelens.projects.v1")) {
+    localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   }
   let next = 1;
   const SKEY = "cv.e2e.checks.settings";
-  window.__cvSettings = { backupFolder: "/tmp/coreview-e2e-not-a-real-folder",
+  window.__cvSettings = { backupFolder: "/tmp/corelens-e2e-not-a-real-folder",
     ...JSON.parse(localStorage.getItem(SKEY) ?? "{}") };
   window.__cvCalls = [];
   window.__cvRefuse = false;

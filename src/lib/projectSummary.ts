@@ -19,7 +19,7 @@ export type ProjectSummary = {
   at: number;
 };
 
-const KEY = (id: string) => `coreview.summary.${id}`;
+const KEY = (id: string) => `corelens.summary.${id}`;
 
 type Page = { nodes: { id: string; type?: string }[]; edges: unknown[] };
 

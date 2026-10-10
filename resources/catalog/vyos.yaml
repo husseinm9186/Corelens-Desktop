@@ -1,12 +1,12 @@
-# Coreview discovery catalog — VyOS (vyos)
+# Corelens discovery catalog — VyOS (vyos)
 #
 # 2026-10-01: ntc-templates' `vyatta_vyos` set (fixtures vendored),
-# FRR's tables through Coreview's frr readers (VyOS 1.2+ routes with FRR),
+# FRR's tables through Corelens's frr readers (VyOS 1.2+ routes with FRR),
 # the session from scrapli's vyos_vyos driver and netmiko's vyos_ssh.py —
 # `set terminal length 0`. No device met yet.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: VyOS
@@ -87,8 +87,8 @@ commands:
     weight: heavy
     timeout: 120
     verified: docs
-    evidence: Coreview frr reader; FRR documentation `show ip route`, which VyOS 1.2+ prints
-    coreview_reader: true
+    evidence: Corelens frr reader; FRR documentation `show ip route`, which VyOS 1.2+ prints
+    corelens_reader: true
   - id: show_ip_bgp_summary
     cmd: show ip bgp summary
     gate: cap.bgp
@@ -108,8 +108,8 @@ commands:
     weight: light
     timeout: 30
     verified: docs
-    evidence: Coreview frr reader; FRR documentation `show ip ospf neighbor`
-    coreview_reader: true
+    evidence: Corelens frr reader; FRR documentation `show ip ospf neighbor`
+    corelens_reader: true
   - id: show_lldp_neighbors_detail
     cmd: show lldp neighbors detail
     gate: cap.lldp

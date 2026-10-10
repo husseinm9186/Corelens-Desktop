@@ -3,7 +3,7 @@
  *
  * Every message the page sends passes through here, in a sandboxed frame the
  * page's own scripts cannot reach, before Tauri encrypts it for the backend.
- * A message is refused unless it names a command Coreview has, carries only
+ * A message is refused unless it names a command Corelens has, carries only
  * that command's own arguments, and stays within sane size and depth. A refused
  * message is sent on as `ipc_refused`, which fails with the reason, so the
  * page's call rejects with an explanation instead of reaching the command.
@@ -189,7 +189,7 @@
     var args = message.payload;
     if (PLUGINS.indexOf(cmd) >= 0) return measure(args);
     if (cmd.indexOf('plugin:') === 0) return 'the page has no use for ' + cmd;
-    if (!has(COMMANDS, cmd)) return 'Coreview has no command called ' + cmd;
+    if (!has(COMMANDS, cmd)) return 'Corelens has no command called ' + cmd;
     if (args === undefined || args === null) return null;
     if (typeof args !== 'object' || Array.isArray(args) || ArrayBuffer.isView(args) || args instanceof ArrayBuffer) {
       return 'its arguments are not named';
@@ -215,5 +215,5 @@
     };
   }
 
-  root.coreviewIsolation = { COMMANDS: COMMANDS, PLUGINS: PLUGINS, check: check, guard: guard };
+  root.corelensIsolation = { COMMANDS: COMMANDS, PLUGINS: PLUGINS, check: check, guard: guard };
 })(typeof window !== 'undefined' ? window : globalThis);

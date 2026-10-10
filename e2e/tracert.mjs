@@ -134,7 +134,7 @@ await panel.locator("button", { hasText: "Run tracert" }).click();
 await page.waitForTimeout(1300);
 check("while a device traces, the button counts the seconds", /Tracing… [1-9] s/.test(await panel.textContent()), (await panel.locator("button.cv-btn-start").textContent()));
 check("and says a device's trace can take minutes", (await panel.locator('[data-region="tracert-live"]').count()) === 1);
-await page.evaluate(() => window.__cvEmit("coreview://tracert", { device: "192.0.2.1", target: "198.51.100.99", elapsedMs: 4000, hops: [
+await page.evaluate(() => window.__cvEmit("corelens://tracert", { device: "192.0.2.1", target: "198.51.100.99", elapsedMs: 4000, hops: [
   { ttl: 1, address: "192.0.2.2", rttsMs: [2] },
   { ttl: 2, address: "203.0.113.1", rttsMs: [11] },
 ] }));

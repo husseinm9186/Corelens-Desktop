@@ -3,10 +3,10 @@
  * Builds a modern shape library from Tabler Icons (MIT), into a folder you
  * point the icon library at.
  *
- * Coreview draws its own shapes and ships no third-party artwork. This fills
+ * Corelens draws its own shapes and ships no third-party artwork. This fills
  * a folder of your own with a curated slice of Tabler for equipment and
  * concepts. It fetches **no vendor logos**: those are trademarks,
- * keeps Coreview from shipping or fetching them. The Simple Icons brand marks
+ * keeps Corelens from shipping or fetching them. The Simple Icons brand marks
  * this script used to fetch were removed for that reason.
  *
  * Curated rather than complete. Tabler has five thousand icons; a palette of
@@ -115,7 +115,7 @@ writeFileSync(join(outDir, 'index.json'), `${JSON.stringify({ icons: catalogue }
 writeFileSync(
   join(outDir, 'LICENCES.txt'),
   [
-    'Shapes in this folder come from Tabler Icons. They are not part of Coreview;',
+    'Shapes in this folder come from Tabler Icons. They are not part of Corelens;',
     'they are fetched into a folder you point the app at.',
     '',
     'Tabler Icons — MIT licence — https://github.com/tabler/tabler-icons',
@@ -127,4 +127,4 @@ console.log(`${catalogue.length} shapes written to ${outDir}`);
 if (missing.length) {
   console.log(`${missing.length} not found upstream and skipped: ${missing.slice(0, 12).join(', ')}${missing.length > 12 ? '…' : ''}`);
 }
-console.log(`Point Coreview's icon library at ${outDir}.`);
+console.log(`Point Corelens's icon library at ${outDir}.`);

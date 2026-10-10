@@ -1,6 +1,6 @@
 //! The diagram as a Visio drawing.
 //!
-//! Colleagues who do not have Coreview still have Visio, and a picture they
+//! Colleagues who do not have Corelens still have Visio, and a picture they
 //! cannot edit is worth much less than a drawing they can. A `.vsdx` is an
 //! OPC package — a zip of XML parts with relationship files pointing at each
 //! other — so this writes the smallest set of parts Visio will open without
@@ -449,7 +449,7 @@ mod tests {
     #[test]
     fn a_real_drawing_is_written_out() {
         let bytes = to_vsdx(&lab()).expect("vsdx");
-        let out = std::env::temp_dir().join("coreview-visio-check.vsdx");
+        let out = std::env::temp_dir().join("corelens-visio-check.vsdx");
         std::fs::write(&out, &bytes).expect("write");
         eprintln!("wrote {} ({} bytes)", out.display(), bytes.len());
     }
@@ -471,7 +471,7 @@ mod tests {
         assert!(part(&bytes, "[Content_Types].xml").contains("/visio/pages/page2.xml"));
         assert!(part(&bytes, "visio/pages/_rels/pages.xml.rels").contains(r#"Target="page2.xml""#));
 
-        let read = coreview_formats::visio_import::import_vsdx(&bytes).expect("reads back");
+        let read = corelens_formats::visio_import::import_vsdx(&bytes).expect("reads back");
         assert_eq!(read.pages.len(), 2);
         assert_eq!(read.pages[1].name, "Branch");
         assert_eq!(read.pages[0].links[0].waypoints, Vec::<[f64; 2]>::new(), "a straight link stays straight");

@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from coreview_sidecar.allowlist import verdict
+from corelens_sidecar.allowlist import verdict
 
 HERE = os.path.dirname(__file__)
 CASES = os.path.join(HERE, "..", "..", "resources", "catalog", "allowlist-cases.json")

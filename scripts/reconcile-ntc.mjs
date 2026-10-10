@@ -151,11 +151,11 @@ const SAMPLES = {
 const CONFIG = /^(show (running-config|run\b|configuration|config running)|display current-configuration)/;
 
 /**
- * Commands the existing crawl (`crates/coreview-discover`) already reads,
+ * Commands the existing crawl (`crates/corelens-discover`) already reads,
  * per OS — the Rust side of shadow mode, from `dialect.rs` and its
  * neighbours. Kept by hand; `dialectCommands.test.ts` checks it.
  */
-const COREVIEW = {
+const CORELENS = {
   cisco_ios: ['show version', 'show inventory', 'show cdp neighbors detail', 'show lldp neighbors detail', 'show mac address-table', 'show etherchannel summary', 'show ip interface brief', 'show ip arp', 'show arp', 'show ip route', 'show ip policy', 'show switch', 'show switch detail', 'show switch virtual', 'show stackwise-virtual', 'show interfaces status', 'show vrf', 'show ip vrf', 'show nve vni', 'show nve peers', 'show bgp l2vpn evpn'],
   cisco_nxos: ['show version', 'show inventory', 'show cdp neighbors detail', 'show lldp neighbors detail', 'show mac address-table', 'show port-channel summary', 'show ip interface brief', 'show ip arp', 'show ip route', 'show vpc', 'show fex', 'show vrf', 'show nve vni', 'show nve peers', 'show bgp l2vpn evpn', 'show otv', 'show otv adjacency', 'show otv route'],
   arista_eos: ['show version', 'show lldp neighbors detail', 'show port-channel summary', 'show ip interface brief', 'show ip arp', 'show ip route', 'show mlag'],
@@ -352,7 +352,7 @@ function classify(os, row, index) {
   if (SESSION.test(command)) { result.kind = 'session'; result.note = 'session step, lives in `session:`'; return result; }
   const verdict = allowlistVerdict(command);
   if (verdict !== 'ok') { result.kind = 'refused'; result.note = verdict; return result; }
-  result.coreview = COREVIEW[os]?.includes(command) ? 'yes' : '';
+  result.corelens = CORELENS[os]?.includes(command) ? 'yes' : '';
   if (CONFIG.test(command)) {
     // A configuration is kept scrubbed and read for capability flags; it is never parsed into rows.
     result.kind = row.gate === 'caps_probe' ? 'caps' : 'raw';
@@ -392,7 +392,7 @@ function write(table) {
   lines.push('|---|---|');
   for (const k of ['both', 'template', 'native', 'none', 'raw', 'caps', 'session', 'refused']) lines.push(`| ${k} | ${counts[k] ?? 0} |`);
   lines.push('');
-  lines.push('**kind**: `template` = an ntc-templates template matches, with that many `.raw` fixtures in its tests; `native` = the platform answers structured (`| json`, `| display xml`, REST, XML API) and that is the parser of record; `both` = native first, the template is the shadow comparison; `none` = neither, waiting on a capture; `raw` = a configuration, kept scrubbed and never parsed into rows; `caps` = a grep over the configuration whose only output is capability flags; `session` = not a collection command, belongs in the catalog\'s `session:` block; `refused` = the read-only allowlist (`scripts/allowlist.mjs`) will not send it, and the note says why. **Coreview reads it** = the existing crawl already parses this command on this OS, so shadow mode has a Rust side from day one.');
+  lines.push('**kind**: `template` = an ntc-templates template matches, with that many `.raw` fixtures in its tests; `native` = the platform answers structured (`| json`, `| display xml`, REST, XML API) and that is the parser of record; `both` = native first, the template is the shadow comparison; `none` = neither, waiting on a capture; `raw` = a configuration, kept scrubbed and never parsed into rows; `caps` = a grep over the configuration whose only output is capability flags; `session` = not a collection command, belongs in the catalog\'s `session:` block; `refused` = the read-only allowlist (`scripts/allowlist.mjs`) will not send it, and the note says why. **Corelens reads it** = the existing crawl already parses this command on this OS, so shadow mode has a Rust side from day one.');
   lines.push('');
   let os = null;
   for (const r of table) {
@@ -401,10 +401,10 @@ function write(table) {
       lines.push('');
       lines.push(`## ${os}`);
       lines.push('');
-      lines.push('| gate | command | ntc template | fixtures | native | Coreview reads it | kind | note |');
+      lines.push('| gate | command | ntc template | fixtures | native | Corelens reads it | kind | note |');
       lines.push('|---|---|---|---|---|---|---|---|');
     }
-    lines.push(`| ${cell(r.gate)} | \`${cell(r.command)}\` | ${r.template ? `\`${r.template}\`` : ''} | ${r.template ? r.fixtures : ''} | ${cell(r.native)} | ${r.coreview ?? ''} | ${r.kind} | ${cell([...r.flags, r.note].filter(Boolean).join('; '))} |`);
+    lines.push(`| ${cell(r.gate)} | \`${cell(r.command)}\` | ${r.template ? `\`${r.template}\`` : ''} | ${r.template ? r.fixtures : ''} | ${cell(r.native)} | ${r.corelens ?? ''} | ${r.kind} | ${cell([...r.flags, r.note].filter(Boolean).join('; '))} |`);
   }
   lines.push('');
   lines.push('## the capture list: no template and no native structured output');

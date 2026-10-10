@@ -7,7 +7,7 @@ import type { PathOutcome } from './ipc';
 import { devicesOnPath } from './pathTrace';
 
 /** Written by the builder itself (`the_pages_fixture_is_what_the_builder_writes`). */
-const load = (name: string) => JSON.parse(readFileSync(new URL(`../../crates/coreview-path/fixtures/${name}.json`, import.meta.url), 'utf8')) as PathOutcome;
+const load = (name: string) => JSON.parse(readFileSync(new URL(`../../crates/corelens-path/fixtures/${name}.json`, import.meta.url), 'utf8')) as PathOutcome;
 const core = load('path-outcome');
 const firewall = load('path-outcome-firewall');
 

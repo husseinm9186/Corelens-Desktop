@@ -161,7 +161,7 @@ mod tests {
     }
 
     /// Real pages, in order, as one PDF: `CV_SVG_DIR=dir CV_PDF_OUT=out.pdf
-    /// cargo test -p coreview svg_pages_from_a_folder -- --ignored`. Pages are
+    /// cargo test -p corelens svg_pages_from_a_folder -- --ignored`. Pages are
     /// `page1.svg`, `page2.svg`, …
     #[test]
     #[ignore]
@@ -193,7 +193,7 @@ mod tests {
   <rect width="100%" height="100%" fill="#ffffff"/>
   <rect x="0" y="0" width="842" height="86" fill="#f1f1f1"/>
   <text x="18" y="30" fill="#1a1a1a" font-size="18" font-weight="600">Lab network</text>
-  <text x="18" y="52" fill="#4d4d4d" font-size="12">Coreview - exported for a change record</text>
+  <text x="18" y="52" fill="#4d4d4d" font-size="12">Corelens - exported for a change record</text>
   <g transform="translate(48,140)">
     <rect x="0" y="0" width="176" height="96" rx="6" fill="none" stroke="#0b5fce" stroke-width="1.5"/>
     <text x="12" y="28" font-size="12" font-weight="600" fill="#1a1a1a">9300-LAB</text>
@@ -207,7 +207,7 @@ mod tests {
 </svg>"##;
         let bytes = svg_to_pdf(svg).expect("convert");
         assert!(bytes.starts_with(b"%PDF-"));
-        let out = std::env::temp_dir().join("coreview-pdf-check.pdf");
+        let out = std::env::temp_dir().join("corelens-pdf-check.pdf");
         std::fs::write(&out, &bytes).expect("write");
         eprintln!("wrote {} ({} bytes)", out.display(), bytes.len());
     }

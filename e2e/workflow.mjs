@@ -390,7 +390,7 @@ await comments.locator("button", { hasText: /^Resolve$/ }).click();
 await page.waitForTimeout(200);
 check("resolving clears the badge but keeps the thread", (await page.locator('.react-flow__node[data-id="acc2"] .cv-comment-badge').count()) === 0 &&
   await st(() => window.__cvStore.getState().doc.pages[0].nodes.find((n) => n.id === "acc2").data.comments[0].resolved === true));
-check("and the name is remembered for next time", await page.evaluate(() => localStorage.getItem("coreview.commentAuthor")) === "Sam");
+check("and the name is remembered for next time", await page.evaluate(() => localStorage.getItem("corelens.commentAuthor")) === "Sam");
 
 // ------------------------------------------------------- keyboard
 await st(() => {
@@ -447,7 +447,7 @@ await page.waitForTimeout(200);
 const contrast = await page.evaluate(() => {
   const app = document.querySelector(".cv-workspace");
   const css = getComputedStyle(app);
-  return { on: app.classList.contains("is-contrast"), text: css.getPropertyValue("--text").trim(), ink: css.getPropertyValue("--ink").trim(), kept: localStorage.getItem("coreview.view.highContrast") };
+  return { on: app.classList.contains("is-contrast"), text: css.getPropertyValue("--text").trim(), ink: css.getPropertyValue("--ink").trim(), kept: localStorage.getItem("corelens.view.highContrast") };
 });
 check("high contrast can be turned on, for the chrome and the canvas, and is remembered",
   contrast.on && contrast.text === "#ffffff" && contrast.ink === "#ffffff" && contrast.kept === "1", JSON.stringify(contrast));

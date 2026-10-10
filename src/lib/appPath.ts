@@ -522,7 +522,7 @@ export function applicationReport(result: TraceResult, app: Application, page: G
   );
   out.push('');
   out.push(
-    '> Coreview reports what discovery collected. Routes are read from the global ' +
+    '> Corelens reports what discovery collected. Routes are read from the global ' +
       'routing table; per-VRF tables, VXLAN/EVPN overlays and NAT or load-balancer ' +
       'translations are not collected, so a path that depends on them is reported as ' +
       'unresolved rather than guessed.',

@@ -215,7 +215,7 @@ export function VisioImportPanel({ onImported }: { onImported?: () => void } = {
   const dropLink = (page: number, id: string) =>
     editPage(page, (p) => ({ ...p, links: p.links.filter((l) => l.id !== id) }));
 
-  /** Draws the preview onto the canvas, one Coreview page per Visio page. */
+  /** Draws the preview onto the canvas, one Corelens page per Visio page. */
   const add = () => {
     if (!draft) return;
     let devices = 0;

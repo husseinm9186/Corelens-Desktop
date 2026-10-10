@@ -74,7 +74,7 @@ await page.locator("button", { hasText: "Start checks" }).first().click();
 await page.waitForTimeout(400);
 await st(() => {
   const s = window.__cvStore.getState();
-  const emit = (e) => window.__cvEmit("coreview://engine", e);
+  const emit = (e) => window.__cvEmit("corelens://engine", e);
   s.doc.probes.forEach((p, i) => emit({ kind: "sample", session_id: "s1", status: p.target === "127.0.0.1" ? "healthy" : "down",
     result: { probe_id: p.id, timestamp_ms: 1000 + i, outcome: p.target === "127.0.0.1" ? "success" : "timeout", rtt_ms: null, resolved: [], summary: "", error_message: null } }));
 });

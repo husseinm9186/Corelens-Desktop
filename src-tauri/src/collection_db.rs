@@ -8,7 +8,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
-/// The typed tables and their columns — the same names `coreview_collect::tables` emits.
+/// The typed tables and their columns — the same names `corelens_collect::tables` emits.
 pub const TABLES: &[(&str, &[&str])] = &[
     ("device", &["hostname", "vendor", "os_version", "model", "serial", "mgmt_ip", "uptime", "base_mac"]),
     ("interface", &["name", "admin", "oper", "speed", "duplex", "mac", "descr", "mtu", "vlan", "mode", "lag_parent"]),
@@ -437,7 +437,7 @@ pub fn list_log(conn: &Connection, run_id: &str, device_id: Option<&str>) -> rus
 
 /// One normalised row into its typed table. Unknown tables are refused —
 /// the catalog test already holds `feeds` to the spec's list.
-pub fn write_row(conn: &Connection, run_id: &str, device_id: &str, command_id: &str, row: &coreview_collect::tables::Normalised) -> rusqlite::Result<bool> {
+pub fn write_row(conn: &Connection, run_id: &str, device_id: &str, command_id: &str, row: &corelens_collect::tables::Normalised) -> rusqlite::Result<bool> {
     let Some((table, columns)) = TABLES.iter().find(|(t, _)| *t == row.table) else { return Ok(false) };
     let names: Vec<&str> = columns.to_vec();
     let placeholders: Vec<String> = (0..names.len() + 5).map(|i| format!("?{}", i + 1)).collect();
@@ -501,7 +501,7 @@ pub fn table_counts(conn: &Connection, run_id: &str) -> rusqlite::Result<Vec<(St
 #[cfg(test)]
 mod tests {
     use super::*;
-    use coreview_collect::tables::normalise;
+    use corelens_collect::tables::normalise;
     use serde_json::json;
 
     fn conn() -> Connection {
@@ -617,7 +617,7 @@ mod fresh {
     #[test]
     fn a_brand_new_database_has_the_collection_tables_and_the_shadow_columns() {
         let dir = std::env::temp_dir().join(format!("cv-fresh-{}-{}", std::process::id(), crate::db::now_ms()));
-        let conn = crate::db::open(&dir.join("coreview.db")).unwrap();
+        let conn = crate::db::open(&dir.join("corelens.db")).unwrap();
         for table in ["collection_runs", "collection_devices", "command_log", "d_arp", "d_route", "d_neighbor", "d_link", "d_l3_adjacency"] {
             let n: i64 = conn.query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?1", [table], |r| r.get(0)).unwrap();
             assert_eq!(n, 1, "a fresh database has no {table}");
@@ -668,7 +668,7 @@ pub fn topology_tables(conn: &Connection) -> rusqlite::Result<()> {
 }
 
 /// Replace a run's links and layer-3 adjacencies with the graph's.
-pub fn write_topology(conn: &Connection, run_id: &str, graph: &coreview_topology::Graph) -> rusqlite::Result<()> {
+pub fn write_topology(conn: &Connection, run_id: &str, graph: &corelens_topology::Graph) -> rusqlite::Result<()> {
     let name = |id: &str| graph.node(id).map(|n| n.name.clone()).unwrap_or_else(|| id.to_string());
     conn.execute("DELETE FROM d_link WHERE run_id = ?1", params![run_id])?;
     conn.execute("DELETE FROM d_l3_adjacency WHERE run_id = ?1", params![run_id])?;
@@ -699,7 +699,7 @@ pub fn write_topology(conn: &Connection, run_id: &str, graph: &coreview_topology
 }
 
 /// Everything the builder reads for one run: each device and its rows by table.
-pub fn topology_input(conn: &Connection, run_id: &str) -> rusqlite::Result<Vec<coreview_topology::DeviceIn>> {
+pub fn topology_input(conn: &Connection, run_id: &str) -> rusqlite::Result<Vec<corelens_topology::DeviceIn>> {
     let mut out = Vec::new();
     for d in list_devices(conn, run_id)? {
         if d.failure.is_some() && d.os.is_none() {
@@ -707,7 +707,7 @@ pub fn topology_input(conn: &Connection, run_id: &str) -> rusqlite::Result<Vec<c
         }
         let mut tables = std::collections::BTreeMap::new();
         for (table, _) in TABLES {
-            let rows: Vec<coreview_topology::Row> = read_table(conn, run_id, table, Some(&d.device_id))?
+            let rows: Vec<corelens_topology::Row> = read_table(conn, run_id, table, Some(&d.device_id))?
                 .into_iter()
                 .filter_map(|v| {
                     let mut o = v.as_object()?.clone();
@@ -715,14 +715,14 @@ pub fn topology_input(conn: &Connection, run_id: &str) -> rusqlite::Result<Vec<c
                     o.remove("_device");
                     let extra = o.remove("_extra").and_then(|e| e.as_object().cloned()).unwrap_or_default();
                     let columns = o.into_iter().filter_map(|(k, v)| v.as_str().map(|s| (k, s.to_string()))).collect();
-                    Some(coreview_topology::Row { command, columns, extra })
+                    Some(corelens_topology::Row { command, columns, extra })
                 })
                 .collect();
             if !rows.is_empty() {
                 tables.insert((*table).to_string(), rows);
             }
         }
-        out.push(coreview_topology::DeviceIn { device_id: d.device_id, host: d.host, os: d.os, role: d.role, prompt: d.prompt, version_text: d.version_text, tables });
+        out.push(corelens_topology::DeviceIn { device_id: d.device_id, host: d.host, os: d.os, role: d.role, prompt: d.prompt, version_text: d.version_text, tables });
     }
     Ok(out)
 }
@@ -733,13 +733,13 @@ pub fn topology_input(conn: &Connection, run_id: &str) -> rusqlite::Result<Vec<c
 #[cfg(test)]
 mod topology_tests {
     use super::*;
-    use coreview_collect::tables::normalise;
+    use corelens_collect::tables::normalise;
     use serde_json::json;
 
     #[test]
     fn a_runs_rows_become_links_and_a_crawl_run() {
         let dir = std::env::temp_dir().join(format!("cv-topo-{}-{}", std::process::id(), crate::db::now_ms()));
-        let conn = crate::db::open(&dir.join("coreview.db")).unwrap();
+        let conn = crate::db::open(&dir.join("corelens.db")).unwrap();
         conn.execute("INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1','P',0,0)", []).unwrap();
         open_run(&conn, "col-1", "p1", "192.0.2.1", false, None, "live").unwrap();
         for (dev, host, name, peer, peer_ip, local, remote) in [("dev-a", "192.0.2.1", "SW-A", "SW-B", "192.0.2.2", "Gi1/0/1", "Gi1/0/2"), ("dev-b", "192.0.2.2", "SW-B", "SW-A", "192.0.2.1", "Gi1/0/2", "Gi1/0/1")] {
@@ -756,14 +756,14 @@ mod topology_tests {
         let input = topology_input(&conn, "col-1").unwrap();
         assert_eq!(input.len(), 2);
         assert_eq!(input[0].rows("neighbor")[0].command, "show_cdp_neighbors_detail");
-        let graph = coreview_topology::build(&input);
+        let graph = corelens_topology::build(&input);
         assert_eq!(graph.links.len(), 1);
         assert!(graph.links[0].both_directions);
         write_topology(&conn, "col-1", &graph).unwrap();
         let (n, conf): (i64, f64) = conn.query_row("SELECT COUNT(*), MAX(confidence) FROM d_link WHERE run_id = 'col-1'", [], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
         assert_eq!((n, conf), (1, 1.0));
         // Stored as a crawl run the way collection_topology stores it, and read back as the review reads one.
-        let view = coreview_topology::crawl_view::view(&graph);
+        let view = corelens_topology::crawl_view::view(&graph);
         crate::db::open_crawl_run(&conn, "topo-1", "p1", 1, "collection col-1").unwrap();
         for d in &view.devices {
             crate::db::append_crawl_device(&conn, "topo-1", &serde_json::to_string(d).unwrap()).unwrap();
@@ -786,7 +786,7 @@ mod topology_tests {
     #[test]
     fn a_runs_stored_rows_are_traced() {
         let dir = std::env::temp_dir().join(format!("cv-path-{}-{}", std::process::id(), crate::db::now_ms()));
-        let conn = crate::db::open(&dir.join("coreview.db")).unwrap();
+        let conn = crate::db::open(&dir.join("corelens.db")).unwrap();
         conn.execute("INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1','P',0,0)", []).unwrap();
         open_run(&conn, "col-2", "p1", "192.0.2.1", false, None, "live").unwrap();
         let row = |dev: &str, cmd: &str, table: &str, v: serde_json::Value| write_row(&conn, "col-2", dev, cmd, &normalise(table, &v)).unwrap();
@@ -802,13 +802,13 @@ mod topology_tests {
         row("r2", "show_ip_route", "route", json!({"protocol": "C", "network": "203.0.113.0", "prefix_length": "24", "nexthop_if": "GigabitEthernet0/2"}));
         row("r2", "show_ip_arp", "arp", json!({"address": "203.0.113.9", "mac_address": "0000.0000.0309", "interface": "GigabitEthernet0/2"}));
         let input = topology_input(&conn, "col-2").unwrap();
-        let out = coreview_path::trace_run(&input, &coreview_path::Request { from: "192.0.2.10".into(), to: "203.0.113.9".into(), ..Default::default() });
+        let out = corelens_path::trace_run(&input, &corelens_path::Request { from: "192.0.2.10".into(), to: "203.0.113.9".into(), ..Default::default() });
         let p = &out.forward.paths[0];
         assert_eq!(p.hops.iter().map(|h| h.device.as_str()).collect::<Vec<_>>(), vec!["R1", "R2"], "{:#?}", out.forward);
         assert_eq!(p.hops[0].next_hop.as_deref(), Some("198.51.100.2"));
         assert_eq!(p.hops[0].out_interface.as_deref(), Some("GigabitEthernet0/1"));
         assert_eq!(p.hops[1].next_hop_mac.as_deref(), Some("000000000309"));
-        assert!(matches!(p.ending, coreview_path::walk::Ending::Delivered { .. }));
+        assert!(matches!(p.ending, corelens_path::walk::Ending::Delivered { .. }));
         drop(conn);
         let _ = std::fs::remove_dir_all(&dir);
     }

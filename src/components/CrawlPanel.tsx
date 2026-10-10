@@ -946,7 +946,7 @@ export function CrawlPanel({
         </div>
         <span className="cv-help">
           Everything found is drawn, including whatever is not ticked here. Unticking something
-          means Coreview will not try to log in to it — nothing more.
+          means Corelens will not try to log in to it — nothing more.
         </span>
       </div>
 
@@ -1001,7 +1001,7 @@ export function CrawlPanel({
       {transport !== 'ssh' && (
         <p className="cv-help cv-transport-warning">
           Telnet sends the username, the password and everything the device replies in clear
-          text, readable by anything on the path. Coreview will not fall back to it after a
+          text, readable by anything on the path. Corelens will not fall back to it after a
           password is <em>rejected</em> — the account exists and the credentials are wrong, and
           sending them again unprotected would be worse than failing.
         </p>
@@ -1015,7 +1015,7 @@ export function CrawlPanel({
       </label>
       {hopThrough && (
         <p className="cv-help" data-region="hop-note">
-          Coreview logs in to the seed, then runs that device's own <code>ssh</code> to the next
+          Corelens logs in to the seed, then runs that device's own <code>ssh</code> to the next
           device it found, and on down the chain — every CDP or LLDP neighbour of a kind you
           chose above. It never connects straight from this machine except to a seed, and never
           writes to a device it passes through. If a hop cannot be made, that one device is
@@ -1416,7 +1416,7 @@ export function CrawlPanel({
               disabled={!backupable.length}
               title={
                 backupable.length < picked.length
-                  ? 'Only devices Coreview logged into can be backed up'
+                  ? 'Only devices Corelens logged into can be backed up'
                   : undefined
               }>
               Back up {backupable.length}

@@ -5,7 +5,7 @@
 // Everything above the stub is the real application.
 //
 // The rows are not invented. They are what
-// `cargo run -p coreview-probe --example sweep_subnet -- 192.168.77.0/24`
+// `cargo run -p corelens-probe --example sweep_subnet -- 192.168.77.0/24`
 // actually printed against a real network on 2026-09-12, which is
 // the whole point: the panel is checked against the data it will really get,
 // including the awkward cases — a host with no name, a host with no MAC
@@ -113,7 +113,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1700, height: 1100 } });
 
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   const listeners = {}, callbacks = {};
   let next = 1;
   window.__cvEmit = (event, payload) => {
@@ -191,9 +191,9 @@ check("the panel asks the backend to identify and to scan ports",
   JSON.stringify(sent?.options));
 
 await page.evaluate((rows) => {
-  window.__cvEmit("coreview://sweep", { kind: "started", total: 254 });
-  for (const r of rows) window.__cvEmit("coreview://sweep", { kind: "alive", ...r });
-  window.__cvEmit("coreview://sweep", { kind: "finished", alive: rows.length, scanned: 254, cancelled: false });
+  window.__cvEmit("corelens://sweep", { kind: "started", total: 254 });
+  for (const r of rows) window.__cvEmit("corelens://sweep", { kind: "alive", ...r });
+  window.__cvEmit("corelens://sweep", { kind: "finished", alive: rows.length, scanned: 254, cancelled: false });
 }, hits);
 await page.waitForTimeout(500);
 

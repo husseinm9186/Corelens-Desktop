@@ -1,6 +1,6 @@
 /**
  * The guided tour a sample project carries: a few steps through what
- * Coreview is for, each ticked off by doing it rather than by pressing Next.
+ * Corelens is for, each ticked off by doing it rather than by pressing Next.
  *
  * A step is done when its condition has been true once — selecting a device
  * counts even after something else is selected — so what has been seen is

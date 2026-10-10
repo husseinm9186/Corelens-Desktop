@@ -59,7 +59,7 @@ await page.addInitScript(({ p }) => {
     transformCallback() { return next++; },
     invoke(cmd, args) {
       if (cmd === "plugin:event|listen") return Promise.resolve(next++);
-      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/coreview-racks-test.out");
+      if (cmd === "plugin:dialog|save") return Promise.resolve("/tmp/corelens-racks-test.out");
       if (cmd === "pick_export_target") return Promise.resolve({ token: `t-${next++}`, path: args.folder ? `${args.folder}/${args.filename}` : `/tmp/${args.filename}` });
       if (cmd === "pick_export_folder") return Promise.resolve({ token: `f-${next++}`, path: args.folder ?? "/tmp/picked" });
       if (cmd === "save_export") {

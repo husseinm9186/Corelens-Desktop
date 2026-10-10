@@ -33,8 +33,8 @@ const project = {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
-  localStorage.removeItem("coreview.view.wheel");
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.removeItem("corelens.view.wheel");
   let next = 1;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
   window.__TAURI_INTERNALS__ = {
@@ -97,7 +97,7 @@ const settle = () => page.waitForTimeout(350);
   await settle();
   const b2 = await viewport();
   check("and Ctrl+wheel zooms", b2.zoom > b1.zoom, JSON.stringify({ b1, b2 }));
-  check("the choice is remembered for this machine", (await st(() => localStorage.getItem("coreview.view.wheel"))) === "scroll");
+  check("the choice is remembered for this machine", (await st(() => localStorage.getItem("corelens.view.wheel"))) === "scroll");
   await st(() => window.__cvStore.getState().setSettings({ wheel: "zoom" }));
   await settle();
 }

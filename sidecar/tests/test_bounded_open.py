@@ -8,8 +8,8 @@ from paramiko.channel import Channel
 from paramiko.ssh_exception import SSHException
 import pytest
 
-from coreview_sidecar import session as s
-from coreview_sidecar import session as s_mod
+from corelens_sidecar import session as s
+from corelens_sidecar import session as s_mod
 
 
 class _NeverAnswers:

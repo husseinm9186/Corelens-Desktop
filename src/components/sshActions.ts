@@ -53,7 +53,7 @@ export async function openSsh(nodeId: string, data: DeviceNodeData) {
  *
  * The username goes with it and the password does not: every external client
  * that takes one takes it on a command line, where the rest of the machine can
- * read it. The client asks. Coreview then knows nothing about the session —
+ * read it. The client asks. Corelens then knows nothing about the session —
  * no transcript, no colouring, no keepalive, which is what the panel is for.
  */
 export async function openSshElsewhere(data: DeviceNodeData) {

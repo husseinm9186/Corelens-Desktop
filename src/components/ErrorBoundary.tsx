@@ -44,7 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className="cv-boundary" role="alert">
         <strong>{this.props.what} stopped working.</strong>
         <p className="cv-help">
-          The rest of Coreview is still running and nothing has been lost. If it keeps happening, this is the detail worth reporting:
+          The rest of Corelens is still running and nothing has been lost. If it keeps happening, this is the detail worth reporting:
         </p>
         <pre className="cv-boundary-detail">{error.message}</pre>
         <button type="button" className="cv-btn" onClick={() => this.setState({ error: null })}>

@@ -24,7 +24,7 @@ export const isDesktop =
 export class BackendUnavailable extends Error {
   constructor(what: string) {
     super(
-      `${what} needs the Coreview desktop app. Run "npm run tauri dev" instead of opening the page in a browser.`,
+      `${what} needs the Corelens desktop app. Run "npm run tauri dev" instead of opening the page in a browser.`,
     );
     this.name = 'BackendUnavailable';
   }
@@ -90,7 +90,7 @@ export interface SessionInfo {
   probeCount: number;
 }
 
-const LS_KEY = 'coreview.projects.v1';
+const LS_KEY = 'corelens.projects.v1';
 /** Browser-mode storage was under this name until the 0.2.0 rename. */
 const LS_KEY_LEGACY = 'livetopo.projects.v1';
 
@@ -214,7 +214,7 @@ export type SweepEvent =
   | { kind: 'finished'; alive: number; scanned: number; cancelled: boolean };
 
 /** Sent for one run and never stored. The backend has no way to give these
- *  back — nothing reads a password out of Coreview once it is in. */
+ *  back — nothing reads a password out of Corelens once it is in. */
 export type CredentialInput = {
   username: string;
   password: string;
@@ -488,7 +488,7 @@ export type CollectionLogEntry = {
   shadow?: string | null; shadowDetail?: string | null; engine?: string | null;
 };
 
-/** The topology builder's graph, as `coreview-topology` serialises it. */
+/** The topology builder's graph, as `corelens-topology` serialises it. */
 export type TopologyEnd = { node: string; port: string | null };
 export type TopologyLink = {
   a: TopologyEnd; b: TopologyEnd; kind: 'cdp' | 'lldp' | 'api' | 'inferred_mac'; confidence: number; both_directions: boolean;
@@ -507,7 +507,7 @@ export type TopologyGraph = {
 export type TopologyViewOptions = { collapseBundles: boolean; collapseStacks: boolean; placeholders: boolean; minConfidence: number; vlan?: string; vrf?: string };
 export type TopologyBuilt = { crawlRunId: string; devices: CrawledDevice[]; notVisited: Neighbor[]; graph: TopologyGraph };
 
-// The path builder over a collection run (crates/coreview-path).
+// The path builder over a collection run (crates/corelens-path).
 export type PathRequest = {
   from: string; to: string; vrf?: string | null; protocol?: string | null; port?: number | null; sourcePort?: number | null;
   downDevices?: string[]; downLinks?: { device: string; interface: string }[];
@@ -976,7 +976,7 @@ export type ComparedDevice = {
   changed: number;
 };
 
-/** What a library folder's `coreview-stencils.json` says about one shape.
+/** What a library folder's `corelens-stencils.json` says about one shape.
  *  Validated in Rust before it gets here. */
 export type StencilMeta = {
   class?: string;
@@ -994,7 +994,7 @@ export type IconLibEntry = {
   category: string;
   svg: string;
   meta?: StencilMeta;
-  /** Coreview's own artwork — a shape captured from a built-in glyph,
+  /** Corelens's own artwork — a shape captured from a built-in glyph,
    *  never counted as third-party. */
   own?: boolean;
 };
@@ -1125,7 +1125,7 @@ export const ipc = {
     await invoke('check_folder_writable', { path });
   },
 
-  /** `project.coreview` and `project.yaml` in `folder/name`. */
+  /** `project.corelens` and `project.yaml` in `folder/name`. */
   /** Where an export goes — the chosen folder, or a native save
    *  dialog shown in Rust — as a one-shot token and the path to tell the
    *  person. Null when the dialog was cancelled. */
@@ -1446,7 +1446,7 @@ export const ipc = {
   async onUpdateProgress(handler: (e: UpdateProgress) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
-    return listen('coreview://update', (e) => handler(e.payload as UpdateProgress));
+    return listen('corelens://update', (e) => handler(e.payload as UpdateProgress));
   },
 
   /** Validate a subnet and say how big it is, without starting anything. */
@@ -1479,14 +1479,14 @@ export const ipc = {
   async onJob(handler: (j: JobSnapshot) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
-    return listen('coreview://job', (e) => handler(e.payload as JobSnapshot));
+    return listen('corelens://job', (e) => handler(e.payload as JobSnapshot));
   },
 
   /** Subscribe to sweep progress and hits. */
   async onSweepEvent(handler: (e: SweepEvent) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
-    return listen('coreview://sweep', (e) => handler(e.payload as SweepEvent));
+    return listen('corelens://sweep', (e) => handler(e.payload as SweepEvent));
   },
 
   /** Walk the network from a seed address. Credentials are used for this run
@@ -1544,22 +1544,22 @@ export const ipc = {
   async onTracertProgress(handler: (e: TracertProgress) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
-    return listen('coreview://tracert', (e) => handler(e.payload as TracertProgress));
+    return listen('corelens://tracert', (e) => handler(e.payload as TracertProgress));
   },
   async onCollectionEvent(handler: (e: CollectionEvent) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
-    return listen('coreview://collection', (e) => handler(e.payload as CollectionEvent));
+    return listen('corelens://collection', (e) => handler(e.payload as CollectionEvent));
   },
   async onCrawlEvent(handler: (e: CrawlEvent) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
-    return listen('coreview://crawl', (e) => handler(e.payload as CrawlEvent));
+    return listen('corelens://crawl', (e) => handler(e.payload as CrawlEvent));
   },
   async onCrawlResult(handler: (r: CrawlResult) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
-    return listen('coreview://crawl-result', (e) => handler(e.payload as CrawlResult));
+    return listen('corelens://crawl-result', (e) => handler(e.payload as CrawlResult));
   },
 
   // ---------------------------------------------------- SSH sessions
@@ -1630,7 +1630,7 @@ export const ipc = {
   async onSshEvent(handler: (e: SshEvent) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
-    return listen('coreview://ssh', (e) => handler(e.payload as SshEvent));
+    return listen('corelens://ssh', (e) => handler(e.payload as SshEvent));
   },
 
   /** Capture configurations into the chosen backup folder. */
@@ -1665,7 +1665,7 @@ export const ipc = {
     // The backend tags its enum adjacently; flatten before anyone
     // reads it, or every payload field is undefined.
     const { normaliseBackupEvent } = await import('./backupEvent');
-    return listen('coreview://backup', (e) => {
+    return listen('corelens://backup', (e) => {
       const event = normaliseBackupEvent(e.payload);
       if (event) handler(event);
     });
@@ -1775,8 +1775,8 @@ export const ipc = {
     const { open } = await import('@tauri-apps/plugin-dialog');
     const picked = await open({
       multiple: false,
-      title: 'Import a Coreview project',
-      filters: [{ name: 'Coreview project', extensions: ['coreview', 'livetopo', 'json'] }],
+      title: 'Import a Corelens project',
+      filters: [{ name: 'Corelens project', extensions: ['corelens', 'coreview', 'livetopo', 'json'] }],
     });
     return typeof picked === 'string' ? picked : null;
   },
@@ -1880,7 +1880,7 @@ export const ipc = {
   async onEngineEvent(handler: (payload: unknown) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
     const { listen } = await import('@tauri-apps/api/event');
-    const un = await listen('coreview://engine', (e) => handler(camel(e.payload)));
+    const un = await listen('corelens://engine', (e) => handler(camel(e.payload)));
     return un;
   },
 };

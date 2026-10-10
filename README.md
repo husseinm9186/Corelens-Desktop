@@ -1,16 +1,16 @@
-# Coreview
+# Corelens Desktop
 
 A local-first desktop app for drawing a network topology and watching it stay
 up while you work — during maintenance windows, cutovers, upgrades and
 troubleshooting.
 
 You draw the diagram. You enter the addresses. You choose what each line means.
-Coreview checks the targets you configured and shows the result on the canvas:
+Corelens checks the targets you configured and shows the result on the canvas:
 moving packet dots on healthy links, stopped red lines on failing ones.
 
 Runs on **Windows, macOS and Linux**. One machine, one SQLite file, no account.
 
-**Coreview** by **Mohammed Almoola** — [linkedin.com/in/malmoola](https://www.linkedin.com/in/malmoola).
+**Corelens** by **Mohammed Almoola** — [linkedin.com/in/malmoola](https://www.linkedin.com/in/malmoola).
 Free to use, all other rights reserved: see [Licence](#licence) and [`LICENSE`](LICENSE).
 
 ---
@@ -31,7 +31,7 @@ outbound requests at all (see below).
 
 Check it yourself. `git grep -i openai` returns exactly one hit outside this
 README, and it is worth knowing what it is: a company name inside
-`crates/coreview-probe/src/oui_data.rs`, the offline IEEE OUI table that
+`crates/corelens-probe/src/oui_data.rs`, the offline IEEE OUI table that
 turns a MAC address prefix into a manufacturer name. It sits alongside some
 forty thousand other prefixes — Cisco, Netgear, Hewlett Packard. It is a
 static string in a lookup table, compiled into the binary, and nothing dials
@@ -57,7 +57,7 @@ Analytics") or a line of the app's own text promising there is none.
   against the key compiled into the build. With the tick off, you install a
   build and that is the build you have until you replace it.
 - No account, no licence check, no activation, no sign-in.
-- No cloud sync, no vendor backend. There is no Coreview server. It does not
+- No cloud sync, no vendor backend. There is no Corelens server. It does not
   exist, so it cannot be breached, subpoenaed, or quietly switched on.
 
 The frontend ships **twelve** runtime dependencies — the Tauri API and its
@@ -108,7 +108,7 @@ Exactly one Tauri plugin is initialised in `src-tauri/src/main.rs`: the dialog
 plugin. (`@tauri-apps/plugin-fs` and `-opener` appear in `package.json` but are
 imported nowhere and never registered on the Rust side, so they are inert.)
 
-### What Coreview *does* send, and where
+### What Corelens *does* send, and where
 
 It is a network tool. It sends packets on purpose. Being straight about this is
 more useful than a blanket "nothing leaves the machine", which would be false:
@@ -149,7 +149,7 @@ monitoring system, not a diagram tool.
 
 **The one SNMP write, and it is opt-in.** SNMP cannot read a configuration,
 but Cisco's `CISCO-CONFIG-COPY-MIB` lets a manager ask a device to *send*
-one. When the Backups tab's SNMP tick is on, Coreview writes one row into
+one. When the Backups tab's SNMP tick is on, Corelens writes one row into
 that table — protocol SFTP, source running or startup config, your server,
 your file name — polls until the device reports the copy done, destroys the
 row, and fetches the file from your SFTP server. The device is left as it
@@ -165,18 +165,18 @@ type, and nothing contacts an address that is not in your own project. Probes
 run only between **Start checks** and **Stop**, and only for the
 project that is open.
 
-Two crates carry an HTTP client (`coreview-collect`, for a device's own REST
-API, and `coreview-meraki`); each is used only against a host whose login you
+Two crates carry an HTTP client (`corelens-collect`, for a device's own REST
+API, and `corelens-meraki`); each is used only against a host whose login you
 saved — a device, its FMC, or Meraki's dashboard — never against a URL the
 interface can name, and the collectors pin the device's certificate on first
 use. HTTP/HTTPS probes open a plain `TcpStream` and speak the request
-themselves (`crates/coreview-probe`), with `rustls` for TLS.
+themselves (`crates/corelens-probe`), with `rustls` for TLS.
 
 ### Where your data lives
 
 | | |
 | --- | --- |
-| Database | `%LOCALAPPDATA%\Coreview\coreview.db` on Windows; the XDG data directory elsewhere |
+| Database | `%LOCALAPPDATA%\Corelens\corelens.db` on Windows; the XDG data directory elsewhere |
 | Config backups | A folder **you** choose, or nowhere until you choose one |
 | Exports | A folder you choose, or a save dialog each time |
 
@@ -208,7 +208,7 @@ Three properties the vault is built to hold:
 
 ### What is in a file you share, and what is not
 
-A `.coreview` project export contains the **diagram and its metadata** — the
+A `.corelens` project export contains the **diagram and its metadata** — the
 package is `meta` plus the document JSON, and nothing else.
 
 It does **not** contain credentials, and it does **not** contain device
@@ -220,7 +220,7 @@ escape the backup folder.
 
 Be clear-eyed about what a diagram *does* hold, though: **the things you typed
 into it.** Hostnames, IP addresses, site names, port numbers, your notes. That
-is customer information, and sharing the file shares it. Coreview keeps secrets
+is customer information, and sharing the file shares it. Corelens keeps secrets
 and configs out; it cannot keep out the topology, because the topology is the
 document.
 
@@ -232,7 +232,7 @@ Stated so the list above is not mistaken for more than it is:
   system's job. Anyone with your user account has your projects.
 - The app has no permissions model. If you can open it, you can use all of it.
 - CSV and Markdown exports are plain text by design.
-- Coreview is unsigned on macOS and Linux (Windows builds are signed when a
+- Corelens is unsigned on macOS and Linux (Windows builds are signed when a
   certificate is configured). See the macOS note below.
 
 ---
@@ -254,10 +254,10 @@ by default; the privacy section above says exactly what the request carries.
 
 | Platform | Artifact | Contents |
 | --- | --- | --- |
-| Windows | `coreview-windows-v<version>` | NSIS `.exe`, signed, with `SHA256SUMS.txt` and the SBOMs |
-| macOS | `coreview-macos-v<version>` | universal `.dmg` |
+| Windows | `corelens-windows-v<version>` | NSIS `.exe`, signed, with `SHA256SUMS.txt` and the SBOMs |
+| macOS | `corelens-macos-v<version>` | universal `.dmg` |
 
-Windows administrators: the installer is signed with the Coreview certificate,
+Windows administrators: the installer is signed with the Corelens certificate,
 and `docs/INSTALL-WINDOWS.md` is how to check it and trust it (and what that
 does and does not do for SmartScreen and Defender).
 
@@ -276,7 +276,7 @@ The `.dmg` is unsigned and un-notarised — there is no Apple Developer
 certificate configured, the way there is for Windows. macOS quarantines
 anything downloaded and, for an unsigned app, reports that as:
 
-> "Coreview" is damaged and can't be opened. You should move it to the Bin.
+> "Corelens" is damaged and can't be opened. You should move it to the Bin.
 
 **It is not damaged, and there is nothing wrong with the build.** That is
 Gatekeeper refusing an app whose developer it cannot verify. The whole install,
@@ -284,26 +284,26 @@ from the terminal:
 
 ```sh
 # 1. Mount the disk image (adjust the version in the name).
-hdiutil attach ~/Downloads/Coreview_*.dmg
+hdiutil attach ~/Downloads/Corelens_*.dmg
 
 # 2. Copy the app into Applications.
-cp -R "/Volumes/Coreview/Coreview.app" /Applications/
+cp -R "/Volumes/Corelens/Corelens.app" /Applications/
 
 # 3. Eject the image.
-hdiutil detach "/Volumes/Coreview"
+hdiutil detach "/Volumes/Corelens"
 
 # 4. Clear the quarantine flag. This is the line that matters.
-xattr -dr com.apple.quarantine /Applications/Coreview.app
+xattr -dr com.apple.quarantine /Applications/Corelens.app
 
 # 5. Start it.
-open /Applications/Coreview.app
+open /Applications/Corelens.app
 ```
 
 Step 4 is the one that gets past Gatekeeper. To confirm it worked, this should
 print nothing:
 
 ```sh
-xattr -p com.apple.quarantine /Applications/Coreview.app 2>/dev/null
+xattr -p com.apple.quarantine /Applications/Corelens.app 2>/dev/null
 ```
 
 Right-click → Open instead of double-clicking works on some macOS versions and
@@ -347,7 +347,7 @@ device.
 change on Saturday" — so three documents that disagree within a fortnight do
 not happen.
 
-**Shapes.** Coreview's own shapes for every device class — routers, L3 and L2
+**Shapes.** Corelens's own shapes for every device class — routers, L3 and L2
 switches, firewalls, load balancers, WAFs, patch panels, PDUs, UPSes and more —
 drawn in the repository and vendor-neutral: vendor and model are fields on the
 device, not artwork. Add your own folder of SVGs, or capture shapes from
@@ -401,9 +401,9 @@ IOS-XE and NX-OS: tick *Ask Cisco devices to send their configuration over
 SNMP* on the Backups tab, choose a read-write SNMP credential, and each
 device is asked — through Cisco's configuration-copy table — to send its
 configuration to an SFTP server of yours, named with its login under
-Settings. Coreview waits for the device to report the copy done, collects
+Settings. Corelens waits for the device to report the copy done, collects
 the file from your server and files it like any SSH capture, so history and
-before/after work the same. It is the one SNMP write Coreview ever sends,
+before/after work the same. It is the one SNMP write Corelens ever sends,
 it is off until you tick it, and the tab states the cost: the device is
 given the SFTP login inside that write, which v2c carries in clear and v3
 with privacy encrypts. A device without the table, or one that refuses the
@@ -459,7 +459,7 @@ saved in and cannot be listed, shown or used from another; the whole vault
 is managed from the start screen with no project open. A project keeps as
 many SSH logins and SNMP credentials as it needs, tried in order.
 
-**Import.** A Coreview project package, a CSV of devices, or a Visio `.vsdx`
+**Import.** A Corelens project package, a CSV of devices, or a Visio `.vsdx`
 drawing. The `.vsdx` reader turns a drawing into devices and links rather than
 into a picture — see below for exactly what it reads. All three are parsed on
 this machine; nothing is uploaded to convert anything.
@@ -559,7 +559,7 @@ and places a shape by its centre; the canvas measures in pixels from the
 top-left. Each shape's own width and height are used where the drawing states
 them, and the scale is taken from the drawing rather than fixed, so a rack of
 switches stacked a fifth of an inch apart arrives stacked rather than piled.
-One Coreview page is created per Visio page.
+One Corelens page is created per Visio page.
 
 ### What it will not do
 
@@ -616,7 +616,7 @@ cargo test --workspace   # every Rust crate
 ```
 
 Note that `npm run rust:test` covers the probe
-engine and the app backend but not `coreview-discover`; `cargo test
+engine and the app backend but not `corelens-discover`; `cargo test
 --workspace` is the one that runs everything.
 
 CI runs the suites on Ubuntu and Windows, then bundles the Windows and macOS
@@ -643,7 +643,7 @@ a job per platform.
 ## Security model, in detail
 
 - **Probe targets are validated before they can reach a process argument, a
-  socket or the resolver** (`crates/coreview-probe/src/validate.rs`). Shell
+  socket or the resolver** (`crates/corelens-probe/src/validate.rs`). Shell
   metacharacters, whitespace, quotes, control characters and leading dashes are
   rejected. Unit tests cover the injection cases directly.
 - **`ping` is invoked with an argument vector.** No `cmd.exe`, no PowerShell, no
@@ -697,7 +697,7 @@ machine.
 
 ## Licence
 
-**Coreview is free.** Use it for anything lawful — at work, at home, for your
+**Corelens is free.** Use it for anything lawful — at work, at home, for your
 employer, for your customers, on as many machines as you like. No licence key,
 no activation, no registration, no seat count. Your diagrams, reports and
 exports are yours, with no claim on them.
@@ -714,7 +714,7 @@ what it does; being able to read it is not permission to reuse it. If you want
 to do any of those things, ask.
 
 Copyright © 2026 Mohammed Almoola. All rights reserved. The full terms are in
-[`LICENSE`](LICENSE). "Coreview" is the name of this program and is not claimed
+[`LICENSE`](LICENSE). "Corelens" is the name of this program and is not claimed
 as a trademark.
 
 **The components it is built on keep their own licences**, and nothing above
@@ -723,7 +723,7 @@ changes them. All of them — 37 npm packages and 741 crates — are credited in
 full, generated from the real dependency trees. That file and `LICENSE` are
 installed beside the application, so they travel with any copy you pass on.
 
-**There is no GPL, AGPL or SSPL anywhere in either tree**, so nothing Coreview
+**There is no GPL, AGPL or SSPL anywhere in either tree**, so nothing Corelens
 is built on restricts how it may be used or shared. Five crates are MPL-2.0,
 which is copyleft per file: linking them is expressly allowed, they are used
 unmodified, and the notices say where their source is.

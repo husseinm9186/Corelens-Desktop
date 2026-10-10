@@ -101,7 +101,7 @@ const inspectorTab = async (name) => {
 };
 
 await page.addInitScript(({ p }) => {
-  localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   const listeners = {}, callbacks = {};
   let next = 1;
   window.__cvEmit = (event, payload) => {
@@ -162,9 +162,9 @@ const edges = () =>
 await page.locator("button", { hasText: "Ping sweep" }).first().click();
 await page.waitForTimeout(400);
 await page.evaluate((hits) => {
-  window.__cvEmit("coreview://sweep", { kind: "started", total: 254 });
-  for (const h of hits) window.__cvEmit("coreview://sweep", { kind: "alive", ...h });
-  window.__cvEmit("coreview://sweep", { kind: "finished", alive: hits.length, scanned: 254, cancelled: false });
+  window.__cvEmit("corelens://sweep", { kind: "started", total: 254 });
+  for (const h of hits) window.__cvEmit("corelens://sweep", { kind: "alive", ...h });
+  window.__cvEmit("corelens://sweep", { kind: "finished", alive: hits.length, scanned: 254, cancelled: false });
 }, [SWEPT, SWEPT_SWITCH]);
 await page.waitForTimeout(400);
 
@@ -184,7 +184,7 @@ check("a host with no name is labelled with its address",
 
 await page.locator("button", { hasText: "Discover devices" }).first().click();
 await page.waitForTimeout(400);
-await page.evaluate((r) => window.__cvEmit("coreview://crawl-result", r), crawlResult);
+await page.evaluate((r) => window.__cvEmit("corelens://crawl-result", r), crawlResult);
 await page.waitForTimeout(800);
 
 // The attached devices are behind a disclosure that has to be opened, the
@@ -251,9 +251,9 @@ check("a link a crawl drew defaults to Bezier",
 await page.locator("button", { hasText: "Ping sweep" }).first().click();
 await page.waitForTimeout(400);
 await page.evaluate((hits) => {
-  window.__cvEmit("coreview://sweep", { kind: "started", total: 254 });
-  for (const h of hits) window.__cvEmit("coreview://sweep", { kind: "alive", ...h });
-  window.__cvEmit("coreview://sweep", { kind: "finished", alive: hits.length, scanned: 254, cancelled: false });
+  window.__cvEmit("corelens://sweep", { kind: "started", total: 254 });
+  for (const h of hits) window.__cvEmit("corelens://sweep", { kind: "alive", ...h });
+  window.__cvEmit("corelens://sweep", { kind: "finished", alive: hits.length, scanned: 254, cancelled: false });
 }, [SWEPT, SWEPT_SWITCH]);
 await page.waitForTimeout(500);
 

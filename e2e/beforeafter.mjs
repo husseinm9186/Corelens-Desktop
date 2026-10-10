@@ -72,8 +72,8 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1700, height: 1100 } });
 
 await page.addInitScript(({ p, runs, comparison }) => {
-  if (!localStorage.getItem("coreview.projects.v1")) {
-    localStorage.setItem("coreview.projects.v1", JSON.stringify({ [p.meta.id]: p }));
+  if (!localStorage.getItem("corelens.projects.v1")) {
+    localStorage.setItem("corelens.projects.v1", JSON.stringify({ [p.meta.id]: p }));
   }
   let next = 1;
   window.__cvCalls = [];
@@ -91,7 +91,7 @@ await page.addInitScript(({ p, runs, comparison }) => {
       if (cmd === "list_projects") return Promise.resolve([meta]);
       if (cmd === "load_project")
         return Promise.resolve({ meta, document_version: p.documentVersion, document: p.document });
-      if (cmd === "get_settings") return Promise.resolve({ backupFolder: "/tmp/coreview-e2e-not-a-real-folder" });
+      if (cmd === "get_settings") return Promise.resolve({ backupFolder: "/tmp/corelens-e2e-not-a-real-folder" });
       if (cmd === "list_backup_runs") return Promise.resolve(window.__cvRuns);
       if (cmd === "compare_backup_runs") {
         window.__cvCalls.push({ cmd, args });

@@ -1,6 +1,6 @@
 /**
  * A project written as a folder for version control: the package as
- * JSON, which Coreview opens, and the same content as YAML, which a person
+ * JSON, which Corelens opens, and the same content as YAML, which a person
  * reads in a diff.
  *
  * Keys are written in a fixed order — sorted — at every level, so saving a
@@ -32,8 +32,8 @@ export function projectFolderFiles(pkg: Record<string, unknown>): { json: string
   return {
     json: `${JSON.stringify(stable, null, 2)}\n`,
     yaml:
-      '# A readable copy of project.coreview, written by Coreview for version control.\n' +
-      '# Coreview opens the .coreview file; edits made here are not read back.\n' +
+      '# A readable copy of project.corelens, written by Corelens for version control.\n' +
+      '# Corelens opens the .corelens file; edits made here are not read back.\n' +
       stringify(stable, { lineWidth: 0, minContentWidth: 0, aliasDuplicateObjects: false }),
   };
 }

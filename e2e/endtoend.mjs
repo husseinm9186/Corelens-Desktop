@@ -167,7 +167,7 @@ await panel.locator("button", { hasText: /^Discover$/ }).click();
 await page.waitForTimeout(300);
 const crawl = (await calls("start_crawl")).at(-1)?.args;
 check("2. the crawl starts from the seed with the typed login", crawl?.input.seed === "192.0.2.10" && crawl.credentials.username === "reader");
-await st((r) => window.__cvEmit("coreview://crawl-result", r), crawled);
+await st((r) => window.__cvEmit("corelens://crawl-result", r), crawled);
 await page.waitForTimeout(600);
 check("   and what it found is listed", (await panel.locator("tr", { hasText: "ACCESS-SW2" }).count()) >= 1);
 
@@ -192,7 +192,7 @@ const started = (await calls("start_validation")).at(-1)?.args;
 check("4. validation checks every watched device", started?.probes.length >= 3 && started.probes.every((p) => p.target && !("notes" in p)), JSON.stringify(started?.probes?.map((p) => p.target)));
 await st((probes) => {
   const nodes = window.__cvStore.getState().doc.pages[0].nodes;
-  const emit = (e) => window.__cvEmit("coreview://engine", e);
+  const emit = (e) => window.__cvEmit("corelens://engine", e);
   for (const p of probes) {
     const node = nodes.find((n) => n.id === p.object_id);
     const down = node?.data.label === "EDGE-FW1";

@@ -1,4 +1,4 @@
-# Coreview discovery catalog — Extreme EXOS (extreme_exos)
+# Corelens discovery catalog — Extreme EXOS (extreme_exos)
 #
 # Filled 2026-10-01: commands and parsers from ntc-templates (their
 # fixtures vendored), the session from netmiko's extreme_exos.py — `disable
@@ -7,7 +7,7 @@
 # `show iproute` have no template and stay unverified.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Extreme

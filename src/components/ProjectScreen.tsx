@@ -98,8 +98,8 @@ export function ProjectScreen() {
   const dropOn = (target: string | null, e: React.DragEvent) => {
     e.preventDefault();
     setDropTarget(null);
-    const projectId = e.dataTransfer.getData('application/x-coreview-project');
-    const folderId = e.dataTransfer.getData('application/x-coreview-folder');
+    const projectId = e.dataTransfer.getData('application/x-corelens-project');
+    const folderId = e.dataTransfer.getData('application/x-corelens-folder');
     if (projectId) folderAction(() => ipc.moveProjectToFolder(projectId, target));
     else if (folderId && folderId !== target) folderAction(() => ipc.moveProjectFolder(folderId, target));
   };
@@ -148,14 +148,14 @@ export function ProjectScreen() {
 
   const failedImport = (err: unknown) =>
     setError(
-      `That file could not be read as a Coreview project (${
+      `That file could not be read as a Corelens project (${
         err instanceof Error ? err.message : String(err)
-      }). Choose a .coreview file exported from Coreview (.livetopo files from before the rename still work).`,
+      }). Choose a .corelens file exported from Corelens (.coreview and .livetopo files from before the renames still work).`,
     );
 
   /** Native dialog, then a backend read.
    *
-   *  This was an `<input type="file" accept=".coreview,...">`, which does not
+   *  This was an `<input type="file" accept=".corelens,...">`, which does not
    *  work on Linux: WebKitGTK turns the accept list into a filter that matches
    *  nothing when the extension has no registered MIME type, so the dialog
    *  opened on an empty folder with Open greyed out and no way to proceed. */
@@ -211,7 +211,7 @@ export function ProjectScreen() {
     <div className="cv-welcome">
       <div className="cv-welcome-inner">
         <header className="cv-welcome-head">
-          <h1>{t('projectScreen.coreview')}</h1>
+          <h1>{t('projectScreen.corelens')}</h1>
           <p>
             {t('projectScreen.drawTheTopologyYou')}
           </p>
@@ -221,7 +221,7 @@ export function ProjectScreen() {
           <input
             ref={fileRef}
             type="file"
-            accept=".coreview,.livetopo,application/json"
+            accept=".corelens,.coreview,.livetopo,application/json"
             hidden
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -450,7 +450,7 @@ export function ProjectScreen() {
                 <li key={f.id} className={`cv-pfolder-row${isDropTarget(f.id) ? ' is-drop' : ''}`} data-folder={f.id}
                   draggable={renaming?.id !== f.id}
                   onDragStart={(e) => {
-                    e.dataTransfer.setData('application/x-coreview-folder', f.id);
+                    e.dataTransfer.setData('application/x-corelens-folder', f.id);
                     e.dataTransfer.effectAllowed = 'move';
                   }}
                   {...dropProps(f.id)}>
@@ -504,7 +504,7 @@ export function ProjectScreen() {
                 <li key={p.id} data-project={p.id} className="cv-project-card"
                   draggable={!showArchived && tree.folders.length > 0}
                   onDragStart={(e) => {
-                    e.dataTransfer.setData('application/x-coreview-project', p.id);
+                    e.dataTransfer.setData('application/x-corelens-project', p.id);
                     e.dataTransfer.effectAllowed = 'move';
                   }}>
                   <button
@@ -594,7 +594,7 @@ export function ProjectScreen() {
         <HostKeySettings />
 
         <footer className="cv-welcome-foot">
-          {t('projectScreen.coreviewRunsEveryCheck')}
+          {t('projectScreen.corelensRunsEveryCheck')}
         </footer>
       </div>
 

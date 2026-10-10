@@ -28,7 +28,7 @@ mod db;
 use std::sync::{Arc, Mutex};
 
 use commands::AppState;
-use coreview_probe::{Engine, DEFAULT_MAX_CONCURRENCY};
+use corelens_probe::{Engine, DEFAULT_MAX_CONCURRENCY};
 use tauri::{Manager, RunEvent, WindowEvent};
 
 /// Sizes the window to the screen it opens on.
@@ -79,7 +79,7 @@ fn fit_to_screen(app: &tauri::App) {
 /// credential by id; the vault is opened here, in Rust, when the check runs, and
 /// the secret goes no further than the SNMP request.
 fn register_snmp_uptime(handle: tauri::AppHandle) {
-    coreview_probe::snmpcheck::register(Box::new(move |cfg| {
+    corelens_probe::snmpcheck::register(Box::new(move |cfg| {
         let handle = handle.clone();
         Box::pin(async move {
             let id = cfg.snmp_credential_id.clone().unwrap_or_default();
@@ -90,7 +90,7 @@ fn register_snmp_uptime(handle: tauri::AppHandle) {
                 auth
             };
             let timeout = std::time::Duration::from_millis(cfg.timeout_ms.max(500));
-            let found = coreview_discover::snmp::identify(&cfg.target, 161, &auth, timeout)
+            let found = corelens_discover::snmp::identify(&cfg.target, 161, &auth, timeout)
                 .await
                 .map_err(|e| e.to_string())?;
             found
@@ -101,8 +101,10 @@ fn register_snmp_uptime(handle: tauri::AppHandle) {
 }
 
 fn main() {
-    let db_path = db::data_dir().join("coreview.db");
-    let conn = db::open(&db_path).expect("could not open the local Coreview database");
+    // Before the window exists, or it opens on an empty profile.
+    db::adopt_webview_data();
+    let db_path = db::data_dir().join(db::DB_FILE);
+    let conn = db::open(&db_path).expect("could not open the local Corelens database");
     // Sweep up anything a project deleted before the cascade existed left
     // behind — its event timeline carries device names and the addresses they
     // were checked at, which is exactly what deleting a project is for.
@@ -146,7 +148,7 @@ fn main() {
             let jobs_window = app.handle().clone();
             app.state::<AppState>().jobs.report_to(move |snapshot| {
                 use tauri::Emitter;
-                let _ = jobs_window.emit("coreview://job", &snapshot);
+                let _ = jobs_window.emit("corelens://job", &snapshot);
             });
             commands::pump_events(app.handle().clone(), rx);
             register_snmp_uptime(app.handle().clone());
@@ -288,7 +290,7 @@ fn main() {
             vault_commands::delete_credential,
         ])
         .build(tauri::generate_context!())
-        .expect("error while building Coreview")
+        .expect("error while building Corelens")
         .run(move |_app, event| {
             if let RunEvent::Exit = event {
                 let engine = Arc::clone(&engine_for_exit);

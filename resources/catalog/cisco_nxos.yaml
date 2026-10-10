@@ -1,6 +1,6 @@
-# Coreview discovery catalog — Cisco NX-OS (cisco_nxos)
+# Corelens discovery catalog — Cisco NX-OS (cisco_nxos)
 #
-# First built 2026-09-29 by scripts/build-catalog.mjs from Coreview's discovery
+# First built 2026-09-29 by scripts/build-catalog.mjs from Corelens's discovery
 # specification, ntc-templates' index
 # (resources/templates/ntc, ntc-templates 9.3.0), and the scrapli drivers
 # (scrapli 2026.02.20, scrapli_community 2025.01.30) plus netmiko 4.8.0 where
@@ -8,7 +8,7 @@
 # command to the ntc index and the read-only allowlist.
 #
 # verified: lab = a real capture parses (ntc-templates' tests, or a
-# Coreview reader that met real hardware); docs = documented,
+# Corelens reader that met real hardware); docs = documented,
 # structured, or a template with no fixture; unverified = no template, no
 # structured output, no capture yet — the list. Never invent a command.
 vendor: Cisco
@@ -99,8 +99,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (8 captures); Coreview cisco_nxos reader
-    coreview_reader: true
+    evidence: ntc-templates tests (8 captures); Corelens cisco_nxos reader
+    corelens_reader: true
   - id: show_inventory
     cmd: show inventory
     gate: always
@@ -111,8 +111,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (4 captures); Coreview cisco_nxos reader
-    coreview_reader: true
+    evidence: ntc-templates tests (4 captures); Corelens cisco_nxos reader
+    corelens_reader: true
   - id: show_module
     cmd: show module
     gate: always
@@ -180,8 +180,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (4 captures); Coreview cisco_nxos reader
-    coreview_reader: true
+    evidence: ntc-templates tests (4 captures); Corelens cisco_nxos reader
+    corelens_reader: true
   - id: show_lldp_neighbors_detail
     cmd: show lldp neighbors detail
     gate: always
@@ -193,8 +193,8 @@ commands:
     weight: light
     timeout: 30
     verified: lab
-    evidence: ntc-templates tests (2 captures); Coreview cisco_nxos reader
-    coreview_reader: true
+    evidence: ntc-templates tests (2 captures); Corelens cisco_nxos reader
+    corelens_reader: true
   - id: show_interface_status
     cmd: show interface status
     gate: cap.switching
@@ -263,7 +263,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (3 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_vpc
     cmd: show vpc
     gate: cap.vpc_mlag_vsx
@@ -275,7 +275,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_vpc_consistency_parameters_global
     cmd: show vpc consistency-parameters global
     gate: cap.vpc_mlag_vsx
@@ -298,7 +298,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_fex_detail
     cmd: show fex detail
     gate: cap.fex
@@ -321,7 +321,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_isis_adjacency_vrf_all
     cmd: show isis adjacency vrf all
     gate: cap.isis
@@ -386,7 +386,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_nve_vni
     cmd: show nve vni
     gate: cap.vxlan_evpn
@@ -398,7 +398,7 @@ commands:
     timeout: 30
     verified: lab
     evidence: ntc-templates tests (2 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_bgp_l2vpn_evpn_summary
     cmd: show bgp l2vpn evpn summary
     gate: cap.vxlan_evpn
@@ -475,7 +475,7 @@ commands:
     timeout: 120
     verified: lab
     evidence: ntc-templates tests (1 captures)
-    coreview_reader: true
+    corelens_reader: true
   - id: show_ip_route_vrf_all
     cmd: show ip route vrf all
     gate: cap.routing

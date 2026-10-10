@@ -10,7 +10,7 @@
  * is the part no device can tell you — the subnets someone has decided on, the
  * addresses held back or in use elsewhere, and the spans a DHCP server owns.
  *
- * A subnet Coreview worked out for itself can be named, and naming it *adopts*
+ * A subnet Corelens worked out for itself can be named, and naming it *adopts*
  * it: the register gains a declared entry, and from then on it can be edited
  * and removed like any other. Removing it returns the subnet to derived rather
  * than hiding the addresses on it, because the addresses are real.

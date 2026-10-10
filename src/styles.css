@@ -238,10 +238,18 @@
   --label-bg: #fff;
   --zone-line: #0038a8;
 }
-.is-contrast :focus-visible { outline: 3px solid #ffd400 !important; outline-offset: 2px; }
+.is-contrast :focus-visible { outline: 3px solid #ffd400 !important; outline-offset: 0; }
 .is-contrast .react-flow__edge-path { stroke-width: 3px; }
 .is-contrast .react-flow__node.selected { outline: 3px solid #ffd400; outline-offset: 3px; }
 .is-contrast .cv-btn { border-color: var(--line-strong); }
+/* A different build, not only a starker palette: two-pixel edges on every
+   control, links underlined, the open tab marked by a heavy underline rather
+   than a fill, and hovered and selected rows outlined rather than tinted. */
+.is-contrast .cv-btn, .is-contrast .cv-input, .is-contrast .cv-icon-btn { border-width: 2px; }
+.is-contrast a, .is-contrast .cv-link { text-decoration: underline; text-underline-offset: 2px; }
+.is-contrast [role="tab"][aria-selected="true"] { box-shadow: inset 0 -3px 0 var(--accent); }
+.is-contrast .cv-nav-item[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--accent); }
+.is-contrast .cv-table tbody tr:hover, .is-contrast .cv-table tbody tr.is-selected { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 * { box-sizing: border-box; }
 
@@ -273,7 +281,10 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
 }
 .cv-ellipsis { max-width: 26.15384615rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The ring sits just outside the control's border: an offset of 2 px on
+   controls packed 2 px apart put one button's ring over the next one's
+   border. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 
 /* ---------------------------------------------------------------- layout */
 
@@ -367,6 +378,14 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
 .cv-nav-item:hover { color: var(--text); background: var(--panel); }
 .cv-nav-item.is-current { color: var(--text); background: var(--panel); border-color: var(--line); box-shadow: inset 0.23076923rem 0 0 var(--accent); }
 .cv-nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* The digit Ctrl jumps with, in the item's corner while Ctrl is held —
+   drawn from the item's data-key, so it is never part of the item's name. */
+.cv-nav-item { position: relative; }
+.cv-nav.is-keys .cv-nav-item[data-key]::after {
+  content: attr(data-key); position: absolute; top: 1px; right: 2px;
+  font: 600 var(--text-xs)/1 var(--mono); color: var(--accent);
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; padding: 1px 3px;
+}
 .cv-nav-space { flex: 1; }
 /* The floating toolbar on the canvas; the ink strip sits under it. */
 .cv-canvas-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -618,6 +637,11 @@ button.cv-count:hover .cv-count-dot, button.cv-count:focus-visible .cv-count-dot
 .cv-btn:hover:not(:disabled) { background: var(--hover); border-color: var(--edge-strong); }
 .cv-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .cv-btn-small { padding: 0.15384615rem 0.53846154rem; font-size: var(--text-sm); }
+/* Something to aim at: 32 px for a button or a field, 28 px for a small
+   button or a tab, whatever its text. */
+.cv-btn { min-height: 2.46153846rem; }
+.cv-btn-small, .cv-btn.cv-btn-small, [role="tab"] { min-height: 2.15384615rem; }
+input[type="checkbox"], input[type="radio"] { width: 1.38461538rem; height: 1.38461538rem; accent-color: var(--accent); }
 .cv-btn.is-active { border-color: var(--accent); color: var(--accent); }
 .cv-btn.is-danger, .cv-btn-small.is-danger { border-color: var(--danger-line); color: var(--down); }
 .cv-btn.is-danger:hover { background: var(--danger-hover); }
@@ -645,7 +669,8 @@ button.cv-count:hover .cv-count-dot, button.cv-count:focus-visible .cv-count-dot
      scrolling sideways to read. */
   min-width: 0; box-sizing: border-box;
 }
-.cv-input:focus { border-color: var(--accent); outline: none; }
+.cv-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent); }
+input.cv-input, select.cv-input { min-height: 2.46153846rem; }
 textarea.cv-input { resize: vertical; }
 
 /* A dropdown is a control the engine would rather paint itself.

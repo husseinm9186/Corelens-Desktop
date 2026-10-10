@@ -97,7 +97,10 @@ const dragInto = async (source, rackName, topU, units) => {
   // Moved racks from the bottom panel to the Tools screen, so the box
   // that scrolls is that screen's body.
   await slots(rackName).evaluate((el, y) => {
-    const body = el.closest(".cv-register-body, .cv-panel-body");
+    // The nearest box that actually scrolls: the rack stage once the
+    // controls above it leave it shorter than the rack.
+    const stage = el.closest(".cv-racks-stage");
+    const body = stage && stage.scrollHeight > stage.clientHeight ? stage : el.closest(".cv-register-body, .cv-panel-body");
     const r = el.getBoundingClientRect();
     const b = body.getBoundingClientRect();
     body.scrollTop += r.top + y - (b.top + b.height / 2);

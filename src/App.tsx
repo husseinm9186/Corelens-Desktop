@@ -26,6 +26,11 @@ import { CanvasToolbar } from './components/CanvasToolbar';
 
 import { DESKTOP_APP_URL } from './components/EmptyState';
 import { t } from './i18n';
+import { installRowKeys } from './lib/rowKeys';
+
+/** The smallest interface scale high contrast allows. */
+const CONTRAST_SCALE_FLOOR = 1.15;
+
 export default function App() {
   const meta = useStore((s) => s.meta);
   const highContrast = useStore((s) => s.settings.highContrast);
@@ -52,10 +57,15 @@ export default function App() {
   const helpOpen = useStore((s) => s.helpOpen);
   const toolsOpen = useStore((s) => s.toolsOpen);
 
+  // Up and Down between the rows of any table.
+  useEffect(() => installRowKeys(), []);
+
   // The chrome's scale, on the root element so every rem follows it.
   useEffect(() => {
-    document.documentElement.style.setProperty('--ui-scale', String(uiScale));
-  }, [uiScale]);
+    // High contrast is a bigger build as well as a starker one: never under
+    // 115 %, so the smallest text is still 12 px.
+    document.documentElement.style.setProperty('--ui-scale', String(highContrast ? Math.max(CONTRAST_SCALE_FLOOR, uiScale) : uiScale));
+  }, [uiScale, highContrast]);
 
   // Presentation takes the whole screen where the window can go full
   // screen, and leaving full screen by the system's own means leaves

@@ -1132,13 +1132,32 @@ comments carries a badge.
 panel's tabs move with the arrow keys. Every control has a name a screen reader
 reads out. **?** lists every shortcut.
 
+**The rail** on the left is one stop for Tab: the arrow keys, Home and End
+move along it and Enter opens the item. From anywhere, **Ctrl+1** to
+**Ctrl+9** go straight to its first nine items — Diagram, Discover, Monitor,
+Paths, Backups, Racks, Addresses, Tools, Terminal — and holding Ctrl shows
+each item's digit.
+
+**Tables.** A row that does something when clicked takes the keyboard too:
+Tab reaches it, Enter picks it, and Up, Down, Home and End move between the
+rows of that table.
+
+**A device's recent status** can be read without a mouse: Tab to the strip
+and Left and Right move a cursor along it (Shift for bigger steps), with the
+time and status at the cursor printed underneath. With no cursor it reads
+the time and status now.
+
 **Interface size.** The interface already follows the screen: its text and
 spacing are 13 px on a laptop and grow to 16 px on a 4K monitor. On top of
 that, **Tools ▸ Settings ▸ Display ▸ Interface size** sets it from 85 % to
 140 % for this machine. The diagram keeps its own zoom either way.
 
-**High contrast.** Tick **High contrast** under **Settings ▸ Display** for black and white
-with strong status colours and a bold yellow focus ring. It starts on by itself
+**High contrast.** Tick **High contrast** under **Settings ▸ Display**, or
+type *high contrast* into the command palette (**Ctrl+K**, then `>`), for
+black and white with strong status colours and a bold yellow focus ring. It
+is a bigger, heavier interface as well: never smaller than 115 %, controls
+with two-pixel edges, links underlined, the open tab marked by a heavy
+underline and the row under the pointer outlined. It starts on by itself
 when the system asks for more contrast.
 
 ## Back up a Cisco over SNMP

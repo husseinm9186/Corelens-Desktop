@@ -730,12 +730,30 @@ function StatusStrip({ nodeId }: { nodeId: string }) {
   const [scrubAt, setScrubAt] = useState<number | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
+  // With no cursor on it, the strip reads at its right-hand end: now.
   const scrubbed = useMemo(() => {
-    if (scrubAt === null) return null;
-    const atMs = now - windowMs + scrubAt * windowMs;
+    const atMs = now - windowMs + (scrubAt ?? 1) * windowMs;
     const hit = spans.find((s) => atMs >= s.fromMs && atMs <= s.toMs) ?? spans[spans.length - 1];
-    return hit ? { atMs, status: hit.status } : null;
-  }, [scrubAt, now, windowMs, spans]);
+    return hit ? { atMs, status: hit.status } : { atMs, status };
+  }, [scrubAt, now, windowMs, spans, status]);
+  const readout = `${formatTime(scrubbed.atMs, timeFormat)} — ${STATUS_LABEL[scrubbed.status]}`;
+
+  // The keyboard's cursor: Left and Right a forty-eighth of the window at a
+  // time, Shift for an eighth, Home and End to the ends, Enter to enlarge.
+  const onStripKey = (e: React.KeyboardEvent) => {
+    const at = scrubAt ?? 1;
+    const step = e.shiftKey ? 1 / 8 : 1 / 48;
+    const to = e.key === 'ArrowLeft' ? at - step : e.key === 'ArrowRight' ? at + step : e.key === 'Home' ? 0 : e.key === 'End' ? 1 : null;
+    if (to !== null) {
+      e.preventDefault();
+      setScrubAt(Math.min(1, Math.max(0, to)));
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setExpanded((x) => !x);
+    } else if (e.key === 'Escape' && scrubAt !== null) {
+      setScrubAt(null);
+    }
+  };
 
   const scrubTo = (clientX: number) => {
     const rect = stripRef.current?.getBoundingClientRect();
@@ -764,14 +782,21 @@ function StatusStrip({ nodeId }: { nodeId: string }) {
       <div
         ref={stripRef}
         className={`cv-history-strip${expanded ? ' is-expanded' : ''}`}
-        role="img"
+        role="slider"
+        tabIndex={0}
         aria-label={summary
           .map((t) => `${STATUS_LABEL[t.status]} ${shortDuration(t.ms)}`)
           .join(', ')}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round((scrubAt ?? 1) * 100)}
+        aria-valuetext={readout}
         title={tr('inspector.clickToEnlarge')}
         onClick={() => setExpanded((e) => !e)}
+        onKeyDown={onStripKey}
         onPointerMove={(e) => scrubTo(e.clientX)}
         onPointerLeave={() => setScrubAt(null)}
+        onBlur={() => setScrubAt(null)}
       >
         {spans.map((s) => (
           <span
@@ -787,10 +812,9 @@ function StatusStrip({ nodeId }: { nodeId: string }) {
           <i className="cv-history-scrub" style={{ left: `${scrubAt * 100}%` }} />
         )}
       </div>
-      <p className="cv-field-hint cv-history-scrub-readout">
-        {scrubbed
-          ? `${formatTime(scrubbed.atMs, timeFormat)} — ${STATUS_LABEL[scrubbed.status]}`
-          : 'Point at the strip for the exact time and status there.'}
+      {/* Always printed: the time and status under the cursor, or now. */}
+      <p className="cv-field-hint cv-history-scrub-readout" data-region="history-readout">
+        {readout}
       </p>
 
       <div className="cv-history-legend">

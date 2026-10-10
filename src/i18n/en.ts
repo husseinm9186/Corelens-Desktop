@@ -1316,6 +1316,8 @@ export const en = {
   'nav.terminal': 'Terminal',
   'nav.settings': 'Settings',
   'nav.title': 'Modes',
+  'palette.contrast': 'Turn high contrast on or off',
+  'nav.shortcut': '{label}  Ctrl+{n}',
   'topbar.search': 'Search',
   'topbar.document': 'Document',
   'topbar.health': 'Health',

@@ -7,7 +7,13 @@
  * Paths, Backups and Terminal are the dock's tabs, opened through the same
  * request the inspector already uses. The one that is showing is marked
  * `aria-current`.
+ *
+ * To the keyboard it is one stop: a tab list whose arrows, Home and End move
+ * between the items and Enter opens one, and Ctrl with a digit jumps
+ * straight to the first nine from anywhere — the digit shows in each item's
+ * corner while Ctrl is held.
  */
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { t } from '../i18n';
 import { useStore, type DockTab } from '../state/store';
 
@@ -114,33 +120,93 @@ export function NavRail() {
     { mode: 'tools', label: t('nav.tools') },
     { mode: 'terminal', label: t('nav.terminal') },
   ];
+  const all = [...items, { mode: 'settings' as Mode, label: t('nav.settings') }];
+
+  // Which item holds the one tab stop: the current one, until the arrows move it.
+  const [focusAt, setFocusAt] = useState<number | null>(null);
+  const currentAt = Math.max(0, all.findIndex((i) => i.mode === current));
+  const stop = focusAt ?? currentAt;
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  const moveTo = (i: number) => {
+    const n = (i + all.length) % all.length;
+    setFocusAt(n);
+    buttons.current[n]?.focus();
+  };
+  const onKey = (e: React.KeyboardEvent) => {
+    const at = buttons.current.findIndex((b) => b === document.activeElement);
+    if (at < 0) return;
+    const to = e.key === 'ArrowDown' ? at + 1 : e.key === 'ArrowUp' ? at - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : null;
+    if (to === null) return;
+    e.preventDefault();
+    moveTo(to);
+  };
+
+  // Ctrl and a digit, from anywhere; and the digits on show while Ctrl is down.
+  const [keys, setKeys] = useState(false);
+  const goRef = useRef(go);
+  goRef.current = go;
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'Control') setKeys(true);
+      if (!e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+      const n = /^[1-9]$/.test(e.key) ? Number(e.key) : 0;
+      const item = n ? items[n - 1] : undefined;
+      if (!item) return;
+      e.preventDefault();
+      setKeys(false);
+      goRef.current(item.mode);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === 'Control') setKeys(false);
+    };
+    const away = () => setKeys(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', away);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', away);
+    };
+    // The items are the same nine every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <nav className="cv-nav" aria-label={t('nav.title')} data-region="nav">
-      {items.map((i) => (
-        <button
-          key={i.mode}
-          type="button"
-          className={`cv-nav-item${HANDLE[i.mode] ? ` ${HANDLE[i.mode]}` : ''}${current === i.mode ? ' is-current' : ''}`}
-          aria-current={current === i.mode ? 'page' : undefined}
-          title={i.label}
-          onClick={() => go(i.mode)}
-        >
-          <Glyph mode={i.mode} />
-          <span>{i.label}</span>
-        </button>
+    <nav
+      className={`cv-nav${keys ? ' is-keys' : ''}`}
+      aria-label={t('nav.title')}
+      data-region="nav"
+      role="tablist"
+      aria-orientation="vertical"
+      onKeyDown={onKey}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusAt(null);
+      }}
+    >
+      {all.map((i, n) => (
+        <Fragment key={i.mode}>
+          {i.mode === 'settings' && <span className="cv-nav-space" />}
+          <button
+            ref={(el) => {
+              buttons.current[n] = el;
+            }}
+            type="button"
+            role="tab"
+            aria-selected={current === i.mode}
+            tabIndex={n === stop ? 0 : -1}
+            className={`cv-nav-item${HANDLE[i.mode] ? ` ${HANDLE[i.mode]}` : ''}${current === i.mode ? ' is-current' : ''}`}
+            aria-current={current === i.mode ? 'page' : undefined}
+            title={n < 9 ? t('nav.shortcut', { label: i.label, n: n + 1 }) : i.label}
+            aria-keyshortcuts={n < 9 ? `Control+${n + 1}` : undefined}
+            data-key={n < 9 ? n + 1 : undefined}
+            onClick={() => go(i.mode)}
+          >
+            <Glyph mode={i.mode} />
+            <span>{i.label}</span>
+          </button>
+        </Fragment>
       ))}
-      <span className="cv-nav-space" />
-      <button
-        type="button"
-        className={`cv-nav-item${current === 'settings' ? ' is-current' : ''}`}
-        aria-current={current === 'settings' ? 'page' : undefined}
-        title={t('nav.settings')}
-        onClick={() => go('settings')}
-      >
-        <Glyph mode="settings" />
-        <span>{t('nav.settings')}</span>
-      </button>
     </nav>
   );
 }

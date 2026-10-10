@@ -4,6 +4,25 @@ Newest first.
 
 ## Unreleased
 
+**Accessibility, built in**
+- The rail is one stop for Tab: the arrow keys, Home and End move along
+  it and Enter opens the item; **Ctrl+1** to **Ctrl+9** go straight to its
+  first nine items from anywhere, and holding Ctrl shows the digits.
+- Buttons and fields are at least 32 px tall, small buttons and tabs at
+  least 28, checkboxes 18; the focus ring sits just outside a control's
+  border instead of over the next one, and a field shows focus with a
+  ring as well as its border.
+- A table row that does something when clicked takes Tab and Enter, and
+  Up, Down, Home and End move between rows; moving through the
+  monitored list no longer nudges the device the last row selected.
+- A device's recent-status strip takes focus: Left and Right move a cursor
+  along it, with the time and status at the cursor printed underneath —
+  and, with no cursor, the time and status now.
+- High contrast is a bigger, heavier build: never under 115 %, controls
+  with two-pixel edges, links underlined, the open tab marked by a heavy
+  underline, the row under the pointer outlined. It is in the command
+  palette as well as Settings.
+
 **What a link is, in its line**
 - A bundle is drawn as a double line, a tunnel dashed, a logical (layer-3)
   hop dotted and a transit circuit heavier, so what a link is still reads

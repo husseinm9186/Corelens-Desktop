@@ -878,6 +878,7 @@ export function Canvas() {
       { id: 'start', label: 'Start checks', run: () => void s().startValidation() },
       { id: 'stop', label: 'Stop validation', run: () => void s().stopValidation() },
       { id: 'help', label: 'Keyboard shortcuts', hint: '?', run: () => setHelp(true) },
+      { id: 'contrast', label: t('palette.contrast'), run: () => s().setSettings({ highContrast: !s().settings.highContrast }) },
       tab('discover', 'Ping sweep'),
       tab('crawl', 'Discover devices'),
       tab('path', 'Path check'),
@@ -1064,6 +1065,9 @@ export function Canvas() {
   // Keyboard shortcuts. Ignored while typing in a field.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Taken already — the arrows moving between a table's rows, say,
+      // which must not also nudge the device that row selected.
+      if (e.defaultPrevented) return;
       const el = e.target as HTMLElement | null;
       if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
       const mod = e.ctrlKey || e.metaKey;

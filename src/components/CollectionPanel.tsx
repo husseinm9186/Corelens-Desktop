@@ -291,7 +291,15 @@ export function CollectionPanel() {
               <thead><tr><th>{t('collect.device')}</th><th>{t('collect.os')}</th><th>{t('collect.role')}</th><th>{t('collect.caps')}</th><th>{t('collect.failure')}</th></tr></thead>
               <tbody>
                 {detail.devices.map((d) => (
-                  <tr key={d.deviceId} className={d.deviceId === device ? 'is-selected' : ''} onClick={() => { setDevice(d.deviceId); setTable(null); setRows([]); }}>
+                  <tr
+                    key={d.deviceId}
+                    className={d.deviceId === device ? 'is-selected' : ''}
+                    tabIndex={0}
+                    onClick={() => { setDevice(d.deviceId); setTable(null); setRows([]); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); setDevice(d.deviceId); setTable(null); setRows([]); }
+                    }}
+                  >
                     <td className="cv-mono">{d.host}</td>
                     <td>{d.os ?? '—'}</td>
                     <td>{d.role ?? '—'}</td>

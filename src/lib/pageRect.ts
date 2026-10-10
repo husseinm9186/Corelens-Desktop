@@ -32,15 +32,10 @@ const SNAP = 60;
 const down = (v: number) => Math.floor(v / SNAP) * SNAP;
 const up = (v: number) => Math.ceil(v / SNAP) * SNAP;
 
-/**
- * The smallest page that holds these nodes, with the margin, snapped outward
- * to the major grid, and never smaller than the default sheet.
- *
- * Callers pass the nodes of the *current view* — a device on a hidden view
- * should not be holding the page open.
- */
-export function pageForContent(nodes: TopoNode[]): Rect {
-  if (nodes.length === 0) return DEFAULT_PAGE;
+/** The content's bounds with the margin, snapped outward to the grid;
+ *  none when there is no content. */
+function contentRect(nodes: TopoNode[]): Rect | null {
+  if (nodes.length === 0) return null;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of nodes) {
     const w = n.width ?? n.measured?.width ?? 168;
@@ -50,11 +45,40 @@ export function pageForContent(nodes: TopoNode[]): Rect {
     maxX = Math.max(maxX, n.position.x + w);
     maxY = Math.max(maxY, n.position.y + h);
   }
-  const x = Math.min(DEFAULT_PAGE.x, down(minX - PAGE_MARGIN));
-  const y = Math.min(DEFAULT_PAGE.y, down(minY - PAGE_MARGIN));
-  const right = Math.max(DEFAULT_PAGE.x + DEFAULT_PAGE.w, up(maxX + PAGE_MARGIN));
-  const bottom = Math.max(DEFAULT_PAGE.y + DEFAULT_PAGE.h, up(maxY + PAGE_MARGIN));
-  return { x, y, w: right - x, h: bottom - y };
+  const x = down(minX - PAGE_MARGIN);
+  const y = down(minY - PAGE_MARGIN);
+  return { x, y, w: up(maxX + PAGE_MARGIN) - x, h: up(maxY + PAGE_MARGIN) - y };
+}
+
+const contains = (outer: Rect, inner: Rect) =>
+  inner.x >= outer.x && inner.y >= outer.y
+  && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h;
+
+/**
+ * The smallest page that holds these nodes, with the margin, snapped outward
+ * to the major grid, and never smaller than the default sheet.
+ *
+ * The page is drawn around the content, not around the origin: a diagram
+ * that has drifted to the right of where the sheet started gets a sheet
+ * that starts where it does, not one that keeps an empty half on the
+ * left. Content smaller than the default sheet gets that sheet centred on
+ * it — unless it already sits inside the default sheet at the origin, which
+ * is then left where it is, so a small diagram does not move its paper.
+ *
+ * Callers pass the nodes of the *current view* — a device on a hidden view
+ * should not be holding the page open.
+ */
+export function pageForContent(nodes: TopoNode[]): Rect {
+  const c = contentRect(nodes);
+  if (!c || contains(DEFAULT_PAGE, c)) return DEFAULT_PAGE;
+  const w = Math.max(c.w, DEFAULT_PAGE.w);
+  const h = Math.max(c.h, DEFAULT_PAGE.h);
+  return {
+    x: down(c.x - (w - c.w) / 2),
+    y: down(c.y - (h - c.h) / 2),
+    w,
+    h,
+  };
 }
 
 /** The union of two rects — how the page grows without ever shrinking. */
@@ -74,7 +98,9 @@ export function unionRect(a: Rect, b: Rect): Rect {
  * further if the content demands it, and never shrunk here.
  */
 export function effectivePage(stored: Rect | undefined, visibleNodes: TopoNode[]): Rect {
-  return unionRect(stored ?? DEFAULT_PAGE, pageForContent(visibleNodes));
+  const page = stored ?? DEFAULT_PAGE;
+  const c = contentRect(visibleNodes);
+  return c ? unionRect(page, c) : page;
 }
 
 export function sameRect(a: Rect, b: Rect): boolean {

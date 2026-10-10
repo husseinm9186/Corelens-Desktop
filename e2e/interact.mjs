@@ -153,6 +153,27 @@ const clickLink = async (id) => {
   await page.waitForTimeout(250);
 };
 const nodeCount = () => page.locator(".react-flow__node").count();
+/** Opens the canvas's own menu: a right-click on a spot of the pane with
+ *  nothing drawn under it — (760, 460) when that is empty, else the first
+ *  empty spot on a grid — because a device or link under the pointer opens
+ *  its own menu instead, and where things sit depends on every fit before. */
+const paneMenu = async () => {
+  const pane = page.locator(".react-flow__pane");
+  const box = await pane.boundingBox();
+  const spot = await page.evaluate(({ x0, y0, w, h }) => {
+    const busy = ".react-flow__node, .react-flow__edge, .react-flow__edgelabel-renderer, .cv-minimap, .cv-menu, [role=dialog], .cv-canvas-toolbar, .cv-topbar, .react-flow__controls";
+    const empty = (x, y) => {
+      const el = document.elementFromPoint(x0 + x, y0 + y);
+      return !!el && !el.closest(busy);
+    };
+    if (empty(760, 460)) return { x: 760, y: 460 };
+    for (let y = 80; y < h - 40; y += 60) {
+      for (let x = 80; x < w - 40; x += 60) if (empty(x, y)) return { x, y };
+    }
+    return { x: 760, y: 460 };
+  }, { x0: box.x, y0: box.y, w: box.width, h: box.height });
+  await pane.click({ button: "right", position: spot });
+};
 const boxOf = async (sel) => {
   const b = await page.locator(sel).first().boundingBox();
   return b ? { w: Math.round(b.width), h: Math.round(b.height), x: Math.round(b.x), y: Math.round(b.y) } : null;
@@ -606,7 +627,7 @@ const dragNode = async (selector, dx, dy, witnessSelector) => {
   const before = await order();
   const count = await nodeCount();
 
-  await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+  await paneMenu();
   await page.waitForTimeout(250);
   const item = page.locator(".cv-menu button", { hasText: "Tidy the layout" });
   check("the canvas menu offers a tidy", await item.count() === 1);
@@ -674,7 +695,7 @@ const dragNode = async (selector, dx, dy, witnessSelector) => {
       boxes.some((b) => /objects/.test(b)), JSON.stringify(boxes).slice(0, 140));
 
     // Unfolding must give back exactly what was there.
-    await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+    await paneMenu();
     await page.waitForTimeout(250);
     const openAll = page.locator(".cv-menu button", { hasText: /^Open all folded groups/ });
     check("there is a way to open everything again", (await openAll.count()) === 1);
@@ -1075,7 +1096,7 @@ const dragNode = async (selector, dx, dy, witnessSelector) => {
   await page.locator(".react-flow__pane").click({ position: { x: 60, y: 60 } });
   await page.waitForTimeout(400);
 
-  await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+  await paneMenu();
   await page.waitForTimeout(250);
   const off = page.locator(".cv-menu button", { hasText: "Stop hopping crossed links" });
   check("the canvas menu offers hops", (await off.count()) === 1);
@@ -1085,7 +1106,7 @@ const dragNode = async (selector, dx, dy, witnessSelector) => {
     await page.waitForTimeout(500);
     check("turning them off leaves no arcs", (await arcs()) === 0, `${await arcs()}`);
 
-    await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+    await paneMenu();
     await page.waitForTimeout(250);
     await page.locator(".cv-menu button", { hasText: "Hop crossed links" }).click();
     await page.waitForTimeout(600);
@@ -1148,7 +1169,7 @@ const dragNode = async (selector, dx, dy, witnessSelector) => {
 // ---------------------------------------------------------------- holding
 // A link can be held in place deliberately, and there has to be a way back.
 {
-  await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+  await paneMenu();
   await page.waitForTimeout(250);
   const item = page.locator(".cv-menu button", { hasText: "Let every link follow its devices" });
   check("the canvas menu offers releasing held links", (await item.count()) === 1);
@@ -1507,7 +1528,7 @@ await dismissRecovery();
     // The drag checks above leave devices stacked on one another, so a click
     // lands on whichever is on top. Tidying spreads them out again — which is
     // what it is for.
-    await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+    await paneMenu();
     await page.waitForTimeout(250);
     await page.locator(".cv-menu button", { hasText: "Tidy the layout" }).click();
     await page.waitForTimeout(450);
@@ -1777,7 +1798,7 @@ await dismissRecovery();
 // already placed and none of them quite in line, which is one command rather
 // than five careful drags.
 {
-  await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+  await paneMenu();
   await page.waitForTimeout(250);
   await page.locator(".cv-menu button", { hasText: "Tidy the layout" }).click();
   await page.waitForTimeout(400);
@@ -1880,7 +1901,7 @@ await dismissRecovery();
 // Two switches and the link between them, repeated for eleven wiring closets,
 // is most of what drawing a real network consists of.
 {
-  await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+  await paneMenu();
   await page.waitForTimeout(250);
   await page.locator(".cv-menu button", { hasText: "Tidy the layout" }).click();
   await page.waitForTimeout(400);
@@ -1945,7 +1966,7 @@ await dismissRecovery();
 // How it is driven, which is the way Lucidchart and Visio do it because that
 // is what anyone opening this already knows.
 {
-  await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+  await paneMenu();
   await page.waitForTimeout(250);
   await page.locator(".cv-menu button", { hasText: "Tidy the layout" }).click();
   await page.waitForTimeout(400);
@@ -2183,7 +2204,7 @@ await dismissRecovery();
     `${await flowX()} vs ${wantX}`);
 
   // The explicit shrink.
-  await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+  await paneMenu();
   await page.waitForTimeout(250);
   await page.locator(".cv-menu button", { hasText: "Fit page to content" }).click();
   await page.waitForTimeout(500);
@@ -3433,7 +3454,7 @@ await dismissRecovery();
     (await page.getByText(/chassis — a stack/).count()) === 0);
 
   await page.locator(".react-flow__pane").click({ position: { x: 60, y: 60 } });
-  await page.locator(".react-flow__pane").click({ button: "right", position: { x: 760, y: 460 } });
+  await paneMenu();
   await page.waitForTimeout(250);
   const arrange = page.locator(".cv-menu button", { hasText: "Arrange by layer" });
   check("the canvas offers the layered arrangement", (await arrange.count()) === 1);

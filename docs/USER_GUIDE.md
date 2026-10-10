@@ -1104,6 +1104,25 @@ address or MAC matches with its dots and colons left out. Enter goes to the
 result: its page, selected, in view. Picking a shape adds one. Type `>` first
 for commands instead.
 
+**One way of typing a filter.** The search, the dock's lists and the
+address register understand the same words: plain words match anything,
+`field:value` narrows to one field, a leading `-` leaves things out, and
+quotes keep a value with a space whole. In the search, `kind:address`,
+`type:router` and `tag:lab`; in the dock, `status:down`, `type:`, `tag:`,
+`site:`, `kind:link`, `name:` and `target:`; in the register, `tag:`,
+`vlan:`, `kind:`, `source:`, `site:` and the rest. So `sw -tag:lab` is the
+switches not tagged lab, wherever it is typed, and the dock lights the same
+devices on the canvas.
+
+**The address register** (**Addresses** on the rail) is a workbench: the
+subnets down the left as a tree — containers and what they hold, each with
+how full it is — and on the right the addresses of the subnet you choose,
+or of every subnet when you choose **All subnets**. **Allocate**, **Split &
+merge** and **Hierarchy** sit above the table and start from the subnet
+chosen; **Addresses** again comes back to the table. **Utilisation** and
+**History** are the other two views, and the sites, tenants and custom
+fields are behind the cog at the top right.
+
 **Filter.** **Filter** on the canvas toolbar dims everything that does not match —
 device type, vendor, role, tag, health, how it was discovered, VLAN, subnet or
 text — so the rest stands out without anything being hidden or moved.

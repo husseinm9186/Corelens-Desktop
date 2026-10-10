@@ -108,21 +108,35 @@ check("the register takes the screen", (await page.locator(".cv-register").count
 check("the diagram and the bottom panel give way to it",
   (await page.locator(".cv-panel").count()) === 0 &&
   (await page.locator(".cv-main.is-behind").count()) === 1);
-// Added the seventh: where, whose, and the operator's own fields.
-check("seven views, in one bar",
-  (await page.locator(".cv-register-tabs button").allInnerTexts()).join("|") ===
-    "Addresses|Utilisation|Hierarchy|Allocate|Split & merge|History|Sites, tenants & fields",
+// Three views; the tools act on the subnet chosen in the tree, so they are
+// its toolbar; the sites, tenants and fields are configuration, behind a cog.
+check("three views, in one bar",
+  (await page.locator(".cv-register-tabs button").allInnerTexts()).join("|") === "Addresses|Utilisation|History",
   (await page.locator(".cv-register-tabs button").allInnerTexts()).join("|"));
+check("the tools on the chosen subnet's toolbar",
+  (await page.locator('[data-region="subnet-tools"] button').allInnerTexts()).join("|") === "Allocate|Split & merge|Hierarchy",
+  (await page.locator('[data-region="subnet-tools"] button').allInnerTexts()).join("|"));
+check("and the configuration behind a cog", (await page.locator('[data-region="register-setup"]').getAttribute("aria-label")) === "Sites, tenants & fields");
+check("with the subnet tree down the left", (await page.locator('[data-region="subnet-tree"]').count()) === 1);
 check("and it opens on the addresses", (await page.locator(".cv-ipam-table").count()) === 1);
 
-const view = (name) => page.locator(".cv-register-tabs button", { hasText: name }).first();
+// A view is a tab; a tool is on the toolbar, and is reached from Addresses.
+const view = async (name) => {
+  const tab = page.locator(".cv-register-tabs button", { hasText: name });
+  if (await tab.count()) return tab.first();
+  if ((await page.locator('[data-region="subnet-tools"]').count()) === 0) {
+    await tab.page().locator(".cv-register-tabs button", { hasText: "Addresses" }).click();
+    await page.waitForTimeout(200);
+  }
+  return page.locator('[data-region="subnet-tools"] button', { hasText: name }).first();
+};
 
 // ------------------------------------------- the utilisation view
 // The question this whole register exists to answer: which subnets are in use
 // and which are not. Every number is derived from the same buildIpam the list
 // uses, so the check is that the view agrees with the register rather than
 // that it renders.
-await view("Utilisation").click();
+await (await view("Utilisation")).click();
 await page.waitForTimeout(400);
 const dashRows = await page.locator(".cv-dash-table tbody tr").count();
 check("the utilisation view lists every subnet the register holds",
@@ -138,9 +152,9 @@ check("each row is banded", bands.every((b) => ["empty", "light", "busy", "full"
 const percents = await page.locator(".cv-dash-table tbody tr .cv-bar-value").allInnerTexts();
 const nums = percents.map((p) => Number(p.replace("%", "")));
 check("fullest first", nums.every((n, i) => i === 0 || nums[i - 1] >= n), percents.join(" "));
-await view("Addresses").click();
+await (await view("Addresses")).click();
 await page.waitForTimeout(300);
-await view("Hierarchy").click();
+await (await view("Hierarchy")).click();
 await page.waitForTimeout(400);
 check("switching to the hierarchy shows the containers",
   (await page.locator(".cv-lab-container").count()) > 0);
@@ -260,7 +274,7 @@ check("and the default one is offered beside it",
 
 // ------------------------------------------------------- the wizard
 
-await view("Allocate").click();
+await (await view("Allocate")).click();
 await page.waitForTimeout(400);
 check("the wizard asks in four steps", (await page.locator(".cv-lab-wizard section").count()) === 4);
 check("and refuses to start without a subnet",
@@ -314,7 +328,7 @@ check("allocating writes the whole record",
 
 // ------------------------------------------------- split, and merge
 
-await view("Split & merge").click();
+await (await view("Split & merge")).click();
 await page.waitForTimeout(400);
 const splitPick = page.locator('.cv-field', { has: page.locator('span:text-is("Subnet")') }).locator("select");
 await splitPick.selectOption({ label: "192.0.2.0/24 · Office" });
@@ -385,7 +399,7 @@ check("and merging makes the one", merged.includes("198.51.100.0/25"), JSON.stri
 
 // ------------------------------------------------------ the history
 
-await view("History").click();
+await (await view("History")).click();
 await page.waitForTimeout(400);
 const history = await page.locator(".cv-lab-view table tbody tr").allInnerTexts();
 check("every change is in the history", history.length >= 5, `${history.length} row(s)`);

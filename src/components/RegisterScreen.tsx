@@ -15,32 +15,57 @@
  * The diagram stays mounted behind it, so leaving comes back to the same
  * selection and the same viewport.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { t } from '../i18n';
+import { buildIpam } from '../lib/ipam';
+import { allNodes } from '../lib/pages';
+import { ChromeIcon } from './chromeIcons';
 import { IpamDashboard } from './IpamDashboard';
 import { IpamPanel } from './IpamPanel';
 import { IpamSetup } from './IpamSetup';
-import { IpamWorkbench, type WorkbenchView } from './IpamWorkbench';
+import { IpamWorkbench } from './IpamWorkbench';
+import { SubnetTree } from './SubnetTree';
 import { useStore } from '../state/store';
 
-/** One bar of five, not a bar of two with another inside it. */
-type View = 'addresses' | 'dashboard' | 'setup' | WorkbenchView;
+/**
+ * Three views, which is what the register is for: the addresses, how full
+ * the subnets are, and what has changed. Allocating and splitting are things
+ * done *to* a subnet, so they are a toolbar on the one chosen in the tree;
+ * the hierarchy of containers and VRFs is a tool beside them; the sites,
+ * tenants and custom fields are configuration, behind the cog.
+ */
+type View = 'addresses' | 'dashboard' | 'history' | 'setup';
+type Tool = 'addresses' | 'allocate' | 'split' | 'hierarchy';
 
-const VIEWS: { id: View; label: () => string }[] = [
+const VIEWS: { id: Exclude<View, 'setup'>; label: () => string }[] = [
   { id: 'addresses', label: () => t('register.addresses') },
   { id: 'dashboard', label: () => t('dash.title') },
-  { id: 'hierarchy', label: () => t('lab.hierarchy') },
-  { id: 'allocate', label: () => t('lab.allocate') },
-  { id: 'split', label: () => t('lab.splitMerge') },
   { id: 'history', label: () => t('lab.history') },
-  { id: 'setup', label: () => t('register.setup') },
 ];
 
 export function RegisterScreen() {
   const close = useStore((s) => s.setRegisterOpen);
   const name = useStore((s) => s.meta?.name ?? '');
+  const doc = useStore((s) => s.doc);
+  const model = useMemo(() => buildIpam(allNodes(doc), doc.ipam), [doc]);
   const [view, setView] = useState<View>('addresses');
+  const [tool, setTool] = useState<Tool>('addresses');
+  // The subnet chosen in the tree, as `<vrf>|<cidr>`; null is all of them.
+  const [selected, setSelected] = useState<string | null>(null);
+  const block = selected ? model.blocks.find((b) => `${b.vrfId}|${b.cidr}` === selected) : undefined;
+  const toolButton = (id: Exclude<Tool, 'addresses'>, label: string, needsSubnet: boolean) => (
+    <button
+      type="button"
+      className={`cv-btn cv-btn-small${tool === id ? ' is-active' : ''}`}
+      aria-pressed={tool === id}
+      disabled={needsSubnet && !block}
+      title={needsSubnet && !block ? t('register.chooseSubnetFirst') : undefined}
+      onClick={() => setTool(tool === id ? 'addresses' : id)}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="cv-register" data-region="register">
@@ -53,11 +78,27 @@ export function RegisterScreen() {
           {VIEWS.map((v) => (
             <button key={v.id} type="button" role="tab" aria-selected={view === v.id}
               tabIndex={view === v.id ? 0 : -1}
-              className={view === v.id ? 'is-active' : ''} onClick={() => setView(v.id)}>
+              className={view === v.id ? 'is-active' : ''}
+              onClick={() => {
+                setView(v.id);
+                // Addresses again is the way back from a tool to the table.
+                if (v.id === 'addresses') setTool('addresses');
+              }}>
               {v.label()}
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          className={`cv-icon-btn cv-register-setup${view === 'setup' ? ' is-on' : ''}`}
+          data-region="register-setup"
+          aria-pressed={view === 'setup'}
+          aria-label={t('register.setup')}
+          title={t('register.setup')}
+          onClick={() => setView(view === 'setup' ? 'addresses' : 'setup')}
+        >
+          <ChromeIcon name="settings" size={16} />
+        </button>
         <button type="button" className="cv-btn cv-register-back" onClick={() => close(false)}>
           {t('register.back')}
         </button>
@@ -65,13 +106,34 @@ export function RegisterScreen() {
 
       <div className="cv-register-body">
         {view === 'addresses' ? (
-          <IpamPanel />
+          <div className="cv-register-work">
+            <SubnetTree model={model} selected={selected} onSelect={(key) => { setSelected(key); if (!key && tool !== 'hierarchy') setTool('addresses'); }} />
+            <div className="cv-register-pane">
+              <div className="cv-register-tools" data-region="subnet-tools" role="toolbar" aria-label={t('register.subnetTools')}>
+                <span className="cv-register-chosen">
+                  {block ? (
+                    <><span className="cv-mono">{block.cidr}</span>{block.name && <span className="cv-register-chosen-name"> · {block.name}</span>}</>
+                  ) : (
+                    t('register.allSubnets')
+                  )}
+                </span>
+                {toolButton('allocate', t('lab.allocate'), false)}
+                {toolButton('split', t('lab.splitMerge'), false)}
+                {toolButton('hierarchy', t('lab.hierarchy'), false)}
+              </div>
+              {tool === 'addresses' ? (
+                <IpamPanel focus={block?.cidr} />
+              ) : (
+                <IpamWorkbench view={tool} selected={selected ?? undefined} />
+              )}
+            </div>
+          </div>
         ) : view === 'dashboard' ? (
           <IpamDashboard />
         ) : view === 'setup' ? (
           <IpamSetup />
         ) : (
-          <IpamWorkbench view={view} />
+          <IpamWorkbench view="history" />
         )}
       </div>
     </div>

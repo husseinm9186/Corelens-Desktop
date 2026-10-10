@@ -28,6 +28,8 @@ import { STATUS_GLYPH, STATUS_LABEL } from '../types/domain';
 import { activePage, allEdges, allNodes } from '../lib/pages';
 import { roleOf } from '../lib/clusters';
 import { buildTree, flattenTree, openForFit, type TreeBranch, type TreeLeafRow } from '../lib/objectTree';
+import { dockRowMatches, parseDockQuery } from '../lib/dockQuery';
+import { matchesQuery, plainText } from '../lib/queryGrammar';
 
 type Row = TreeLeafRow & {
   name: string;
@@ -248,21 +250,9 @@ export function StatusPanel() {
   // it, which only works for a node React Flow actually has rendered.
   const docNodes = useStore((s) => activePage(s.doc).nodes);
   const setHighlight = useStore((s) => s.setCanvasHighlight);
-  // The same words that filter the table light up the canvas, so the list and
-  // the drawing answer the question together.
-  useEffect(() => {
-    if (!query.trim()) {
-      setHighlight(null);
-      return;
-    }
-    const hits = findNodes(docNodes, query, 200);
-    setHighlight(new Set(hits.map((h) => h.id)));
-    return () => setHighlight(null);
-  }, [query, docNodes, setHighlight]);
-
   /** Enter goes to the first match: centred, selected, zoom left alone. */
   const jumpToFirst = () => {
-    const first = findNodes(docNodes, query, 1)[0];
+    const first = lit[0] ? { id: lit[0] } : undefined;
     if (!first) return;
     const node = docNodes.find((n) => n.id === first.id);
     if (!node) return;
@@ -398,23 +388,37 @@ export function StatusPanel() {
     return out;
   }, [nodes, edges, probes, runtime, session.state, nodeStatusOf, now]);
 
+  // The shared grammar: words, `status:down`, `type:router`, `-tag:lab`.
+  const terms = useMemo(() => parseDockQuery(query), [query]);
   const filtered = useMemo(
     () =>
       rows.filter((r) => {
         if (problems === 'problems' && r.status !== 'down' && r.status !== 'warning') return false;
         if (problems === 'down' && r.status !== 'down') return false;
-        if (!query) return true;
-        const q = query.toLowerCase();
-        return (
-          r.name.toLowerCase().includes(q) ||
-          r.target.toLowerCase().includes(q) ||
-          r.type.toLowerCase().includes(q) ||
-          r.status.includes(q) ||
-          r.tags.some((t) => t.toLowerCase().includes(q))
-        );
+        return dockRowMatches(r, terms);
       }),
-    [rows, problems, query],
+    [rows, problems, terms],
   );
+
+  // The same query that filters the table lights up the canvas, so the list
+  // and the drawing answer the question together. Plain words search every
+  // device on the page, as they always did; a field or an exclusion
+  // (`status:down`, `-tag:lab`) means the devices the table kept.
+  const lit = useMemo(() => {
+    if (!query.trim()) return [];
+    const plain = terms.every((term) => term.field === null && !term.negated);
+    if (plain) return findNodes(docNodes, plainText(terms), 200).map((h) => h.id);
+    const onPage = new Set(docNodes.map((n) => n.id));
+    return filtered.filter((r) => r.kind === 'node' && onPage.has(r.id)).map((r) => r.id);
+  }, [query, terms, docNodes, filtered]);
+  useEffect(() => {
+    if (!query.trim()) {
+      setHighlight(null);
+      return;
+    }
+    setHighlight(new Set(lit));
+    return () => setHighlight(null);
+  }, [query, lit, setHighlight]);
 
   // The table as a tree — site › role › device — once there is something
   // to fold. The branches that will not fit the panel fold first; the one
@@ -461,13 +465,11 @@ export function StatusPanel() {
   const filteredEvents = events.filter((e) => {
     if (problems === 'problems' && e.currentStatus !== 'down' && e.currentStatus !== 'warning') return false;
     if (problems === 'down' && e.currentStatus !== 'down') return false;
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return (
-      e.objectName.toLowerCase().includes(q) ||
-      (e.target ?? '').toLowerCase().includes(q) ||
-      e.message.toLowerCase().includes(q)
-    );
+    return matchesQuery(terms, {
+      text: `${e.objectName} ${e.target ?? ''} ${e.message}`,
+      values: (field) => (field === 'name' ? [e.objectName] : field === 'target' ? [e.target ?? ''] : field === 'status' ? [e.currentStatus ?? ''] : []),
+      exact: (field) => field === 'status',
+    });
   });
 
   const counts = rows.reduce<Record<string, number>>((acc, r) => {
@@ -610,7 +612,7 @@ export function StatusPanel() {
           <input
             className="cv-input cv-panel-search"
             aria-label="Filter the list"
-            placeholder="Filter by name, IP, type, tag or status"
+            placeholder={t('dock.filterPlaceholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {

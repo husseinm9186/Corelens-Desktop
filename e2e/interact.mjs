@@ -2278,7 +2278,8 @@ await dismissRecovery();
 {
   await page.keyboard.press("Escape");
   await page.waitForTimeout(200);
-  const box = page.locator('input[placeholder*="Filter by name"]');
+  // By its name: the placeholder now shows the filter's grammar.
+  const box = page.getByLabel("Filter the list");
   check("the panel has its filter box", (await box.count()) === 1);
 
   await box.fill("Bystander");

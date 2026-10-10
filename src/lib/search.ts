@@ -11,6 +11,7 @@
  */
 import type { ProjectDocument } from '../state/store';
 import type { DeviceNodeData, NoteNodeData } from '../types/domain';
+import { matchesQuery, plainText, splitQuery } from './queryGrammar';
 
 export type SearchKind = 'device' | 'address' | 'mac' | 'hostname' | 'port' | 'vlan' | 'subnet' | 'probe' | 'note' | 'shape';
 
@@ -25,7 +26,13 @@ export interface SearchItem {
   pageId?: string;
   /** For a shape: its device type. */
   shape?: string;
+  /** For a device: its type and tags, for `type:` and `tag:`. */
+  type?: string;
+  tags?: readonly string[];
 }
+
+/** The fields the palette's search understands, in the shared grammar. */
+const SEARCH_FIELDS: Record<string, string> = { kind: 'kind', type: 'type', tag: 'tag', is: 'kind' };
 
 /** Scores `text` against `query`: higher is better, `null` for no match. */
 export function fuzzyScore(query: string, text: string): number | null {
@@ -79,7 +86,7 @@ export function searchIndex(doc: ProjectDocument, shapes: readonly { type: strin
       }
       const d = n.data as DeviceNodeData;
       const at = { nodeId: n.id, pageId: page.id };
-      add({ kind: 'device', text: d.label, detail: [d.role, d.model, d.addresses?.[0]?.address].filter(Boolean).join(' · ') + where, ...at });
+      add({ kind: 'device', text: d.label, detail: [d.role, d.model, d.addresses?.[0]?.address].filter(Boolean).join(' · ') + where, type: d.deviceType, tags: d.tags ?? [], ...at });
       for (const a of d.addresses ?? []) if (a.address) add({ kind: 'address', text: a.address, detail: `${d.label} ${a.label}${where}`, ...at });
       if (d.mac) add({ kind: 'mac', text: d.mac, detail: `${d.label}${where}`, ...at });
       for (const h of [d.hostname, d.dnsName]) if (h && h !== d.label) add({ kind: 'hostname', text: h, detail: `${d.label}${where}`, ...at });
@@ -107,11 +114,23 @@ export function searchIndex(doc: ProjectDocument, shapes: readonly { type: strin
   return out;
 }
 
-/** The best matches, best first. */
+/**
+ * The best matches, best first. The words are matched fuzzily as above;
+ * the shared grammar narrows on top — `kind:address`, `type:router`,
+ * `tag:lab`, and `-word` to leave something out.
+ */
 export function search(index: readonly SearchItem[], query: string, limit = 40): SearchItem[] {
   if (!query.trim()) return [];
+  const terms = splitQuery(query, (name) => SEARCH_FIELDS[name] ?? null);
+  const narrowing = terms.filter((t) => t.field !== null || t.negated);
+  const words = narrowing.length === 0 ? query : plainText(terms);
   return index
-    .map((item) => ({ item, score: fuzzyScore(query, item.text) }))
+    .filter((item) => matchesQuery(narrowing, {
+      text: `${item.text} ${item.detail}`,
+      values: (field) => (field === 'kind' ? [item.kind] : field === 'type' ? (item.type ? [item.type] : []) : field === 'tag' ? [...(item.tags ?? [])] : []),
+      exact: (field) => field === 'kind' || field === 'tag',
+    }))
+    .map((item) => ({ item, score: words.trim() ? fuzzyScore(words, item.text) : 0 }))
     .filter((x): x is { item: SearchItem; score: number } => x.score !== null)
     .sort((a, b) => b.score - a.score || a.item.text.localeCompare(b.item.text))
     .slice(0, limit)

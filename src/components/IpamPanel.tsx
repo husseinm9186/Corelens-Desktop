@@ -141,9 +141,12 @@ function customProblem(fields: readonly IpamCustomField[], on: 'subnet' | 'addre
 const matches = (a: IpamAddress, needle: string, fields: readonly IpamCustomField[] = []) =>
   matchesFilter(a, parseFilter(needle, fields));
 
-export function IpamPanel() {
+/** `focus` narrows the table to one subnet, opened — the one chosen in the
+ *  register's tree. */
+export function IpamPanel({ focus }: { focus?: string } = {}) {
   const doc = useStore((s) => s.doc);
   const model = useMemo(() => buildIpam(allNodes(doc), doc.ipam), [doc]);
+  const blocks = focus ? model.blocks.filter((b) => b.cidr === focus) : model.blocks;
   const hidden = useStore((s) => s.settings.registerHiddenColumns);
   const fields = useMemo(() => doc.ipam?.customFields ?? [], [doc.ipam?.customFields]);
   const meta = useMemo((): RegisterMeta => ({
@@ -465,13 +468,13 @@ export function IpamPanel() {
               </tr>
             </thead>
             <tbody>
-              {model.blocks.map((b) => (
+              {blocks.map((b) => (
                 <SubnetRows
                   key={b.cidr}
                   block={b}
                   columns={COLUMNS}
                   filter={filter}
-                  open={open.has(b.cidr)}
+                  open={open.has(b.cidr) || b.cidr === focus}
                   onToggle={() => toggle(b.cidr)}
                   editing={editingSubnet === b.cidr}
                   addingAddress={addingTo === b.cidr}

@@ -553,7 +553,7 @@ check("and what a typed address is held as",
 // ------------------------------------------------ where, whose, which device, own fields
 
 // Invented names throughout.
-await page.locator(".cv-register-tabs button", { hasText: "Sites, tenants & fields" }).click();
+await page.locator('[data-region="register-setup"]').click();
 await page.waitForTimeout(300);
 const section = (name) => page.locator(`.cv-ipam-setup-section[aria-label="${name}"]`);
 const setupField = (sec, label) =>
@@ -669,7 +669,7 @@ await page.locator(".cv-ipam-columns > summary").click();
 await page.waitForTimeout(200);
 
 // ---- removing a site in use leaves nothing pointing at it
-await page.locator(".cv-register-tabs button", { hasText: "Sites, tenants & fields" }).click();
+await page.locator('[data-region="register-setup"]').click();
 await page.waitForTimeout(250);
 check("a site says how much uses it",
   (await section("Sites").locator("tr", { hasText: "Lab Site A" }).innerText()).includes("Used by 1 record"));

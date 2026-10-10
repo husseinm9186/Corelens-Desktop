@@ -4,6 +4,18 @@ Newest first.
 
 ## Unreleased
 
+**The address register as a workbench**
+- The subnets down the left as a tree, each with how full it is; the
+  chosen subnet's addresses on the right; **Allocate**, **Split & merge**
+  and **Hierarchy** above them, starting from that subnet. Three views —
+  Addresses, Utilisation, History — and the sites, tenants and fields
+  behind a cog.
+
+**One way of typing a filter**
+- The search, the dock's lists and the register share one grammar: words,
+  `field:value`, `-` to leave out, quotes for spaces. `status:down`,
+  `type:router`, `tag:lab` and `kind:address` work where they mean
+  something, and the dock lights what it kept on the canvas.
 **The start screen**
 - Before the first project, three ways in: **Map a network** from one
   address or name — a project is made, named after that address's /24 and

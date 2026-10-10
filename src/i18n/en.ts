@@ -1717,6 +1717,7 @@ export const en = {
   'ipam.bulkWhat.set-purpose': 'Set the purpose on many addresses',
   'ipam.bulkWhat.set-kind': 'Change what many addresses are held as',
   'ipam.tags': 'Tags',
+  'dock.filterPlaceholder': 'Name, IP, type… or status:down, type:router, tag:lab, -site:hq',
   'ipam.filterPlaceholder': 'Name, address, MAC… or tag:pci, vlan:14, source:crawled, -tag:old',
   'ipam.noMatch': 'Nothing on this subnet matches that filter.',
 
@@ -1850,6 +1851,12 @@ export const en = {
   'register.title': 'Address register',
   'register.open': 'Addresses',
   'register.back': 'Back to the diagram',
+  'register.tree': 'Subnets',
+  'register.allSubnets': 'All subnets',
+  'register.noSubnets': 'No subnets yet. Add one, or let a crawl find them.',
+  'register.fill': '{used} of {usable} used · {pct}%',
+  'register.subnetTools': 'The chosen subnet',
+  'register.chooseSubnetFirst': 'Choose a subnet on the left first',
   'register.addresses': 'Addresses',
 
   // The user guide, in the app.

@@ -12,7 +12,7 @@
  * The Addresses tab is unchanged and still the place to read and edit rows.
  * This is the tab for the questions that need the whole picture at once.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { t } from '../i18n';
 import {
@@ -45,7 +45,7 @@ const assignmentWord = (a: AssignmentType) => t(`ipam.assignment.${a}`);
 
 /** `view` from outside means the screen above owns the tab bar; on
  *  its own it keeps its own, which is how it lived in the bottom panel. */
-export function IpamWorkbench({ view: fixed }: { view?: WorkbenchView } = {}) {
+export function IpamWorkbench({ view: fixed, selected }: { view?: WorkbenchView; selected?: string } = {}) {
   const doc = useStore((s) => s.doc);
   const timeFormat = useStore((s) => s.settings.timeFormat);
   // Not a subscription. The children call actions through it, which
@@ -116,8 +116,8 @@ export function IpamWorkbench({ view: fixed }: { view?: WorkbenchView } = {}) {
       {view === 'hierarchy' && (
         <Hierarchy model={model} vrfId={vrfId} store={store} say={say} inVrf={inVrf} />
       )}
-      {view === 'allocate' && <Allocate model={model} vrfId={vrfId} store={store} say={say} />}
-      {view === 'split' && <SplitMerge model={model} vrfId={vrfId} store={store} say={say} />}
+      {view === 'allocate' && <Allocate model={model} vrfId={vrfId} store={store} say={say} selected={selected} />}
+      {view === 'split' && <SplitMerge model={model} vrfId={vrfId} store={store} say={say} selected={selected} />}
       {view === 'history' && (
         <div className="cv-lab-view">
           <p className="cv-help cv-lab-note">{t('lab.historyNote')}</p>
@@ -784,15 +784,20 @@ function ContainerRows({
 }
 
 function Allocate({
-  model, vrfId, store, say,
+  model, vrfId, store, say, selected,
 }: {
   model: ReturnType<typeof buildIpam>;
   vrfId: string;
   store: Store;
   say: Say;
+  /** The subnet chosen in the register's tree, picked already. */
+  selected?: string;
 }) {
   const [search, setSearch] = useState('');
-  const [chosen, setChosen] = useState('');
+  const [chosen, setChosen] = useState(selected ?? '');
+  useEffect(() => {
+    if (selected) setChosen(selected);
+  }, [selected]);
   const [method, setMethod] = useState<'next' | 'specific'>('next');
   const [address, setAddress] = useState('');
   const [label, setLabel] = useState('');
@@ -937,15 +942,17 @@ function Allocate({
 }
 
 function SplitMerge({
-  model, vrfId, store, say,
+  model, vrfId, store, say, selected,
 }: {
   model: ReturnType<typeof buildIpam>;
   vrfId: string;
   store: Store;
   say: Say;
+  selected?: string;
 }) {
   const declared = model.blocks.filter((b) => b.subnetId && (!vrfId || b.vrfId === vrfId));
-  const [chosen, setChosen] = useState('');
+  // The tree's subnet, when it is one that can be split.
+  const [chosen, setChosen] = useState(selected && declared.some((b) => `${b.vrfId}|${b.cidr}` === selected) ? selected : '');
   const [into, setInto] = useState('26');
   const [first, setFirst] = useState('');
   const [second, setSecond] = useState('');

@@ -21,13 +21,10 @@
  */
 import type { IpamAddress, IpamCustomField } from './ipam';
 import { fieldKey } from './ipamMeta';
+import { matchesQuery, splitQuery, type QueryTerm } from './queryGrammar';
 
-export interface FilterTerm {
-  /** The field named before the colon, lower-cased; null for a bare word. */
-  field: string | null;
-  value: string;
-  negated: boolean;
-}
+/** A term of the shared grammar (`queryGrammar.ts`), with this register's fields. */
+export type FilterTerm = QueryTerm;
 
 /** Fields a `name:value` term may narrow to. Anything else is treated as text. */
 const FIELDS = new Set([
@@ -41,7 +38,8 @@ const FIELDS = new Set([
 const EXACT = new Set(['tag', 'vlan', 'kind', 'source', 'assignment', 'site', 'tenant']);
 
 /**
- * Splits a query into terms, honouring quotes so a value may contain a space.
+ * Splits a query into terms with the shared grammar, honouring quotes so a
+ * value may contain a space.
  *
  * Given the register's custom fields, each is a field too, under the
  * name it would be typed as — `Circuit ID` is `circuit-id:`. The term records
@@ -50,32 +48,12 @@ const EXACT = new Set(['tag', 'vlan', 'kind', 'source', 'assignment', 'site', 't
  */
 export function parseFilter(query: string, customFields: readonly IpamCustomField[] = []): FilterTerm[] {
   const custom = new Map(customFields.map((f) => [fieldKey(f.name), f]));
-  const terms: FilterTerm[] = [];
-  const words = query.match(/-?(?:[a-zA-Z][\w-]*:)?"[^"]*"|\S+/g) ?? [];
-  for (const raw of words) {
-    let word = raw;
-    const negated = word.startsWith('-') && word.length > 1;
-    if (negated) word = word.slice(1);
-    const colon = word.indexOf(':');
-    let field: string | null = null;
-    let value = word;
-    if (colon > 0) {
-      const name = word.slice(0, colon).toLowerCase();
-      const own = custom.get(name);
-      if (FIELDS.has(name)) {
-        field = name;
-        value = word.slice(colon + 1);
-      } else if (own) {
-        // A choice, number or date is matched whole; free text by substring.
-        field = `${own.type === 'text' ? 'custom~' : 'custom='}${own.id}`;
-        value = word.slice(colon + 1);
-      }
-    }
-    value = value.replace(/^"|"$/g, '').trim().toLowerCase();
-    if (value === '') continue;
-    terms.push({ field, value, negated });
-  }
-  return terms;
+  return splitQuery(query, (name) => {
+    if (FIELDS.has(name)) return name;
+    const own = custom.get(name);
+    // A choice, number or date is matched whole; free text by substring.
+    return own ? `${own.type === 'text' ? 'custom~' : 'custom='}${own.id}` : null;
+  });
 }
 
 /** The text a bare word searches: everything a person might remember. */
@@ -133,22 +111,17 @@ function fieldValue(a: IpamAddress, field: string): string[] {
   }
 }
 
-/** Whether one term matches, before negation is applied. */
-function hit(a: IpamAddress, term: FilterTerm): boolean {
-  if (term.field === null) return haystack(a).includes(term.value);
-  // `tag:` and `vlan:` are exact — a register where `tag:core` also matched
-  // `core-switches` would make an exclusion untrustworthy. The free-text
-  // fields stay substring, because that is how people remember a note.
-  const exact = EXACT.has(term.field) || term.field.startsWith('custom=');
-  const values = fieldValue(a, term.field).map((v) => v.toLowerCase());
-  return exact
-    ? values.includes(term.value)
-    : values.some((v) => v.includes(term.value));
-}
-
-/** Whether an address satisfies every term. An empty filter matches all. */
+/** Whether an address satisfies every term. An empty filter matches all.
+ *  `tag:` and `vlan:` are exact — a register where `tag:core` also matched
+ *  `core-switches` would make an exclusion untrustworthy. The free-text
+ *  fields stay substring, because that is how people remember a note. */
 export function matchesFilter(a: IpamAddress, terms: readonly FilterTerm[]): boolean {
-  return terms.every((t) => (t.negated ? !hit(a, t) : hit(a, t)));
+  if (terms.length === 0) return true;
+  return matchesQuery(terms, {
+    text: haystack(a),
+    values: (field) => fieldValue(a, field),
+    exact: (field) => EXACT.has(field) || field.startsWith('custom='),
+  });
 }
 
 /** Every tag in use, sorted, for offering them rather than making people recall. */

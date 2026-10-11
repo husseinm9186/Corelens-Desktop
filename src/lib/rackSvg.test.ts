@@ -60,4 +60,21 @@ describe('cables in the export', () => {
     expect(svg).toContain('<title>SW supply A → PDU A outlet 2</title>');
     expect(svg).not.toContain('SW Gi1/0/24');
   });
+
+  it('draws a zero-U PDU as a bar down the post, named, with a socket per outlet', () => {
+    const svg = rackElevationSvg(racks, [...devices.filter((d) => d.id !== 'pdu'), { id: 'pdu', label: 'PDU-A', rack: racks[0]!.name, rackUnits: 0, kind: 'furniture' as const, furniture: 'pdu-vertical' as const, outlets: 6 }], 'front');
+    const bar = svg.match(/<rect x="[\d.]+" y="[\d.]+" width="14" height="[\d.]+" fill="#cbd2d9"/g) ?? [];
+    expect(bar).toHaveLength(1);
+    expect(svg).toMatch(/rotate\(90\)"[^>]*>PDU-A<\/text>/);
+    expect((svg.match(/<rect [^>]*width="6" height="4" rx="0.5" fill="#3e4c59"\/>/g) ?? []).length).toBe(6);
+  });
+
+  it('draws a zero-U item on the post it is on: right unless it says left', () => {
+    const pdu = (side?: 'left' | 'right') => ({ id: 'pdu', label: 'PDU-A', rack: racks[0]!.name, rackUnits: 0, kind: 'furniture' as const, furniture: 'pdu-vertical' as const, outlets: 2, rackSide: side });
+    const barX = (svg: string) => Number(/<rect x="([\d.]+)" y="[\d.]+" width="14" height="[\d.]+" fill="#cbd2d9"/.exec(svg)?.[1]);
+    const right = barX(rackElevationSvg(racks, [pdu()], 'front'));
+    const left = barX(rackElevationSvg(racks, [pdu('left')], 'front'));
+    expect(right).toBeGreaterThan(left + 150);
+    expect(barX(rackElevationSvg(racks, [pdu('right')], 'front'))).toBe(right);
+  });
 });

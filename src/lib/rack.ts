@@ -71,6 +71,8 @@ export interface RackFurniture {
   /** The lowest U it occupies; unset while it waits beside the rack. */
   u?: number;
   face?: RackFace;
+  /** A zero-U item's post; right when unset. */
+  side?: RackSide;
   depth?: 'full' | 'half';
   airflow?: Airflow;
   /** What a reservation is for; also any item's note. */
@@ -93,6 +95,8 @@ export type Airflow = 'front-to-back' | 'back-to-front' | 'side-to-side' | 'pass
 export const AIRFLOWS: Airflow[] = ['front-to-back', 'back-to-front', 'side-to-side', 'passive'];
 
 export type RackFace = 'front' | 'rear';
+/** The post a zero-U item stands down. */
+export type RackSide = 'left' | 'right';
 
 export const DEFAULT_RACK_UNITS = 42;
 export const MAX_RACK_UNITS = 60;
@@ -108,6 +112,8 @@ export interface Rackable {
   rackUnits?: number;
   rackFace?: RackFace;
   rackDepth?: 'full' | 'half';
+  /** A zero-U item's post; right when unset. */
+  rackSide?: RackSide;
   /** A device from the diagram, or furniture kept on the rack. */
   kind?: 'device' | 'furniture';
   deviceType?: string;
@@ -131,7 +137,7 @@ export interface Rackable {
 
 export function rackableOf(id: string, d: DeviceNodeData): Rackable {
   return {
-    id, label: d.label, rack: d.rack, rackU: d.rackU, rackUnits: d.rackUnits, rackFace: d.rackFace, rackDepth: d.rackDepth,
+    id, label: d.label, rack: d.rack, rackU: d.rackU, rackUnits: d.rackUnits, rackFace: d.rackFace, rackDepth: d.rackDepth, rackSide: d.rackSide,
     kind: 'device', deviceType: d.deviceType, airflow: d.airflow, portCount: d.portCount, portNaming: d.portNaming,
     powerW: d.powerW, weightKg: d.weightKg, colour: d.rackColour, depthMm: d.depthMm, powerFeeds: d.powerFeeds,
   };
@@ -140,7 +146,7 @@ export function rackableOf(id: string, d: DeviceNodeData): Rackable {
 /** A rack's furniture as the placement rules and the drawing see it. */
 export function furnitureRackables(rack: Pick<Rack, 'name' | 'items'>): Rackable[] {
   return (rack.items ?? []).map((f) => ({
-    id: f.id, label: f.label, rack: rack.name, rackU: f.u, rackUnits: f.units, rackFace: f.face, rackDepth: f.depth,
+    id: f.id, label: f.label, rack: rack.name, rackU: f.u, rackUnits: f.units, rackFace: f.face, rackDepth: f.depth, rackSide: f.side,
     kind: 'furniture', furniture: f.kind, airflow: f.airflow, note: f.note, powerW: f.powerW, weightKg: f.weightKg,
     colour: f.colour, depthMm: f.depthMm, outlets: f.outlets, powerFeeds: f.powerFeeds, portCount: f.ports,
   }));

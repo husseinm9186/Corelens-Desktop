@@ -65,6 +65,13 @@ export function rackElevationSvg(
     }
     const view = elevation(rack, items, face);
     const yOf = new Map<string, { y: number; h: number }>();
+    // The faceplates stop short of whatever zero-U bars stand on each post.
+    const BAR = 16;
+    const zeroHere = view.zeroU.filter((z) => (face === 'rear') === (z.rackFace === 'rear'));
+    const barsLeft = zeroHere.filter((z) => z.rackSide === 'left').length;
+    const barsRight = zeroHere.length - barsLeft;
+    const plateX = x + RAIL + 3 + barsLeft * BAR;
+    const plateW = RACK_W - 6 - (barsLeft + barsRight) * BAR;
     // Where a faceplate's ports are, for the cables: two rows of
     // ticks from the right, a tick per port, on anything with a port count.
     const portAt = new Map<string, (n: number | null, kind: 'port' | 'psu' | 'outlet') => { x: number; y: number; top?: number; bottom?: number }>();
@@ -78,7 +85,7 @@ export function rackElevationSvg(
       const stroke = item.clash ? '#c62828' : reserved ? '#c9a227' : '#3e4c59';
       const label = `${item.device.label}${reserved && item.device.note ? ` — ${item.device.note}` : ''}${item.seen === 'behind' ? ' (rear)' : ''}`;
       parts.push(
-        `<rect x="${x + RAIL + 3}" y="${y + 1}" width="${RACK_W - 6}" height="${h - 2}" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="${item.clash ? 2 : 1}"${reserved ? ' stroke-dasharray="4 3"' : ''}/>`,
+        `<rect x="${plateX}" y="${y + 1}" width="${plateW}" height="${h - 2}" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="${item.clash ? 2 : 1}"${reserved ? ' stroke-dasharray="4 3"' : ''}/>`,
         `<text x="${x + RAIL + RACK_W / 2}" y="${y + h / 2 + 4}" text-anchor="middle" font-size="11" fill="#1f2933"${item.seen === 'behind' ? ' font-style="italic"' : ''}>${esc(label)}</text>`,
       );
       if (item.device.stack) {
@@ -94,7 +101,7 @@ export function rackElevationSvg(
         const rows = face === 'rear' && d.kind !== 'furniture' ? 1 : 2;
         const cols = Math.ceil(n / rows);
         const cell = face === 'rear' && d.kind !== 'furniture' ? 10 : 4;
-        const x0 = x + RAIL + RACK_W - 10 - cols * cell;
+        const x0 = plateX + plateW - 7 - cols * cell;
         const y0 = y + (rows === 1 ? h / 2 - 3 : h / 2 - 4);
         for (let i = 0; i < n; i++) {
           const col = Math.floor(i / rows);
@@ -102,14 +109,14 @@ export function rackElevationSvg(
           parts.push(`<rect x="${x0 + col * cell}" y="${y0 + row * 4}" width="${cell - 1}" height="${rows === 1 ? 6 : 3}" fill="${face === 'rear' && d.kind !== 'furniture' ? 'none' : '#6b7a8c'}" stroke="${face === 'rear' && d.kind !== 'furniture' ? '#6b7a8c' : 'none'}"/>`);
         }
         portAt.set(d.id, (k) => {
-          if (!k || k > n) return { x: x + RAIL + RACK_W - 6, y: y + h / 2, top: y, bottom: y + h };
+          if (!k || k > n) return { x: plateX + plateW - 3, y: y + h / 2, top: y, bottom: y + h };
           const i = k - 1;
           return { x: x0 + Math.floor(i / rows) * cell + (cell - 1) / 2, y: y0 + (i % rows) * 4 + (rows === 1 ? 3 : 1.5), top: y, bottom: y + h };
         });
       }
       if (item.device.airflow && item.device.airflow !== 'passive') {
         const intake = (item.device.airflow === 'front-to-back') === (face === 'front');
-        parts.push(`<text x="${x + RAIL + RACK_W - 10}" y="${y + h / 2 + 4}" text-anchor="middle" font-size="10" fill="${intake ? '#2563eb' : '#dc2626'}">${item.device.airflow === 'side-to-side' ? '⇆' : intake ? '⇥' : '⇤'}</text>`);
+        parts.push(`<text x="${plateX + plateW - 7}" y="${y + h / 2 + 4}" text-anchor="middle" font-size="10" fill="${intake ? '#2563eb' : '#dc2626'}">${item.device.airflow === 'side-to-side' ? '⇆' : intake ? '⇥' : '⇤'}</text>`);
       }
     }
     // The stack cables, on the face the ports are on.
@@ -130,14 +137,29 @@ export function rackElevationSvg(
         parts.push(`<path d="M${x0} ${y1} C ${x0 + bulge} ${y1}, ${x0 + bulge} ${y2}, ${x0} ${y2}" fill="none" stroke="${colour}" stroke-width="2"${dash}/>`, `<circle cx="${x0}" cy="${y1}" r="2.5" fill="${colour}"/>`, `<circle cx="${x0}" cy="${y2}" r="2.5" fill="${colour}"/>`);
       });
     });
-    // Zero-U PDUs: a strip down the right post, its outlets along it.
+    // Zero-U PDUs: a bar down the post it stands on, its outlets along it.
+    const onSide = { left: 0, right: 0 };
     for (const z of view.zeroU) {
       if (face === 'front' && z.rackFace === 'rear') continue;
       if (face === 'rear' && z.rackFace !== 'rear') continue;
-      const sx = x + RAIL + RACK_W - 7;
-      parts.push(`<rect x="${sx}" y="${top + 2}" width="5" height="${rack.units * UNIT - 4}" fill="#cbd2d9" stroke="#3e4c59" stroke-width="1"/>`);
+      // Wide enough to read, the name along it, the outlets a column of
+      // sockets below the name.
+      const sw = 14;
+      const side = z.rackSide === 'left' ? 'left' : 'right';
+      const sx = side === 'left' ? x + RAIL + 2 + onSide.left * (sw + 2) : x + RAIL + RACK_W - sw - 2 - onSide.right * (sw + 2);
+      onSide[side]++;
+      const sy = top + 2;
+      const sh = rack.units * UNIT - 4;
+      parts.push(`<rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" fill="#cbd2d9" stroke="#3e4c59" stroke-width="1"/>`);
+      const nameLen = Math.min(sh * 0.35, 120);
+      parts.push(`<text transform="translate(${sx + sw / 2 + 3} ${sy + 4}) rotate(90)" font-size="8" font-weight="600" fill="#1f2933" textLength="${Math.min(nameLen, z.label.length * 4.6)}" lengthAdjust="spacingAndGlyphs">${esc(z.label)}</text>`);
       const outlets = z.outlets ?? 8;
-      portAt.set(z.id, (k) => ({ x: sx + 2.5, y: top + 2 + ((k ? Math.min(k, outlets) - 0.5 : outlets / 2) / outlets) * (rack.units * UNIT - 4) }));
+      const oy0 = sy + nameLen + 10;
+      const pitch = (sh - nameLen - 14) / outlets;
+      for (let k = 0; k < outlets; k++) {
+        parts.push(`<rect x="${sx + sw / 2 - 3}" y="${oy0 + k * pitch + pitch / 2 - 2}" width="6" height="4" rx="0.5" fill="#3e4c59"/>`);
+      }
+      portAt.set(z.id, (k) => ({ x: sx + sw / 2, y: oy0 + ((k ? Math.min(k, outlets) : Math.ceil(outlets / 2)) - 0.5) * pitch }));
     }
     // The patch cables on the front; The power cords on the rear.
     // A cord to a PDU: down the channel inside the rail, as before.

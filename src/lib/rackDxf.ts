@@ -97,6 +97,21 @@ export function rackElevationDxf(racks: readonly Rack[], devices: readonly Racka
         portAt.set(item.device.id, () => ({ x: x + OPENING_MM - 4, y: y + h / 2 }));
       }
     }
+    // Zero-U items: a bar down the right post, named, with a PDU's outlets.
+    const zero = view.zeroU.filter((z) => (face === 'rear') === (z.rackFace === 'rear'));
+    const onSide = { left: 0, right: 0 };
+    zero.forEach((z) => {
+      const w = 30;
+      const side = z.rackSide === 'left' ? 'left' : 'right';
+      const zx = side === 'left' ? x0 + inset - 20 - 10 - w - onSide.left * (w + 10) : x0 + inset + OPENING_MM + 20 + 10 + onSide.right * (w + 10);
+      onSide[side]++;
+      ents.push(rect('ITEMS', zx, 50, w, height));
+      ents.push(text('LABELS', zx + 2, 50 + height - 14, 8, z.label));
+      const outlets = z.kind === 'furniture' && (z.furniture === 'pdu' || z.furniture === 'pdu-vertical') ? (z.outlets ?? 8) : z.deviceType === 'pdu' ? (z.outlets ?? 8) : 0;
+      const pitch = (height - 40) / Math.max(1, outlets);
+      for (let k = 0; k < outlets; k++) ents.push(rect('ITEMS', zx + w / 2 - 5, 50 + 20 + k * pitch + pitch / 2 - 3, 10, 6));
+      portAt.set(z.id, (k) => ({ x: zx + w / 2, y: 50 + 20 + ((k && outlets ? Math.min(k, outlets) : Math.ceil(outlets / 2) || 1) - 0.5) * pitch }));
+    });
     // The cables, down the left of the opening.
     if (face === 'front' && options.links?.length) {
       patchCablesFor(rack.name, items, options.links).forEach((c, i) => {

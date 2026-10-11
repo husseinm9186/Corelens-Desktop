@@ -812,8 +812,11 @@ interface Store {
   renumberRacks: (patches: readonly { id: string; row: string; position: string }[]) => void;
   removeRack: (id: string) => void;
   placeInRack: (nodeId: string, rackId: string, u: number, face?: RackFace) => string | null;
+  /** A mounted device given a new height, its bottom at `u`, when the
+   *  space is free; the reason it cannot be otherwise. */
+  resizeInRack: (nodeId: string, rackId: string, u: number, units: number, face?: RackFace) => string | null;
   takeOutOfRack: (nodeId: string) => void;
-  setRackDetails: (nodeId: string, patch: { rackFace?: RackFace; rackDepth?: 'full' | 'half'; airflow?: Airflow; powerW?: number; weightKg?: number; rackColour?: string; depthMm?: number; powerFeeds?: { pduId: string; outlet: number }[] }) => string | null;
+  setRackDetails: (nodeId: string, patch: { rackFace?: RackFace; rackDepth?: 'full' | 'half'; rackSide?: 'left' | 'right'; airflow?: Airflow; powerW?: number; weightKg?: number; rackColour?: string; depthMm?: number; powerFeeds?: { pduId: string; outlet: number }[] }) => string | null;
   /** Furniture on a rack. Each returns why it could not, or null. */
   addFurniture: (rackId: string, kind: FurnitureKind, label?: string, units?: number, u?: number, face?: RackFace) => string | null;
   updateFurniture: (rackId: string, itemId: string, patch: Partial<Omit<RackFurniture, 'id' | 'kind'>>) => string | null;
@@ -2713,6 +2716,24 @@ export const useStore = create<Store>((set, get) => ({
     get().commit('Place in a rack');
     set((s) => ({
       doc: patchDevices(s.doc, new Map([[nodeId, { rack: rack.name, rackU: u, ...(face ? { rackFace: face } : {}) }]])),
+      dirty: true,
+    }));
+    return null;
+  },
+
+  resizeInRack(nodeId, rackId, u, units, face) {
+    const doc = get().doc;
+    const rack = (doc.racks ?? []).find((r) => r.id === rackId);
+    const devices = rackables(doc);
+    const device = devices.find((d) => d.id === nodeId);
+    if (!rack || !device) return 'That rack or device is no longer there.';
+    if (!Number.isInteger(units) || units < 1) return 'A mounted device is at least 1U.';
+    const problem = placementProblem(rack, [...devices, ...furnitureRackables(rack)], { ...device, rackUnits: units }, u, face);
+    if (problem) return problem;
+    if (device.rackU === u && device.rackUnits === units) return null;
+    get().commit('Change a height in a rack');
+    set((s) => ({
+      doc: patchDevices(s.doc, new Map([[nodeId, { rack: rack.name, rackU: u, rackUnits: units, ...(face ? { rackFace: face } : {}) }]])),
       dirty: true,
     }));
     return null;

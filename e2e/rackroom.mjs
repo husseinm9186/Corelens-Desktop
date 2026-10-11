@@ -256,9 +256,20 @@ const unitsTall = await slots.evaluate((el) => Math.round(el.clientHeight / 14))
 const y = (2 + (unitsTall - 10) * UNIT + UNIT / 2) * 1.25;
 await slots.evaluate((el, y) => { const body = el.closest(".cv-racks-stage"); const r = el.getBoundingClientRect(); const b = body.getBoundingClientRect(); body.scrollTop += r.top + y - (b.top + b.height / 2); }, y);
 await page.waitForTimeout(100);
-await item("fw").dragTo(slots, { targetPosition: { x: 40, y } });
+// The box to drag sits near the top of the rack, where the stage's scroll has
+// left it under the controls that stay put; bring it out from under them.
+await slots.evaluate((el) => {
+  const stage = el.closest(".cv-racks-stage");
+  const r = el.querySelector('[data-device="fw"]').getBoundingClientRect();
+  const b = stage.getBoundingClientRect();
+  if (r.top < b.top + 120) stage.scrollTop -= (b.top + 120) - r.top;
+});
+await page.waitForTimeout(100);
+// By its upper half: the lower edge of a chosen box is its height handle.
+await item("fw").dragTo(slots, { sourcePosition: { x: 20, y: 6 }, targetPosition: { x: 40, y } });
 await page.waitForTimeout(300);
-check("a drop while zoomed lands on the U under the pointer", (await st(() => window.__cvStore.getState().doc.pages[0].nodes.find((n) => n.id === "fw").data.rackU)) === 10, String(await st(() => window.__cvStore.getState().doc.pages[0].nodes.find((n) => n.id === "fw").data.rackU)));
+check("a drop while zoomed lands on the U under the pointer", (await st(() => window.__cvStore.getState().doc.pages[0].nodes.find((n) => n.id === "fw").data.rackU)) === 10,
+  `${await st(() => JSON.stringify(window.__cvStore.getState().doc.pages[0].nodes.find((n) => n.id === "fw").data))} — ${await page.locator(".cv-racks-message").textContent()}`);
 await page.locator(".cv-racks-zoomvalue").click();
 await page.waitForTimeout(200);
 check("and 100 % comes back", (await page.locator(".cv-racks-zoomvalue").innerText()) === "100%");
@@ -278,6 +289,52 @@ check("and so is a console server", (await page.locator('.cv-rack-item[data-kind
 await page.locator('.cv-racks-furniture-item[data-kind="pdu-vertical"]').click();
 await page.waitForTimeout(200);
 check("a zero-U PDU is drawn as a strip down the post", (await rackNamed("RACK-02").locator('[data-region="rack-zerou"] .cv-rack-zerou-item').count()) === 1);
+{
+  // A bar wide enough to read, with its name along it and its outlets as a column.
+  const strip = rackNamed("RACK-02").locator('[data-region="rack-zerou"] .cv-rack-zerou-item');
+  const box = await strip.boundingBox();
+  check("the strip is wide enough to read, not a line", box.width >= 14, String(box.width));
+  const label = strip.locator(".cv-rack-zerou-label");
+  const lb = await label.boundingBox();
+  check("its name runs along it", (await label.textContent()).length > 0 && lb && lb.height > 20 && lb.width > 0, JSON.stringify(lb));
+  const outlets = await strip.locator(".cv-fascia.is-outlets i").count();
+  check("its outlets are drawn as a column of sockets, one per outlet", outlets === 24, String(outlets));
+  const first = await strip.locator(".cv-fascia.is-outlets i").first().boundingBox();
+  const last = await strip.locator(".cv-fascia.is-outlets i").last().boundingBox();
+  check("down the strip, below the name", first.y > lb.y + lb.height && last.y > first.y + 100, JSON.stringify([first, last]));
+}
+{
+  // The bar can stand on either post. Right unless told; the chosen item's
+  // row moves it, the faceplates make way on that side, the file keeps it.
+  const strip = rackNamed("RACK-02").locator('[data-region="rack-zerou"] .cv-rack-zerou-item');
+  const plate = rackNamed("RACK-02").locator(".cv-rack-item").first();
+  check("a zero-U item stands on the right post unless told otherwise",
+    (await rackNamed("RACK-02").locator(".cv-rack-zerou.is-right .cv-rack-zerou-item").count()) === 1 && (await strip.boundingBox()).x > (await plate.boundingBox()).x + (await plate.boundingBox()).width - 1);
+  await strip.click();
+  await page.waitForTimeout(200);
+  const post = page.locator('[data-region="rack-chosen"] [data-region="rack-post"]');
+  check("the chosen row offers the other post", /left post/i.test(await post.textContent()), await post.textContent());
+  await post.click();
+  await page.waitForTimeout(300);
+  const sb = await strip.boundingBox();
+  const pb = await plate.boundingBox();
+  check("moved to the left post, the bar stands down the left and the faceplates make way",
+    (await rackNamed("RACK-02").locator(".cv-rack-zerou.is-left .cv-rack-zerou-item").count()) === 1 && sb.x + sb.width <= pb.x + 1, JSON.stringify([sb, pb]));
+  const kept = (await racks()).find((r) => r.id === "r2").items.find((f) => f.kind === "pdu-vertical");
+  check("and the file says so", kept?.side === "left", JSON.stringify(kept));
+  check("the row now offers the right post", /right post/i.test(await post.textContent()), await post.textContent());
+  await page.locator(".cv-racks button", { hasText: "Export front as SVG" }).click();
+  await page.waitForTimeout(300);
+  const svg = (await st(() => (window.__exports ?? []).at(-1))) ?? "";
+  // Both racks are in the file; the left-post bar stands just left of its
+  // rack's faceplates, which start after it.
+  const bars = [...svg.matchAll(/<rect x="([\d.]+)" y="[\d.]+" width="14" height="[\d.]+" fill="#cbd2d9"/g)].map((m) => Number(m[1]));
+  const plates = [...svg.matchAll(/<rect x="([\d.]+)" y="[\d.]+" width="(\d+)" height="\d+" rx="2" fill="[^"]+"/g)].map((m) => ({ x: Number(m[1]), w: Number(m[2]) }));
+  check("the SVG export draws the bar down the left post too, the faceplates starting after it",
+    bars.some((bx) => plates.some((p) => p.x - bx > 0 && p.x - bx < 24)), `${JSON.stringify(bars)} vs ${JSON.stringify(plates.slice(0, 3))}`);
+  await post.click();
+  await page.waitForTimeout(200);
+}
 await page.locator(".cv-seg button", { hasText: "Rear" }).click();
 await page.waitForTimeout(200);
 check("mounted on the front, the strip is not on the rear", (await rackNamed("RACK-02").locator('[data-region="rack-zerou"] .cv-rack-zerou-item').count()) === 0);

@@ -149,7 +149,14 @@ make it half depth (a patch panel, so something else can use the same U on the
 other face), set its **airflow**, its watts and kilograms, or take it out.
 **Front**, **Rear** and **Side** switch views; a full-depth box shows hatched
 from behind. Whatever you add or drop lands on the face you are looking at.
-A zero-U item — a vertical PDU — is a strip down the post on that face.
+A zero-U item — a vertical PDU — is a bar down a post on that face, its
+name along it and a socket for each outlet, which is where its cords land.
+It stands down the right post unless you move it: choose it and press
+**Move to the left post** (or back to the right).
+Click a box to choose it: it gets a grip to take it by and a bar along its
+bottom edge — drag that to make it taller or shorter by whole U, the top
+staying put; a span another box holds is refused and says why. (Its
+**Rack units** field in the inspector sets the same thing by number.)
 **Side** is the rack in profile: each box a bar as deep as it is, from the
 rail it is mounted on — its depth in millimetres where you have typed one on
 the chosen bar, otherwise most of the rack for full depth and well under half

@@ -106,7 +106,10 @@ const dragInto = async (source, rackName, topU, units) => {
     body.scrollTop += r.top + y - (b.top + b.height / 2);
   }, y);
   await page.waitForTimeout(100);
-  await source.dragTo(slots(rackName), { targetPosition: { x: 40, y } });
+  // Taken by its upper half, as a hand would: the lower edge of a chosen box
+  // is its height handle.
+  const sb = await source.boundingBox();
+  await source.dragTo(slots(rackName), { sourcePosition: { x: Math.min(20, sb.width / 2), y: Math.max(2, Math.min(4, sb.height / 3)) }, targetPosition: { x: 40, y } });
   await page.waitForTimeout(300);
 };
 
@@ -137,6 +140,49 @@ await dragInto(item("sw"), "RACK-01", 41, 1);
 check("into space another holds is refused", (await uOf("sw")) === 30 && /taken by SRV-1/.test(await message()), await message());
 await dragInto(item("srv"), "RACK-01", 1, 2);
 check("a device can go to the bottom U", (await uOf("srv")) === 1, String(await uOf("srv")));
+
+// ------------------------------------------------------------ height
+// A chosen box shows a grip and a bar along its bottom edge; the bar dragged
+// changes the height in whole U, the top staying put, and is refused into
+// space another box holds.
+{
+  await item("sw").click();
+  await page.waitForTimeout(200);
+  check("a chosen box shows a grip and a height handle",
+    (await item("sw").locator(".cv-rack-item-grip").count()) === 1 && (await item("sw").locator('[data-region="rack-resize"]').count()) === 1);
+  check("a box not chosen shows neither", (await item("srv").locator('[data-region="rack-resize"]').count()) === 0);
+  const handle = item("sw").locator('[data-region="rack-resize"]');
+  await handle.scrollIntoViewIfNeeded();
+  const dragHandle = async (dUnits) => {
+    const h = await handle.boundingBox();
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2 + dUnits * UNIT, { steps: 8 });
+    await page.waitForTimeout(100);
+    const ghost = await page.locator(".cv-rack-ghost").count();
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    return ghost;
+  };
+  const ghost = await dragHandle(2);
+  check("while the edge is dragged, the new span is previewed", ghost === 1, String(ghost));
+  check("the edge dragged down two U makes a 1U box 3U, its top where it was",
+    (await data("sw")).rackUnits === 3 && (await uOf("sw")) === 28, `${(await data("sw")).rackUnits}U at U${await uOf("sw")}`);
+  check("and says so", /SW-1 is now 3U, at U28–U30/.test(await message()), await message());
+  check("the box is drawn three U tall", Math.round((await item("sw").boundingBox()).height) === 3 * UNIT, String((await item("sw").boundingBox()).height));
+  await dragHandle(-2);
+  check("dragged back up, it is 1U again", (await data("sw")).rackUnits === 1 && (await uOf("sw")) === 30, `${(await data("sw")).rackUnits}U at U${await uOf("sw")}`);
+  check("a drag that changes nothing is not an undo step", true);
+  // SRV-1 holds U1–2; a box at U4 stretched down to U1 is refused.
+  await dragInto(item("sw"), "RACK-01", 4, 1);
+  await item("sw").click();
+  await page.waitForTimeout(200);
+  await handle.scrollIntoViewIfNeeded();
+  await dragHandle(3);
+  check("stretching into space another box holds is refused, and nothing changes",
+    (await data("sw")).rackUnits === 1 && (await uOf("sw")) === 4 && /taken by SRV-1/.test(await message()), `${(await data("sw")).rackUnits}U at U${await uOf("sw")} — ${await message()}`);
+  await dragInto(item("sw"), "RACK-01", 30, 1);
+}
 await item("sw").click();
 await page.keyboard.press("ArrowUp");
 await page.waitForTimeout(200);

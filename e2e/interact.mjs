@@ -2236,6 +2236,21 @@ await dismissRecovery();
     const m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(el.style.transform ?? "");
     return m ? { x: Number(m[1]), y: Number(m[2]) } : { x: 0, y: 0 };
   });
+  // Where the earlier drags and the page's refit left it is anyone's guess —
+  // under the palette, as often as not. Do what a person does: hold space
+  // and drag the diagram until the device is in the middle of the canvas.
+  for (let i = 0; i < 4; i++) {
+    const art = await dev.locator(".cv-glyph-art").boundingBox();
+    if (art && art.x > 320 && art.x < 1050 && art.y > 140 && art.y < 760) break;
+    await page.keyboard.down("Space");
+    await page.waitForTimeout(150);
+    await page.mouse.move(700, 450);
+    await page.mouse.down();
+    await page.mouse.move(700 - ((art?.x ?? 1400) - 700), 450 - ((art?.y ?? 450) - 450), { steps: 10 });
+    await page.mouse.up();
+    await page.keyboard.up("Space");
+    await page.waitForTimeout(300);
+  }
   await dev.locator(".cv-glyph-node").click();
   await page.waitForTimeout(250);
 

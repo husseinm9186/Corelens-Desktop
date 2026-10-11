@@ -753,6 +753,19 @@ export function RackPanel() {
                       onItemDragEnd={() => {
                         dragging = null;
                       }}
+                      onResize={(item, phase, u, units) => {
+                        if (phase === 'preview') {
+                          const problem = placementProblem(rack, allFor(rack), { ...item, rackUnits: units }, u, face);
+                          setHover({ rackId: rack.id, u, units, problem });
+                          return;
+                        }
+                        setHover(null);
+                        if (phase === 'cancel') return;
+                        const problem = item.kind === 'furniture'
+                          ? store().updateFurniture(rack.id, item.id, { u, units })
+                          : store().resizeInRack(item.id, rack.id, u, units, face);
+                        say(problem, t('rackPanel.resized', { label: item.label, units, bottom: u, top: u + units - 1 }));
+                      }}
                     />
                   ))}
                 </div>
@@ -768,7 +781,7 @@ export function RackPanel() {
 /* ----------------------------------------------------------------- a rack */
 
 function RackView({
-  rack, view, items, stacks, links, linkStatus, zoom, ground, selected, chosenIds, hover, isTarget, onSelect, say, onDragOver, onDragLeave, onDrop, onItemDragStart, onItemDragEnd,
+  rack, view, items, stacks, links, linkStatus, zoom, ground, selected, chosenIds, hover, isTarget, onSelect, say, onDragOver, onDragLeave, onDrop, onItemDragStart, onItemDragEnd, onResize,
 }: {
   rack: Rack;
   view: View;
@@ -789,6 +802,9 @@ function RackView({
   onDrop: React.DragEventHandler<HTMLDivElement>;
   onItemDragStart: (item: Rackable) => void;
   onItemDragEnd: () => void;
+  /** The height handle of a mounted item dragged: previewed while it moves,
+   *  applied when it is let go, with the item's new bottom U and height. */
+  onResize: (item: Rackable, phase: 'preview' | 'end' | 'cancel', u: number, units: number) => void;
 }) {
   const store = useStore.getState;
   const face = faceOfView(view);
@@ -801,6 +817,10 @@ function RackView({
   // The side view shows every placed box, from the rail it is mounted on.
   const sideItems = useMemo(() => members.map((d) => ({ device: d, span: spanOf(d) })).filter((x): x is { device: Rackable; span: { bottom: number; top: number } } => x.span !== null && x.span.top <= rack.units), [members, rack.units]);
   const zeroHere = elev.zeroU.filter((d) => view === 'side' || (d.rackFace === 'rear') === (face === 'rear'));
+  // Down the right post unless the item says left; the faceplates stop
+  // short of whatever stands on each side.
+  const zeroLeft = zeroHere.filter((d) => d.rackSide === 'left');
+  const zeroRight = zeroHere.filter((d) => d.rackSide !== 'left');
   const slotsRef = useRef<HTMLDivElement>(null);
   // Patch cables on the front, power cords on the rear.
   const patch = useMemo(() => (view === 'front' ? patchCablesFor(rack.name, items, links, linkStatus) : []), [view, rack.name, items, links, linkStatus]);
@@ -985,7 +1005,7 @@ function RackView({
           ref={slotsRef}
           className="cv-rack-slots"
           data-rack={rack.name}
-          style={{ height: rack.units * UNIT_PX, ['--zerou' as string]: zeroHere.length }}
+          style={{ height: rack.units * UNIT_PX, ['--zerou' as string]: zeroRight.length, ['--zerou-left' as string]: zeroLeft.length }}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
@@ -1008,6 +1028,9 @@ function RackView({
                 e.dataTransfer.setData(DRAG_TYPE, item.device.id);
               }}
               onDragEnd={onItemDragEnd}
+              rackUnits={rack.units}
+              zoom={zoom}
+              onResize={(phase, u, units) => onResize(item.device, phase, u, units)}
             />
           ))}
           {view === 'side' && (
@@ -1036,19 +1059,14 @@ function RackView({
               })}
             </>
           )}
-          {/* A zero-U item is a strip down the post, on the face it is mounted on. */}
-          {zeroHere.length > 0 && (
-            <div className={`cv-rack-zerou${view === 'side' ? ' is-side' : ''}`} data-region="rack-zerou">
-              {zeroHere.map((d) => (
-                <button key={d.id} type="button" data-device={d.id} data-outlets={d.outlets ?? furnitureSpec(d.furniture ?? 'other').ports ?? 8} className={`cv-rack-zerou-item is-${d.furniture ?? 'device'}${selected === d.id ? ' is-selected' : ''}`}
-                  style={d.colour ? { ['--rack-item-colour' as string]: d.colour } : undefined}
-                  title={`${d.label} — zero-U, down the ${d.rackFace === 'rear' ? 'rear' : 'front'} post`}
-                  onClick={(e) => { e.stopPropagation(); onSelect(d.id); }}>
-                  <span>{d.label}</span>
-                </button>
+          {/* A zero-U item is a bar down a post, on the face it is mounted on. */}
+          {([['left', zeroLeft], ['right', zeroRight]] as const).map(([side, list]) => list.length > 0 && (
+            <div key={side} className={`cv-rack-zerou is-${side}${view === 'side' ? ' is-side' : ''}`} data-region="rack-zerou">
+              {list.map((d) => (
+                <ZeroUStrip key={d.id} device={d} selected={selected === d.id} onSelect={() => onSelect(d.id)} />
               ))}
             </div>
-          )}
+          ))}
           {(patch.length > 0 || cords.length > 0) && (
             <CableOverlay slotsRef={slotsRef} zoom={zoom} patch={patch} cords={cords} items={items} face={face} onPick={(edgeId) => useStore.getState().select(null, edgeId)} lit={{ edgeId: selectedEdgeId, itemId: selected }} />
           )}
@@ -1135,7 +1153,28 @@ function RackView({
 /* ------------------------------------------------------------ a faceplate */
 
 /** What the elevation draws for one placed box. */
-function Faceplate({ item, top, face, ground, selected, also, out, onPort, onSelect, onDragStart, onDragEnd }: {
+/** A zero-U item down the post: a strip wide enough to read, its label
+ *  along it and, for a PDU, its outlets as a column of sockets a cord can
+ *  be traced to. */
+function ZeroUStrip({ device: d, selected, onSelect }: { device: Rackable; selected: boolean; onSelect: () => void }) {
+  const outlets = isPdu(d) ? (d.outlets ?? furnitureSpec(d.furniture ?? 'other').ports ?? 8) : 0;
+  const what = d.kind === 'furniture' ? furnitureSpec(d.furniture!).label : DEVICE_LABEL[(d.deviceType ?? 'generic') as DeviceType];
+  return (
+    <button type="button" data-device={d.id} data-outlets={outlets || undefined} className={`cv-rack-zerou-item is-${d.furniture ?? 'device'}${selected ? ' is-selected' : ''}`}
+      style={d.colour ? { ['--rack-item-colour' as string]: d.colour } : undefined}
+      title={`${d.label} — ${what}, zero-U, down the ${d.rackFace === 'rear' ? 'rear' : 'front'} ${d.rackSide === 'left' ? 'left' : 'right'} post${outlets ? ` · ${t('rackPanel.zeroUOutlets', { count: outlets })}` : ''}`}
+      onClick={(e) => { e.stopPropagation(); onSelect(); }}>
+      <span className="cv-rack-zerou-label">{d.label}</span>
+      {outlets > 0 && (
+        <span className="cv-fascia is-outlets is-column" data-count={outlets} aria-hidden="true">
+          {Array.from({ length: outlets }, (_, i) => <i key={i} />)}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function Faceplate({ item, top, face, ground, selected, also, out, onPort, onSelect, onDragStart, onDragEnd, rackUnits, zoom, onResize }: {
   item: RackItem;
   top: number;
   face: RackFace;
@@ -1150,9 +1189,48 @@ function Faceplate({ item, top, face, ground, selected, also, out, onPort, onSel
   onSelect: (additive: boolean) => void;
   onDragStart: React.DragEventHandler<HTMLButtonElement>;
   onDragEnd: () => void;
+  rackUnits: number;
+  zoom: number;
+  onResize: (phase: 'preview' | 'end' | 'cancel', u: number, units: number) => void;
 }) {
   const d = item.device;
   const height = (item.top - item.bottom + 1) * UNIT_PX;
+  // The handle along the bottom edge: the pointer's U becomes the new
+  // bottom, the top stays, so the box gets taller or shorter by whole U.
+  // Pointer events rather than the drag-and-drop the box itself uses, so
+  // taking the edge never starts a move; the preventDefault also keeps the
+  // button's own mouse events, and so its click, from firing.
+  const onResizeDown = (e: React.PointerEvent<HTMLSpanElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const handle = e.currentTarget;
+    const slots = handle.closest<HTMLElement>('.cv-rack-slots');
+    if (!slots) return;
+    handle.setPointerCapture(e.pointerId);
+    const at = (clientY: number) => {
+      const r = slots.getBoundingClientRect();
+      const fromTop = (clientY - r.top) / zoom - slots.clientTop;
+      const u = Math.max(1, Math.min(item.top, rackUnits - Math.floor(fromTop / UNIT_PX)));
+      return { u, units: item.top - u + 1 };
+    };
+    let last = at(e.clientY);
+    const off = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', cancel);
+    };
+    const move = (ev: PointerEvent) => {
+      const next = at(ev.clientY);
+      if (next.u === last.u) return;
+      last = next;
+      onResize('preview', last.u, last.units);
+    };
+    const up = () => { off(); onResize('end', last.u, last.units); };
+    const cancel = () => { off(); onResize('cancel', item.bottom, item.top - item.bottom + 1); };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', cancel);
+  };
   const isFurniture = d.kind === 'furniture';
   const reserved = d.furniture === 'reserved';
   const colour = d.colour ?? (isFurniture ? undefined : deviceColor(d.deviceType ?? 'generic', ground));
@@ -1192,6 +1270,13 @@ function Faceplate({ item, top, face, ground, selected, also, out, onPort, onSel
       data-top={item.top}
     >
       {colour && <span className="cv-rack-item-strip" aria-hidden="true" />}
+      {selected && item.seen === 'face' && (
+        <>
+          <span className="cv-rack-item-grip" title={t('rackPanel.grip')} aria-hidden="true" />
+          <span className="cv-rack-item-resize" data-region="rack-resize" role="separator" aria-label={t('rackPanel.resizeHandle')} title={t('rackPanel.resizeHandle')}
+            onPointerDown={onResizeDown} onClick={(e) => e.stopPropagation()} />
+        </>
+      )}
       {!isFurniture && <i className={`cv-rack-led is-${d.status ?? 'unknown'}`} aria-hidden="true" title={d.status} />}
       {!isFurniture && (
         <DeviceGlyph type={(d.deviceType ?? 'generic') as DeviceType} className="cv-rack-item-glyph" style={{ color: colour }} />
@@ -1438,7 +1523,7 @@ function ChosenBar({ chosen, rack, pdus, stack, say, onEditStack, onRemoved, cho
             ? `U${uLabel(rack, chosen.rackU + chosen.rackUnits! - 1)}${chosen.rackUnits! > 1 ? `–${uLabel(rack, chosen.rackU)}` : ''} (${t('rackPanel.fromTop')})`
             : `U${chosen.rackU}${chosen.rackUnits! > 1 ? `–${chosen.rackU + chosen.rackUnits! - 1}` : ''}`)
           : chosen.rackUnits === 0 ? 'zero-U' : 'not placed'} ·{' '}
-        {chosen.rackUnits}U · mounted {chosen.rackFace === 'rear' ? 'rear' : 'front'} · {chosen.rackDepth === 'half' ? 'half' : 'full'} depth
+        {chosen.rackUnits}U · mounted {chosen.rackFace === 'rear' ? 'rear' : 'front'} · {chosen.rackDepth === 'half' ? 'half' : 'full'} depth{chosen.rackUnits === 0 ? ` · ${t(chosen.rackSide === 'left' ? 'rackPanel.leftPost' : 'rackPanel.rightPost')}` : ''}
         {isFurniture ? ` · ${furnitureSpec(chosen.furniture!).label}` : ''}
       </span>
       <button
@@ -1452,6 +1537,21 @@ function ChosenBar({ chosen, rack, pdus, stack, say, onEditStack, onRemoved, cho
       >
         Mount {chosen.rackFace === 'rear' ? 'front' : 'rear'}
       </button>
+      {chosen.rackUnits === 0 && (
+        <button
+          type="button"
+          className="cv-btn cv-btn-small"
+          data-region="rack-post"
+          onClick={() => {
+            const next = chosen.rackSide === 'left' ? 'right' : 'left';
+            const done = t('rackPanel.onPost', { label: chosen.label, post: next });
+            if (isFurniture) setItem({ side: next }, done);
+            else setDevice({ rackSide: next }, done);
+          }}
+        >
+          {t(chosen.rackSide === 'left' ? 'rackPanel.toRightPost' : 'rackPanel.toLeftPost')}
+        </button>
+      )}
       <button
         type="button"
         className="cv-btn cv-btn-small"
@@ -1694,7 +1794,13 @@ function portPoint(slots: HTMLElement, zoom: number, itemId: string, kind: 'port
   const edges = (r: DOMRect) => ({ top: (r.top - box.top) / zoom, bottom: (r.bottom - box.top) / zoom });
   const rel = (r: DOMRect, host: DOMRect): PortPt => ({ x: (r.left + r.width / 2 - box.left) / zoom, y: (r.top + r.height / 2 - box.top) / zoom, ...edges(host) });
   if (strip) {
-    // A vertical PDU: outlets run down the strip.
+    // A vertical PDU: outlets run down the strip, each drawn as a cell.
+    const cells = strip.querySelectorAll<HTMLElement>('.cv-fascia.is-outlets i');
+    if (cells.length) {
+      const cell = cells[Math.min(cells.length, Math.max(1, n ?? Math.ceil(cells.length / 2))) - 1]!.getBoundingClientRect();
+      const y = (cell.top + cell.height / 2 - box.top) / zoom;
+      return { x: (cell.left + cell.width / 2 - box.left) / zoom, y, top: y - 2, bottom: y + 2 };
+    }
     const r = strip.getBoundingClientRect();
     const outlets = Number(strip.getAttribute('data-outlets') ?? 8);
     const at = n ? Math.min(1, Math.max(0, (n - 0.5) / outlets)) : 0.5;

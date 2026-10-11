@@ -3145,7 +3145,7 @@ details[open] > .cv-palette-lib::before { content: '▾'; }
 .cv-rack-post.is-right { border-left: 0; border-radius: 0 3px 3px 0; }
 .cv-rack-slots {
   /* How many zero-U strips stand in the right-hand column; the panel sets it per rack. */
-  --zerou: 0;
+  --zerou: 0; --zerou-left: 0;
   position: relative; flex: 1; box-sizing: content-box; border-top: 2px solid color-mix(in srgb, var(--text) 22%, var(--line-strong)); border-bottom: 2px solid color-mix(in srgb, var(--text) 22%, var(--line-strong)); background: color-mix(in srgb, var(--text) 5%, var(--panel-2));
   background-image: repeating-linear-gradient(to bottom, transparent 0 13px, color-mix(in srgb, var(--text) 10%, var(--line-strong)) 13px 14px);
 }
@@ -3156,7 +3156,7 @@ details[open] > .cv-palette-lib::before { content: '▾'; }
 /* A faceplate. */
 .cv-rack-item {
   /* A zero-U strip takes a column of its own on the right, so a faceplate stops short of it. */
-  position: absolute; left: 0.15384615rem; right: calc(0.15384615rem + var(--zerou) * 0.76923077rem); display: flex; align-items: center; gap: 0.30769231rem;
+  position: absolute; left: calc(0.15384615rem + var(--zerou-left) * 1.38461538rem); right: calc(0.15384615rem + var(--zerou) * 1.38461538rem); display: flex; align-items: center; gap: 0.30769231rem;
   background: color-mix(in srgb, var(--text) 20%, var(--panel-2)); border: 1px solid color-mix(in srgb, var(--text) 34%, var(--line-strong)); border-radius: 2px;
   color: var(--text); font: inherit; font-size: var(--text-xs); padding: 0 0.30769231rem 0 0; cursor: grab; overflow: hidden;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 10%, transparent), inset 0 -1px 0 color-mix(in srgb, #000 35%, transparent);
@@ -3188,6 +3188,13 @@ details[open] > .cv-palette-lib::before { content: '▾'; }
 }
 .cv-rack-item.is-clash { border: 2px solid var(--down); }
 .cv-rack-item.is-selected { box-shadow: 0 0 0 2px var(--accent); z-index: 1; }
+/* Chosen, a box shows how it is handled: a grip to take it by, and a bar along
+   its bottom edge that drags its height in whole U. */
+.cv-rack-item-grip { flex: none; align-self: stretch; width: 0.46153846rem; margin-right: -0.15384615rem; cursor: grab; background-image: radial-gradient(circle, color-mix(in srgb, var(--text) 55%, transparent) 1px, transparent 1.2px); background-size: 3px 3px; background-position: center; opacity: 0.9; }
+/* Never past the lower 40 %, so the middle of a 1U box still takes the box, not its edge. */
+.cv-rack-item-resize { position: absolute; left: 0; right: 0; bottom: 0; height: min(0.46153846rem, 40%); cursor: ns-resize; z-index: 2; }
+.cv-rack-item-resize::after { content: ""; position: absolute; left: 50%; bottom: 1px; width: 1.84615385rem; height: 3px; margin-left: -0.92307692rem; border-radius: 2px; background: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, #000 40%, transparent); }
+.cv-rack-item-resize:hover::after, .cv-rack-item-resize:active::after { height: 4px; }
 .cv-rack-item:focus-visible { outline: 2px solid var(--accent); }
 .cv-rack-ghost {
   position: absolute; left: 0; right: calc(var(--zerou) * 0.76923077rem); pointer-events: none; z-index: 2;
@@ -3238,9 +3245,14 @@ details[open] > .cv-palette-lib::before { content: '▾'; }
 .cv-rack-item.is-furniture.has-colour { color: var(--text); }
 /* A zero-U item down the post. */
 .cv-rack-zerou { position: absolute; top: 0; bottom: 0; right: 0; display: flex; gap: 2px; padding: 2px; pointer-events: none; }
-.cv-rack-zerou-item { pointer-events: auto; width: 0.61538462rem; height: 100%; border: 1px solid var(--line-strong); border-radius: 2px; background: repeating-linear-gradient(to bottom, var(--panel-2) 0 10px, color-mix(in srgb, var(--text) 25%, transparent) 10px 12px); color: var(--text-dim); padding: 0; cursor: pointer; writing-mode: vertical-rl; font: inherit; font-size: var(--text-2xs); overflow: hidden; }
-.cv-rack-zerou-item span { display: block; padding: 0.3rem 0; white-space: nowrap; background: var(--panel-2); }
-.cv-rack-zerou-item.is-selected { box-shadow: 0 0 0 2px var(--accent); }
+.cv-rack-zerou.is-left { right: auto; left: 0; }
+/* A zero-U item is a bar down the post, not a line: wide enough for its
+   name to read along it and, on a PDU, a column of sockets. */
+.cv-rack-zerou-item { pointer-events: auto; position: relative; width: 1.23076923rem; height: 100%; border: 1px solid color-mix(in srgb, var(--text) 34%, var(--line-strong)); border-radius: 2px; background: linear-gradient(to right, color-mix(in srgb, var(--text) 26%, var(--panel-2)), color-mix(in srgb, var(--text) 14%, var(--panel-2))); color: var(--text); padding: 0; cursor: pointer; font: inherit; font-size: var(--text-2xs); overflow: hidden; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 10%, transparent), inset 0 -1px 0 color-mix(in srgb, #000 35%, transparent); }
+.cv-rack-zerou-label { position: absolute; top: 0.3rem; left: 0; right: 0; display: block; writing-mode: vertical-rl; text-orientation: mixed; white-space: nowrap; font-weight: 600; letter-spacing: 0.03em; line-height: 1.23076923rem; max-height: 9rem; overflow: hidden; text-overflow: ellipsis; }
+.cv-rack-zerou-item .cv-fascia.is-outlets.is-column { position: absolute; left: 0; right: 0; top: 9.6rem; bottom: 0.3rem; display: grid; grid-auto-rows: 1fr; align-items: center; justify-items: center; gap: 0; }
+.cv-rack-zerou-item .cv-fascia.is-outlets.is-column i { width: 0.53846154rem; height: 0.30769231rem; border-radius: 1px; background: color-mix(in srgb, var(--text) 62%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 40%, transparent); }
+.cv-rack-zerou-item.is-selected { box-shadow: 0 0 0 2px var(--accent); z-index: 1; }
 .cv-rack-zerou-item[style*="--rack-item-colour"] { border-color: var(--rack-item-colour); }
 /* The side view — a box as deep as it is, from the rail it is mounted on. */
 .cv-rack.is-view-side .cv-rack-slots { background-image: repeating-linear-gradient(to bottom, transparent 0 13px, var(--line) 13px 14px), linear-gradient(to right, color-mix(in srgb, var(--text) 5%, transparent), transparent 20%, transparent 80%, color-mix(in srgb, var(--text) 5%, transparent)); }
@@ -3248,8 +3260,8 @@ details[open] > .cv-palette-lib::before { content: '▾'; }
 .cv-rack-side-rail.is-front { left: 0; }
 .cv-rack-side-rail.is-rear { right: 0; }
 .cv-rack-side-item { position: absolute; display: flex; align-items: center; gap: 0.3rem; padding: 0 0.3rem; background: color-mix(in srgb, var(--text) 18%, var(--panel-2)); border: 1px solid var(--line-strong); border-left: 3px solid var(--rack-item-colour); border-radius: 2px; color: var(--text); font: inherit; font-size: var(--text-xs); overflow: hidden; cursor: pointer; box-shadow: inset 0 -1px 0 color-mix(in srgb, #000 35%, transparent); }
-.cv-rack-side-item.is-front { left: 0.15384615rem; }
-.cv-rack-side-item.is-rear { right: calc(0.15384615rem + var(--zerou) * 0.76923077rem); border-left: 1px solid var(--line-strong); border-right: 3px solid var(--rack-item-colour); flex-direction: row-reverse; }
+.cv-rack-side-item.is-front { left: calc(0.15384615rem + var(--zerou-left) * 1.38461538rem); }
+.cv-rack-side-item.is-rear { right: calc(0.15384615rem + var(--zerou) * 1.38461538rem); border-left: 1px solid var(--line-strong); border-right: 3px solid var(--rack-item-colour); flex-direction: row-reverse; }
 .cv-rack-side-item.is-reserved { background: repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--warning) 22%, transparent) 5px 8px); border-style: dashed; }
 .cv-rack-side-item.is-selected { box-shadow: 0 0 0 2px var(--accent); z-index: 1; }
 .cv-rack-side-depth { margin-left: auto; color: var(--text-faint); font-size: var(--text-2xs); white-space: nowrap; }

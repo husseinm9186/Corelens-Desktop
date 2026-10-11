@@ -46,4 +46,29 @@ describe('the DXF export', () => {
     const front = rackElevationDxf(racks, devices, 'front', { links });
     expect((front.match(/8\nCABLES\n/g) ?? []).length).toBeGreaterThanOrEqual(5);
   });
+
+  it('draws a zero-U PDU as a bar beside the opening, named, with its outlets', () => {
+    const pdu = { id: 'pdu', label: 'PDU-A', rack: 'R1', rackUnits: 0, kind: 'furniture' as const, furniture: 'pdu-vertical' as const, outlets: 4 };
+    const dxf = rackElevationDxf(racks, [...devices, pdu], 'front', {});
+    expect(dxf).toContain('1\nPDU-A');
+    // The bar: 30 mm wide, the rack's height, to the right of the opening; and four sockets 10 by 6.
+    // A rectangle is four LINE entities: one bar and four sockets.
+    const lines = (d: string) => d.split('0\nLINE').length - 1;
+    expect(lines(dxf) - lines(rackElevationDxf(racks, devices, 'front', {}))).toBe((1 + 4) * 4);
+    expect(rackElevationDxf(racks, [...devices, pdu], 'rear', {})).not.toContain('1\nPDU-A');
+  });
+
+  it('puts a left-post zero-U item to the left of the opening', () => {
+    const pdu = (side?: 'left' | 'right') => ({ id: 'pdu', label: 'PDU-A', rack: 'R1', rackUnits: 0, kind: 'furniture' as const, furniture: 'pdu-vertical' as const, outlets: 1, rackSide: side });
+    const barX = (dxf: string) => {
+      // The label is written at the bar's left edge plus 2.
+      const i = dxf.indexOf('1\nPDU-A');
+      const before = dxf.slice(0, i);
+      return Number(/10\n(-?[\d.]+)\n20\n[\d.]+\n30\n0\n40\n8\n$/.exec(before)?.[1]) - 2;
+    };
+    const right = barX(rackElevationDxf(racks, [...devices, pdu()], 'front', {}));
+    const left = barX(rackElevationDxf(racks, [...devices, pdu('left')], 'front', {}));
+    expect(right).toBeGreaterThan(OPENING_MM);
+    expect(left).toBeLessThan(60);
+  });
 });

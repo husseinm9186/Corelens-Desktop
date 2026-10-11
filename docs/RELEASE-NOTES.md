@@ -2,6 +2,27 @@
 
 Newest first.
 
+## 2.12.2 — 2026-10-11
+
+**The page fits around the diagram**
+- *Fit page to content* draws the sheet around what is on it. A diagram
+  that had drifted to the right no longer keeps an empty half-sheet on the
+  left; a diagram smaller than one sheet gets a full-size sheet centred on
+  it, and one that already sits inside the starting sheet keeps it. *Fit
+  view* fits that sheet, so the diagram fills the window.
+
+**Racks**
+- A vertical PDU is drawn as a bar down the post, wide enough to read, with
+  its name along it and a socket for each outlet; power cords land on the
+  socket they are plugged into. The SVG and DXF exports draw the same.
+- A zero-U item can stand down either post: choose it and press *Move to
+  the left post*, or back to the right. The faceplates make way on that
+  side, and the exports follow.
+- A chosen box in a rack shows a grip and a bar along its bottom edge. Drag
+  the bar to make the box taller or shorter by whole U — the top stays where
+  it is, the new span is previewed, and a span another box holds is refused
+  with the reason. The inspector's *Rack units* field still works.
+
 ## 2.12.1 — 2026-10-10
 
 **A new signing certificate, under the new name**

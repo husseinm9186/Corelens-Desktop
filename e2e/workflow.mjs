@@ -149,6 +149,44 @@ const filterBoxes = await page.evaluate(() => {
 });
 check("each filter field is a field's height, not 300 px", filterBoxes.tallest < 80, JSON.stringify(filterBoxes));
 check("the filter panel stays in the window and its last button can be reached", filterBoxes.menuBottom <= filterBoxes.vh && filterBoxes.clearBottom <= filterBoxes.vh, JSON.stringify(filterBoxes));
+// In the window is not the same as on screen: a strip that clips its
+// overflow hides the panel while every measurement says it is there.
+const filterSeen = await page.evaluate(() => {
+  const menu = document.querySelector(".cv-filter-menu .cv-dropdown-menu");
+  const r = menu.getBoundingClientRect();
+  const hit = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, 40));
+  return { seen: !!hit && menu.contains(hit), hit: hit?.className ?? null, top: r.top, height: r.height };
+});
+check("and it is actually visible, not clipped by the strip", filterSeen.seen, JSON.stringify(filterSeen));
+// Every menu in the strip, the same way: opened, something of it under the
+// pointer, closed again.
+{
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(150);
+  const menus = page.locator(".cv-canvas-tools details > summary");
+  const n = await menus.count();
+  const unseen = [];
+  for (let i = 0; i < n; i++) {
+    const summary = menus.nth(i);
+    if (!(await summary.isVisible())) continue;
+    await summary.click();
+    await page.waitForTimeout(150);
+    const r = await summary.evaluate((el) => {
+      const menu = el.parentElement.querySelector(".cv-dropdown-menu");
+      if (!menu) return { label: el.getAttribute("aria-label") ?? el.textContent, seen: false, why: "no menu" };
+      const b = menu.getBoundingClientRect();
+      const hit = document.elementFromPoint(b.left + b.width / 2, b.top + Math.min(b.height / 2, 30));
+      return { label: el.getAttribute("aria-label") ?? el.textContent.trim(), seen: !!hit && menu.contains(hit), why: hit?.className ?? null };
+    });
+    if (!r.seen) unseen.push(r);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(100);
+  }
+  check(`every menu in the strip shows when opened (${n} of them)`, n >= 4 && unseen.length === 0, JSON.stringify(unseen));
+  // The filter, open again, for what follows.
+  await filterMenu.locator("summary").click();
+  await page.waitForTimeout(200);
+}
 await page.evaluate(() => { document.querySelector(".cv-filter-menu .cv-dropdown-menu").scrollTop = 0; });
 await page.setViewportSize({ width: 1600, height: 1000 });
 await page.waitForTimeout(200);

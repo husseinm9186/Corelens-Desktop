@@ -394,7 +394,9 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
 /* One 32 px strip: 28 px ghost icon buttons in groups, a 1 px rule between
    groups, the zoom value the only word that is always there. */
 .cv-canvas-tools {
-  display: flex; align-items: center; gap: 0.15384615rem; flex-wrap: nowrap; overflow: hidden;
+  /* Clipped sideways only, so a narrow window does not grow it; its menus
+     hang below it and must not be clipped with it. */
+  display: flex; align-items: center; gap: 0.15384615rem; flex-wrap: nowrap; overflow-x: clip; overflow-y: visible;
   height: 2.46153846rem; padding: 0 0.61538462rem; background: var(--chrome); border-bottom: 1px solid var(--chrome-edge);
 }
 .cv-strip-group { display: flex; align-items: center; gap: 0.15384615rem; }

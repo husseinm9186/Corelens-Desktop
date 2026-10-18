@@ -38,7 +38,7 @@ pdf-writer = "0.12"
 # Already resolved through zip; named directly to open a compressed draw.io
 # page.
 flate2 = "1"
-zip = { version = "4.2.0", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 open = "5"
 roxmltree = "0.20"
 # The vault key in the OS keychain, when the operator asks for it —

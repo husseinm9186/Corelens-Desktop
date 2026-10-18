@@ -11,6 +11,12 @@ Newest first.
   measuring where the panel was rather than whether it could be seen; it
   now checks what is under the pointer, for every menu in the strip.
 
+**Dependencies**
+- `rustls` 0.23.46 and `zip` 9, for the advisories published this week.
+  The one remaining copy of the older `zip` is inside the updater plugin's
+  path for zip-wrapped Windows updates, which these releases do not use;
+  the reason is written beside the audit's ignore list.
+
 ## 2.12.2 — 2026-10-11
 
 **The page fits around the diagram**

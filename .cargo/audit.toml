@@ -11,4 +11,18 @@ ignore = [
   # host-key signature, which uses the public key. There is no fixed release.
   # Revisit if public-key login is ever added.
   "RUSTSEC-2023-0071",
+  # RUSTSEC-2026-0367, -0368, -0369, `zip` 4.x: symlinks, SUID bits and
+  # permissions applied through `ZipArchive::extract()` from a crafted
+  # archive. Corelens's own zip reading (Visio, Excel, icon libraries) is on
+  # zip 9, which fixes them, and never calls `extract()`. The 4.x copy comes
+  # through `tauri-plugin-updater` 2.12, the last 2.x, where it serves one
+  # path: a Windows update delivered as a `.zip` around the installer. These
+  # releases carry the bare `-setup.exe` (`scripts/release-manifest.mjs` picks
+  # it), so that path never runs — and the plugin verifies the minisign
+  # signature against the key in `tauri.conf.json` before it touches the
+  # bytes, so a crafted archive is refused before any extraction. Revisit
+  # when the plugin's next major moves to zip 9.
+  "RUSTSEC-2026-0367",
+  "RUSTSEC-2026-0368",
+  "RUSTSEC-2026-0369",
 ]

@@ -13,7 +13,7 @@ publish = false
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 roxmltree = "0.20"
-zip = { version = "4.2.0", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 base64 = "0.22"
 flate2 = "1"
 

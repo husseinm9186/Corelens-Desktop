@@ -71,9 +71,9 @@ MIT (23), ISC (9), MIT OR Apache-2.0 (3), Apache-2.0 OR MIT (1), BSD-3-Clause (1
 | yaml | 2.9.1 | ISC |
 | zustand | 4.5.7 | MIT |
 
-## Rust — 741 crates in the executable
+## Rust — 743 crates in the executable
 
-MIT OR Apache-2.0 (354), MIT (134), Apache-2.0 OR MIT (99), MIT/Apache-2.0 (34), Zlib OR Apache-2.0 OR MIT (19), Unicode-3.0 (18), Unlicense OR MIT (10), Apache-2.0 (9), BSD-3-Clause (7), MIT OR Apache-2.0 OR Zlib (7), MPL-2.0 (5), Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT (5), ISC (4), Apache-2.0/MIT (3), Zlib (3), Apache-2.0 OR ISC OR MIT (3), MIT OR Zlib OR Apache-2.0 (2), BSD-3-Clause OR Apache-2.0 (2), BSD-3-Clause OR MIT OR Apache-2.0 (2), MIT OR Apache-2.0 OR LGPL-2.1-or-later (2), Unlicense/MIT (2), CDLA-Permissive-2.0 (2), BSD-2-Clause OR Apache-2.0 OR MIT (2), 0BSD OR MIT OR Apache-2.0 (1), BSD-2-Clause (1), ISC AND (Apache-2.0 OR ISC) (1), ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) (1), BSD-3-Clause AND MIT (1), BSD-3-Clause/MIT (1), Apache-2.0 AND MIT (1), CC0-1.0 OR MIT-0 OR Apache-2.0 (1), MIT OR Apache-2.0 OR BSD-1-Clause (1), Apache-2.0 / MIT (1), Apache-2.0 AND ISC (1), Apache-2.0 OR BSL-1.0 (1), (MIT OR Apache-2.0) AND Unicode-3.0 (1)
+MIT OR Apache-2.0 (355), MIT (135), Apache-2.0 OR MIT (99), MIT/Apache-2.0 (34), Zlib OR Apache-2.0 OR MIT (19), Unicode-3.0 (18), Unlicense OR MIT (10), Apache-2.0 (9), BSD-3-Clause (7), MIT OR Apache-2.0 OR Zlib (7), MPL-2.0 (5), Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT (5), ISC (4), Apache-2.0/MIT (3), Zlib (3), Apache-2.0 OR ISC OR MIT (3), MIT OR Zlib OR Apache-2.0 (2), BSD-3-Clause OR Apache-2.0 (2), BSD-3-Clause OR MIT OR Apache-2.0 (2), MIT OR Apache-2.0 OR LGPL-2.1-or-later (2), Unlicense/MIT (2), CDLA-Permissive-2.0 (2), BSD-2-Clause OR Apache-2.0 OR MIT (2), 0BSD OR MIT OR Apache-2.0 (1), BSD-2-Clause (1), ISC AND (Apache-2.0 OR ISC) (1), ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) (1), BSD-3-Clause AND MIT (1), BSD-3-Clause/MIT (1), Apache-2.0 AND MIT (1), CC0-1.0 OR MIT-0 OR Apache-2.0 (1), MIT OR Apache-2.0 OR BSD-1-Clause (1), Apache-2.0 / MIT (1), Apache-2.0 AND ISC (1), Apache-2.0 OR BSL-1.0 (1), (MIT OR Apache-2.0) AND Unicode-3.0 (1)
 
 | Component | Version | Licence |
 | --- | --- | --- |
@@ -539,7 +539,7 @@ MIT OR Apache-2.0 (354), MIT (134), Apache-2.0 OR MIT (99), MIT/Apache-2.0 (34),
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT |
 | rusticata-macros | 4.1.0 | MIT/Apache-2.0 |
 | rustix | 1.1.4 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
-| rustls | 0.23.45 | Apache-2.0 OR ISC OR MIT |
+| rustls | 0.23.46 | Apache-2.0 OR ISC OR MIT |
 | rustls-native-certs | 0.8.4 | Apache-2.0 OR ISC OR MIT |
 | rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 |
 | rustls-platform-verifier | 0.7.1 | MIT OR Apache-2.0 |
@@ -675,6 +675,7 @@ MIT OR Apache-2.0 (354), MIT (134), Apache-2.0 OR MIT (99), MIT/Apache-2.0 (34),
 | tray-icon | 0.24.2 | MIT OR Apache-2.0 |
 | try-lock | 0.2.5 | MIT |
 | ttf-parser | 0.25.1 | MIT OR Apache-2.0 |
+| typed-path | 0.12.3 | MIT OR Apache-2.0 |
 | typeid | 1.0.3 | MIT OR Apache-2.0 |
 | typenum | 1.20.1 | MIT OR Apache-2.0 |
 | ucd-trie | 0.1.7 | MIT OR Apache-2.0 |
@@ -808,6 +809,7 @@ MIT OR Apache-2.0 (354), MIT (134), Apache-2.0 OR MIT (99), MIT/Apache-2.0 (34),
 | zerovec | 0.11.8 | Unicode-3.0 |
 | zerovec-derive | 0.11.6 | Unicode-3.0 |
 | zip | 4.6.1 | MIT |
+| zip | 9.0.5 | MIT |
 | zlib-rs | 0.6.7 | Zlib |
 | zmij | 1.0.23 | MIT |
 | zopfli | 0.8.3 | Apache-2.0 |
@@ -1571,7 +1573,7 @@ SOFTWARE.
 - russh-sftp 3.0.1
 - rusticata-macros 4.1.0
 - rustix 1.1.4
-- rustls 0.23.45
+- rustls 0.23.46
 - rustls-native-certs 0.8.4
 - rustls-platform-verifier 0.7.1
 - salsa20 0.11.0
@@ -1858,7 +1860,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 116 components
+### 117 components
 
 - adler2 2.0.1
 - anyhow 1.0.104
@@ -1961,6 +1963,7 @@ limitations under the License.
 - thiserror-impl 1.0.69
 - thiserror-impl 2.0.20
 - tinyvec 1.12.0
+- typed-path 0.12.3
 - typeid 1.0.3
 - unicode-ident 1.0.24
 - unsafe-libyaml 0.2.11
@@ -2003,7 +2006,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 58 components
+### 59 components
 
 - anyhow 1.0.104
 - async-trait 0.1.92
@@ -2059,6 +2062,7 @@ DEALINGS IN THE SOFTWARE.
 - time 0.3.55
 - time-core 0.1.9
 - time-macros 0.2.32
+- typed-path 0.12.3
 - typeid 1.0.3
 - unicode-ident 1.0.24
 - usvg 0.45.1
@@ -5913,7 +5917,7 @@ DEALINGS IN THE SOFTWARE.
 ### 3 components
 
 - hyper-rustls 0.27.10
-- rustls 0.23.45
+- rustls 0.23.46
 - rustls-native-certs 0.8.4
 
 ```
@@ -5937,7 +5941,7 @@ THIS SOFTWARE.
 ### 3 components
 
 - hyper-rustls 0.27.10
-- rustls 0.23.45
+- rustls 0.23.46
 - rustls-native-certs 0.8.4
 
 ```
@@ -23657,6 +23661,32 @@ SOFTWARE.
 
 Some files in the "tests/data" subdirectory of this repository are under other
 licences; see files named LICENSE.*.txt for details.
+```
+
+### zip 9.0.5
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2014 Mathijs van de Nes
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ### zlib-rs 0.6.7

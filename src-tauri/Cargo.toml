@@ -1,6 +1,6 @@
 [package]
 name = "corelens"
-version = "2.12.2"
+version = "2.12.3"
 description = "Corelens — local-first network diagram designer with live connectivity validation"
 authors = ["Mohammed Almoola <https://www.linkedin.com/in/malmoola>"]
 edition = "2021"

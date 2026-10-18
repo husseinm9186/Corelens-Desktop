@@ -2,6 +2,15 @@
 
 Newest first.
 
+## 2.12.3 — 2026-10-17
+
+**The strip's menus show again**
+- Filter, Arrange, the grid, the page and the zoom menus in the canvas
+  strip opened without showing anything since 2.10.0: the strip clipped
+  whatever hung below it. They show now. The test that watched them was
+  measuring where the panel was rather than whether it could be seen; it
+  now checks what is under the pointer, for every menu in the strip.
+
 ## 2.12.2 — 2026-10-11
 
 **The page fits around the diagram**

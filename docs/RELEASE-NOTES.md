@@ -2,6 +2,30 @@
 
 Newest first.
 
+## 2.12.4 — 2026-10-22
+
+**Stay inside these subnets is a boundary again**
+- A crawl with subnets listed under *Stay inside these subnets* no longer
+  logs in to anything outside them. Since 2.7 a neighbour on a private
+  address was followed regardless, and on a real network every address is
+  private, so a survey of one /24 walked three hops into the rest of the
+  estate. A neighbour outside the subnets is still drawn from what its
+  neighbour said, and never dialled, so its own neighbours are never seen.
+  A seed you typed is always dialled. Both engines, the default gateway
+  and the address chosen from a device's ARP table follow the same rule.
+- **Discover everything**, a tick under the subnets, is the old behaviour
+  on purpose: every neighbour of a kind ticked under *Log in to* is
+  followed wherever its private address is, and the subnets then only add
+  public ranges the crawl may enter. Off by default, remembered with the
+  scan and in a profile. The note beside it, the dry run and the first
+  line of the debug log all say which run you have set up.
+
+**Catalyst 9400**
+- A Catalyst 9400 chassis (C9404R, C9407R, C9410R) now classifies as a
+  switch. The model list knew the family name and the one 9600 model it had
+  met; a Catalyst 9000 is now recognised by the shape of its model number,
+  so the next one needs no entry.
+
 ## 2.12.3 — 2026-10-17
 
 **The strip's menus show again**

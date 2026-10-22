@@ -1017,7 +1017,7 @@ dependencies = [
 
 [[package]]
 name = "corelens"
-version = "2.12.3"
+version = "2.12.4"
 dependencies = [
  "base64 0.22.1",
  "corelens-catalog",

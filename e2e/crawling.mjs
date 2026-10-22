@@ -253,6 +253,7 @@ check("how many at once, when to give up and how often to retry go with the run"
   started?.input?.concurrency === 8 && started?.input?.perHostTimeoutSecs === 300 && started?.input?.retries === 2,
   JSON.stringify({ c: started?.input?.concurrency, t: started?.input?.perHostTimeoutSecs, r: started?.input?.retries }));
 check("the whole seed list goes to the crawl", started?.input?.seed === "192.0.2.10, 192.0.2.11, 198.51.100.0/30", started?.input?.seed);
+check("Discover everything is off unless ticked, and the crawl is told so", started?.input?.followAnywhere === false, JSON.stringify(started?.input?.followAnywhere));
 check("and sends what was chosen with the run", JSON.stringify(started?.input?.details) ===
   // The two ticks added now travel too.
   JSON.stringify({ routes: false, spanningTree: true, vlans: true, vrfs: false, overlay: false }) && started?.input?.reverseDns === true, JSON.stringify(started?.input?.details));
@@ -406,9 +407,13 @@ await panel.locator("label", { hasText: "Seed devices" }).locator("input").first
 // The REST side, as the Collect tab has it.
 // The form's own API login (the engine's view under Advanced has one too).
 await panel.locator('.cv-step[data-step="logins"]').getByLabel("API login").selectOption("cred-api");
+// Discover everything, ticked for this run: the collector is told to follow
+// neighbours beyond the subnets.
+await panel.locator('[data-region="follow-anywhere"] input').check();
 await panel.locator("button", { hasText: /^Discover$/ }).click();
 await page.waitForTimeout(400);
 const collected = await lastCall("start_collection");
+check("Discover everything, ticked, travels with the collector's follow limits", collected?.input?.follow?.followAnywhere === true, JSON.stringify(collected?.input?.follow));
 check("the API login chosen on the panel travels with the run", collected?.input?.apiCredentialId === "cred-api", JSON.stringify(collected?.input));
 check("the collector starts from the seed and follows neighbours within the panel's limits",
   collected?.input?.targets === "192.0.2.10" && collected?.input?.follow?.maxHops >= 1 && collected?.input?.follow?.maxDevices === 500 && !collected?.input?.planOnly,

@@ -220,6 +220,8 @@ const ALLOWED = new Set([
   "scanSnmpRows",
   // Which subnets have their scan box ticked.
   "scanSweep",
+  // Whether Discover everything is ticked.
+  "scanFollowAnywhere",
 ]);
 const rejected = writes.map((w) => w.key).filter((k) => !ALLOWED.has(k));
 check("every key written is one the backend actually stores",

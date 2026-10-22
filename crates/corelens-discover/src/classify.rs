@@ -18,6 +18,15 @@
 
 use crate::types::DeviceClass;
 
+/// `C9` then a digit 2–6 then two more digits, as a word: the Catalyst
+/// 9200–9600 model numbers, whatever follows.
+fn catalyst_9000_model(s: &str) -> bool {
+    s.split(|c: char| !c.is_ascii_alphanumeric()).any(|w| {
+        let b = w.as_bytes();
+        b.len() >= 5 && b[0] == b'C' && b[1] == b'9' && (b'2'..=b'6').contains(&b[2]) && b[3].is_ascii_digit() && b[4].is_ascii_digit()
+    })
+}
+
 /// Classifies a device from whatever the neighbour protocol advertised.
 ///
 /// `capabilities` are the raw words: CDP's "Router Switch IGMP", or LLDP's
@@ -135,6 +144,13 @@ fn from_platform(s: &str) -> Option<DeviceClass> {
         "HPE ANW",
     ];
     if SWITCH.iter().any(|p| s.contains(p)) {
+        return Some(DeviceClass::Switch);
+    }
+    // A Catalyst 9000 by the shape of its model number — `C9410R`,
+    // `C9404R`, `C9407R` — which the family names above do not contain. A
+    // real estate's thirty-eight 9400 chassis were Unknown for it. After
+    // the controller (C9800) and access point (C91xx) rules.
+    if catalyst_9000_model(s) {
         return Some(DeviceClass::Switch);
     }
     // Dell, campus and data centre. Written as whole model prefixes
@@ -470,6 +486,17 @@ mod tests {
     /// The Catalyst 9600 — a core switch (`C9606R`, `C9600X-*`,
     /// `C9600-LC-*`) — was Unknown, so a core drew as a generic box and a
     /// neighbour of the same model was not followed.
+    #[test]
+    fn a_catalyst_9400_chassis_is_a_switch() {
+        for model in ["C9410R", "C9404R", "C9407R", "cisco C9410R (X86) processor", "C9300X-48HX", "C9200L-24P-4G"] {
+            assert_eq!(classify(Some(model), &[], None), DeviceClass::Switch, "{model}");
+        }
+        // The controller and the access points share the prefix and keep
+        // their own kinds.
+        assert_eq!(classify(Some("C9800-40-K9"), &[], None), DeviceClass::WirelessController);
+        assert_eq!(classify(Some("C9120AXI-B"), &[], None), DeviceClass::AccessPoint);
+    }
+
     #[test]
     fn a_catalyst_9600_is_a_switch() {
         for model in ["C9606R", "C9600X-LC-32CD", "C9600-LC-48YL", "cisco C9606R (X86) processor"] {

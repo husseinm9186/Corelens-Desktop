@@ -22,7 +22,8 @@
   "follow": {
     "maxHops": 3,
     "maxDevices": 50,
-    "subnetLimit": "192.0.2.0/24"
+    "subnetLimit": "192.0.2.0/24",
+    "followAnywhere": true
   },
   "fallbackCredentialIds": [
     "cred-ssh-2",

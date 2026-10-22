@@ -461,7 +461,7 @@ export type CollectionInput = {
   /** A saved SNMP login, used only where SSH could not open a session. */
   snmpCredentialId?: string;
   /** Follow CDP/LLDP neighbours from the targets, as Discover devices does. */
-  follow?: { maxHops: number; maxDevices: number; subnetLimit?: string };
+  follow?: { maxHops: number; maxDevices: number; subnetLimit?: string; followAnywhere?: boolean };
   /** The project's other saved SSH logins, by id, tried in turn on a
    *  device whose first login is refused, before the typed second login. */
   fallbackCredentialIds?: string[];
@@ -576,6 +576,10 @@ export type CrawlInput = {
   seed: string;
   subnets: string[];
   crawlClasses: DeviceClassName[];
+  /** "Discover everything": follow a neighbour of a ticked kind wherever its
+   *  private address is; `subnets` then only add public ranges. Off, the
+   *  subnets are a boundary. */
+  followAnywhere?: boolean;
   maxHops: number;
   maxDevices: number;
   secondFactor: boolean;
@@ -1016,6 +1020,8 @@ export type StoredSettings = Partial<{
   scanSubnets: string;
   /** The subnets whose scan box is ticked, comma-separated. */
   scanSweep: string;
+  /** "true" when Discover everything is ticked. */
+  scanFollowAnywhere: string;
   scanPort: string;
   scanMaxHops: string;
   scanCredentialId: string;

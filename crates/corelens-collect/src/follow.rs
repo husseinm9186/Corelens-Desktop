@@ -23,6 +23,10 @@ pub struct Limits {
     /// Only neighbours inside one of these networks are followed (seeds
     /// always are); none means no limit.
     pub subnets: Vec<(IpAddr, u8)>,
+    /// "Discover everything": a private neighbour is followed wherever it
+    /// is, and `subnets` then only add public ranges. Off, they are a
+    /// boundary.
+    pub follow_anywhere: bool,
     /// The kinds of device logged into, as the classic crawler's
     /// "Log in to" chips say; empty means the infrastructure kinds. A
     /// neighbour whose platform and capabilities classify as another kind
@@ -145,10 +149,11 @@ impl Frontier {
             let named = self.limits.subnets.iter().any(|net| inside(ip, *net));
             if hop + 1 > self.limits.max_hops {
                 self.not_followed.push((n.clone(), format!("more than {} hop(s) from a seed", self.limits.max_hops)));
-            } else if !self.limits.subnets.is_empty() && !named && !is_private(ip) {
-                // The subnet limit holds back a public address it did
-                // not name; the estate's own private addresses are gated by
-                // the "Log in to" kinds alone, wherever they sit.
+            } else if !self.limits.subnets.is_empty() && !named && !(self.limits.follow_anywhere && is_private(ip)) {
+                // The subnets are a boundary: a neighbour outside them is
+                // listed, never visited. With "Discover everything" on, a
+                // private address is followed wherever it is and the list
+                // only names public ranges the collection may enter.
                 let nets: Vec<String> = self.limits.subnets.iter().map(|(a, l)| format!("{a}/{l}")).collect();
                 self.not_followed.push((n.clone(), format!("outside {}", nets.join(", "))));
             } else if !is_private(ip) && !named {
@@ -301,7 +306,7 @@ mod tests {
     use super::*;
 
     fn limits(hops: u32, devices: usize, subnet: Option<&str>) -> Limits {
-        Limits { max_hops: hops, max_devices: devices, subnets: subnet.map(|s| parse_subnet(s).unwrap()).into_iter().collect(), login_classes: Vec::new() }
+        Limits { max_hops: hops, max_devices: devices, subnets: subnet.map(|s| parse_subnet(s).unwrap()).into_iter().collect(), login_classes: Vec::new(), follow_anywhere: false }
     }
 
     /// A neighbour of a kind not ticked is listed, not followed.
@@ -450,11 +455,35 @@ mod tests {
         assert_eq!(f.next_device(), Some(("198.51.100.1".into(), 1)), "named by the operator, so followed");
     }
 
-    /// A subnet limit no longer holds back the estate's own private
-    /// addresses; it still holds back a public one it did not name.
+    /// The subnets are a boundary: a neighbour outside them, private or
+    /// not, is listed and never visited. On a real estate one /24 was
+    /// listed and the run walked three hops out of it, because a private
+    /// address was let through and every address there is private.
     #[test]
-    fn a_private_neighbour_outside_the_named_subnets_is_still_followed() {
+    fn a_private_neighbour_outside_the_named_subnets_is_not_followed() {
         let mut f = Frontier::new(&["10.1.1.1".into()], limits(3, 10, Some("10.1.1.0/24")));
+        f.next_device();
+        f.learn(0, &["10.1.1.1".into()], &["10.1.1.7".into(), "10.200.0.2".into(), "172.20.0.1".into(), "198.51.100.9".into()]);
+        assert_eq!(f.next_device(), Some(("10.1.1.7".into(), 1)), "inside the subnet, followed");
+        assert_eq!(f.next_device(), None);
+        assert_eq!(
+            f.not_followed,
+            vec![
+                ("10.200.0.2".into(), "outside 10.1.1.0/24".into()),
+                ("172.20.0.1".into(), "outside 10.1.1.0/24".into()),
+                ("198.51.100.9".into(), "outside 10.1.1.0/24".into()),
+            ]
+        );
+    }
+
+    /// "Discover everything": a private neighbour is followed wherever
+    /// it is; the subnets then only name public ranges, so a public address
+    /// they do not name is still held back.
+    #[test]
+    fn a_private_neighbour_beyond_the_subnets_is_followed_when_asked() {
+        let mut l = limits(3, 10, Some("10.1.1.0/24"));
+        l.follow_anywhere = true;
+        let mut f = Frontier::new(&["10.1.1.1".into()], l);
         f.next_device();
         f.learn(0, &["10.1.1.1".into()], &["10.200.0.2".into(), "172.20.0.1".into(), "198.51.100.9".into()]);
         assert_eq!(f.next_device(), Some(("10.200.0.2".into(), 1)));

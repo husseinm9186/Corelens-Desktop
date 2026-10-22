@@ -38,6 +38,8 @@ export interface CrawlProfile {
   secondFactor: boolean;
   /** Reach each device by hopping through the one that found it. */
   hopThrough: boolean;
+  /** Discover everything: follow neighbours beyond the listed subnets. */
+  followAnywhere: boolean;
 }
 
 const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback);
@@ -77,6 +79,7 @@ export function readProfile(raw: unknown): CrawlProfile | null {
     retries: num(r.retries, 1, 0, 3),
     secondFactor: bool(r.secondFactor, false),
     hopThrough: bool(r.hopThrough, false),
+    followAnywhere: bool(r.followAnywhere, false),
   };
 }
 

@@ -698,7 +698,15 @@ the plan preview, the command log, the shadow report and the topology it
 built, with **Review and draw** — which used to be a tab called Collect.
 **Discover** comes after the steps. Ping sweep is Discover's other tab.
 
-With either engine the **Log in to** chips decide what is logged into —
+**Stay inside these subnets** is a boundary: a neighbour with no address
+inside the subnets you list is drawn from what its neighbour said and never
+logged in to, so its own neighbours are never seen and a survey of one site
+stays on that site. A seed you typed is always dialled. Tick **Discover
+everything** to map an estate instead: every neighbour of a kind ticked
+under Log in to is then followed wherever its private address is, and the
+subnets you list only add public ranges the crawl may enter. With no
+subnets listed the crawl has no boundary either way, and the dry run says
+so. With either engine the **Log in to** chips decide what is logged into —
 a neighbour of a kind not ticked is drawn from what its neighbour said
 and never connected to — **Reach devices over** can fall back to telnet
 when SSH does not answer (never after a rejected password), and where a

@@ -6,6 +6,7 @@
   "crawlClasses": [
     "switch"
   ],
+  "followAnywhere": true,
   "maxHops": 3,
   "maxDevices": 200,
   "secondFactor": false,

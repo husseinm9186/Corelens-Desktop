@@ -92,6 +92,7 @@ async fn main() {
                 max_devices: if arg("--follow").is_some() { 50 } else { hosts.len() },
                 subnets: arg("--subnet").map(|s| corelens_collect::follow::parse_subnet(&s).expect("--subnet")).into_iter().collect(),
                 login_classes: Vec::new(),
+                follow_anywhere: false,
             };
             collected(&hosts, &user, &out, &catalogs, &templates, limits, arg("--follow").is_some(), arg("--api-user")).await
         }

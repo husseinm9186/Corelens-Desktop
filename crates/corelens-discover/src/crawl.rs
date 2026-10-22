@@ -726,7 +726,7 @@ pub async fn crawl_from(
     let began = std::time::Instant::now();
     crate::say!(
         crate::debuglog::Area::Crawl,
-        "started from {} — at most {} hop(s) and {} device(s), {} at once, {}s per device; subnet limit: {}",
+        "started from {} — at most {} hop(s) and {} device(s), {} at once, {}s per device; subnet limit: {}{}",
         seeds.join(", "),
         options.max_hops,
         options.max_devices,
@@ -737,6 +737,7 @@ pub async fn crawl_from(
         } else {
             options.filter.subnets.iter().map(|c| format!("{}/{}", c.network(), c.prefix())).collect::<Vec<_>>().join(", ")
         },
+        if options.filter.follow_anywhere && !options.filter.subnets.is_empty() { ", neighbours followed beyond it" } else { "" },
     );
 
     let mut result = CrawlResult::default();

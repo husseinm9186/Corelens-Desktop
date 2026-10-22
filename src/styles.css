@@ -2223,6 +2223,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 .cv-glyph-label, .cv-node-label { cursor: text; }
 
 /* Choosing what the crawl may log in to, before it runs. */
+.cv-follow-anywhere { margin-top: 0.46153846rem; }
 .cv-login-classes { display: flex; flex-direction: column; gap: 0.46153846rem; margin: 0.61538462rem 0 0.30769231rem; }
 .cv-class-chips { display: flex; flex-wrap: wrap; gap: 0.46153846rem; }
 .cv-chip {

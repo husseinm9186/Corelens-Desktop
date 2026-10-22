@@ -88,6 +88,10 @@ pub struct FollowInput {
     /// `192.0.2.0/24`, several separated by commas: only neighbours inside
     /// one of them are followed.
     pub subnet_limit: Option<String>,
+    /// "Discover everything": a private neighbour is followed wherever it
+    /// is, and `subnet_limit` then only adds public ranges.
+    #[serde(default)]
+    pub follow_anywhere: bool,
 }
 
 /// One event on `corelens://collection`. 5: `rename_all` names the
@@ -588,10 +592,11 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
             max_hops: f.max_hops.min(16),
             max_devices: f.max_devices.clamp(1, 500),
             subnets: f.subnet_limit.as_deref().unwrap_or("").split([',', ';', ' ', '\n']).map(str::trim).filter(|s| !s.is_empty()).map(corelens_collect::follow::parse_subnet).collect::<Result<Vec<_>, _>>()?,
+            follow_anywhere: f.follow_anywhere,
         },
         // A scan adds devices of its own, so it lifts the "targets
         // alone" count to the panel's device limit.
-        None => corelens_collect::follow::Limits { max_hops: 0, max_devices: if scan_subnets.is_empty() { targets.len() } else { 500 }, subnets: Vec::new(), login_classes: Vec::new() },
+        None => corelens_collect::follow::Limits { max_hops: 0, max_devices: if scan_subnets.is_empty() { targets.len() } else { 500 }, subnets: Vec::new(), login_classes: Vec::new(), follow_anywhere: false },
     };
     let port = input.port;
     let os_hint = input.os_hint.clone().filter(|s| !s.trim().is_empty());

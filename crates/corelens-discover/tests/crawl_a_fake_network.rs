@@ -1307,10 +1307,11 @@ async fn a_cumulus_5_switch_is_identified_and_read_through_nvue() {
     let (tx, _rx) = mpsc::channel(256);
     let mut o = options(port);
     o.details = corelens_discover::crawl::DetailOptions { routes: true, spanning_tree: true, vlans: true, vrfs: true, overlay: true };
+    // Discover everything: its private neighbour and its gateway are
+    // followed beyond the subnet named; nothing answers there in this test,
+    // so they fail and are the only failures.
+    o.filter.follow_anywhere = true;
     let result = crawl("127.0.0.2", creds(), o, store, tx, CancellationToken::new()).await;
-    // Its private neighbour and its gateway are followed even with no
-    // subnet named; nothing answers there in this test, so they fail and are
-    // the only failures.
     let mut failed: Vec<&str> = result.failures.iter().map(|f| f.address.as_str()).collect();
     failed.sort();
     assert_eq!(failed, ["10.66.250.1", "10.77.0.7"], "{:?}", result.failures);
@@ -1366,9 +1367,11 @@ async fn an_aruba_cx_6200_is_logged_into_past_its_banner_and_read_the_collectors
     let (tx, _rx) = mpsc::channel(256);
     let mut o = options(port);
     o.details = corelens_discover::crawl::DetailOptions { routes: true, vlans: true, vrfs: true, ..Default::default() };
+    // Discover everything: its private neighbours are followed beyond the
+    // subnet named; nothing answers there in this test, so they are the
+    // only failures.
+    o.filter.follow_anywhere = true;
     let result = crawl("127.0.0.2", creds(), o, store, tx, CancellationToken::new()).await;
-    // Its private neighbours are followed; nothing answers there in
-    // this test, so they are the only failures.
     let mut failed: Vec<&str> = result.failures.iter().map(|f| f.address.as_str()).collect();
     failed.sort();
     assert_eq!(failed, ["10.252.15.17", "10.252.15.18", "172.25.0.189"], "{:?}", result.failures);

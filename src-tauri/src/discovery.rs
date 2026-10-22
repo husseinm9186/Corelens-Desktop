@@ -70,6 +70,11 @@ pub struct CrawlInput {
     pub subnets: Vec<String>,
     /// Device classes worth logging into. Empty falls back to infrastructure.
     pub crawl_classes: Vec<String>,
+    /// "Discover everything": follow a neighbour of a ticked kind wherever
+    /// its private address is; `subnets` then only add public ranges.
+    /// Absent or false, the subnets are a boundary.
+    #[serde(default)]
+    pub follow_anywhere: bool,
     pub max_hops: usize,
     pub max_devices: usize,
     pub second_factor: bool,
@@ -403,6 +408,7 @@ pub async fn start_crawl(
         filter: DiscoveryFilter {
             subnets,
             crawl_classes: parse_classes(&input.crawl_classes),
+            follow_anywhere: input.follow_anywhere,
             ..Default::default()
         },
         max_hops: input.max_hops.clamp(0, 32),

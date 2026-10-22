@@ -6,7 +6,7 @@ const profile = (over: Partial<CrawlProfile> = {}): CrawlProfile => ({
   id: 'p1', name: 'Branch sites', seed: '192.0.2.1, 198.51.100.0/28', subnets: ['192.0.2.0/24'], maxHops: 3,
   preference: 'management', port: 22, transport: 'ssh', credentialId: 'cred-core', snmp: null,
   details: { routes: false, spanningTree: true, vlans: true, vrfs: false, overlay: false }, reverseDns: true, concurrency: 8,
-  perHostTimeoutSecs: 120, retries: 2, secondFactor: false, hopThrough: false, ...over,
+  perHostTimeoutSecs: 120, retries: 2, secondFactor: false, hopThrough: false, followAnywhere: false, ...over,
 });
 
 describe('crawl profiles', () => {

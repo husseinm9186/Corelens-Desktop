@@ -29,7 +29,7 @@ const payloads: Record<string, unknown> = {
   } as EventRow),
   credential_input: credentialInput({ username: 'reader', password: 'not-a-real-password', enablePassword: 'not-a-real-enable', ...extra }),
   crawl_input: crawlInput({
-    seed: '192.0.2.1', subnets: ['192.0.2.0/24'], crawlClasses: ['switch'], maxHops: 3, maxDevices: 200, secondFactor: false,
+    seed: '192.0.2.1', subnets: ['192.0.2.0/24'], crawlClasses: ['switch'], followAnywhere: true, maxHops: 3, maxDevices: 200, secondFactor: false,
     addressPreference: 'management', interfaceName: 'Vlan1', port: 22, transport: 'ssh', vdom: 'root',
     snmp: [{ version: 'v3', community: 'not-a-real-community', username: 'reader', authProtocol: 'sha', authPassword: 'not-a-real-auth', privacy: 'aes 256', privacyPassword: 'not-a-real-priv', ...extra }],
     credentialId: 'cred-ssh', snmpCredentialIds: ['cred-snmp'], details: { routes: true, spanningTree: false, vlans: true, vrfs: true, overlay: true, ...extra },
@@ -50,7 +50,7 @@ const payloads: Record<string, unknown> = {
     runId: 'col-1', credentialId: 'cred-ssh', port: 22, path: 0, ...extra,
     request: { from: '192.0.2.50', to: '203.0.113.50', vrf: 'default', protocol: 'tcp', port: 443, sourcePort: 50000, downDevices: [], downLinks: [{ device: 'ACC1', interface: 'Gi1/0/50', ...extra }], traceroute: null, noReverse: true, ...extra },
   }),
-  collection_input: collectionInput({ projectId: 'project-1', targets: '192.0.2.10\n192.0.2.11', port: 22, osHint: 'cisco_ios', roleOverride: 'switch', planOnly: false, lightOnly: true, credentialId: 'cred-ssh', keepDiagnostic: true, askAgain: false, loginClasses: ['router', 'switch'], transport: 'sshThenTelnet', connectTimeoutSecs: 8, authTimeoutSecs: 20, apiCredentialId: 'cred-api', fmcHost: '192.0.2.5', snmpCredentialId: 'cred-snmp', follow: { maxHops: 3, maxDevices: 50, subnetLimit: '192.0.2.0/24', ...extra }, fallbackCredentialIds: ['cred-ssh-2', 'cred-ssh-3'], scanSubnets: ['192.0.2.0/24'], ...extra }),
+  collection_input: collectionInput({ projectId: 'project-1', targets: '192.0.2.10\n192.0.2.11', port: 22, osHint: 'cisco_ios', roleOverride: 'switch', planOnly: false, lightOnly: true, credentialId: 'cred-ssh', keepDiagnostic: true, askAgain: false, loginClasses: ['router', 'switch'], transport: 'sshThenTelnet', connectTimeoutSecs: 8, authTimeoutSecs: 20, apiCredentialId: 'cred-api', fmcHost: '192.0.2.5', snmpCredentialId: 'cred-snmp', follow: { maxHops: 3, maxDevices: 50, subnetLimit: '192.0.2.0/24', followAnywhere: true, ...extra }, fallbackCredentialIds: ['cred-ssh-2', 'cred-ssh-3'], scanSubnets: ['192.0.2.0/24'], ...extra }),
   save_credential: saveCredential({ id: 'cred-ssh', label: 'Read-only', kind: 'ssh', username: 'reader', secret: 'not-a-real-password', secondSecret: 'not-a-real-enable', detail: '', ...extra }),
   check: backupCheck({ id: 'check-1', name: 'NTP synchronised', command: 'show ntp status', expect: 'contains', pattern: 'synchronized', ignoreCase: true, block: 'line vty', severity: 'critical', roles: ['router'], ...extra }),
   visio_drawing: visioDrawing({

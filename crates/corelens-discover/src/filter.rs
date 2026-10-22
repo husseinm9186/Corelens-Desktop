@@ -45,6 +45,11 @@ pub struct DiscoveryFilter {
     /// default rather than "everything" — connecting to every discovered
     /// endpoint is never what someone meant.
     pub crawl_classes: Vec<DeviceClass>,
+    /// "Discover everything": follow a neighbour of a permitted class
+    /// wherever its private address is, the listed `subnets` then adding
+    /// only public ranges the crawl may enter. Off, the subnets are a
+    /// boundary — nothing outside them is dialled.
+    pub follow_anywhere: bool,
 }
 
 impl DiscoveryFilter {
@@ -131,17 +136,17 @@ impl DiscoveryFilter {
         if n.addresses.is_empty() {
             return Some("it advertised no address to dial".into());
         }
-        // The "Log in to" chips are the only gate for the estate's own
-        // kit. A neighbour whose kind is ticked and whose address is private
-        // is followed wherever it is — the subnet limit does not hold back a
-        // switch, router or firewall just because it sits on a range the
-        // operator did not list. The limit still stops the crawl following a
-        // *public* address it did not name (a WAN link out of the estate,
-        // which is what it was added for).
+        // The subnet list is a boundary: a neighbour with no address inside
+        // it is drawn from what its neighbour said and never dialled, so a
+        // survey of one site stays on that site. With "Discover everything"
+        // on, the "Log in to" kinds are the only gate for the estate's own
+        // kit — a ticked kind on a private address is followed wherever it
+        // sits, and the list then only names public ranges the crawl may
+        // enter (a WAN link out of the estate is still not followed unasked).
         if self.subnets.is_empty() || self.has_address_in(n, &self.subnets) {
             return None;
         }
-        if n.addresses.iter().any(|a| is_private_ip(&a.ip)) {
+        if self.follow_anywhere && n.addresses.iter().any(|a| is_private_ip(&a.ip)) {
             return None;
         }
         Some("its address is outside the subnet limit".into())
@@ -161,10 +166,9 @@ impl DiscoveryFilter {
         if !self.exclude_subnets.is_empty() && within_any(ip, &self.exclude_subnets) {
             return false;
         }
-        // A private gateway is followed wherever it is, as a private
-        // neighbour of a ticked kind is; only a public address it did not name
-        // is held back by the subnet limit.
-        self.subnets.is_empty() || within_any(ip, &self.subnets) || is_private_ip(ip)
+        // The same boundary a neighbour meets: inside the list, or — with
+        // "Discover everything" on — a private address wherever it is.
+        self.subnets.is_empty() || within_any(ip, &self.subnets) || (self.follow_anywhere && is_private_ip(ip))
     }
 
     fn has_address_in(&self, n: &Neighbor, subnets: &[Cidr]) -> bool {
@@ -339,12 +343,12 @@ mod tests {
         assert!(!f.should_crawl(&all[3]), "a phone should not");
     }
 
+    /// The subnet list is a boundary. On a real estate one /24 was listed
+    /// and the crawl logged into sixty-four devices outside it, three hops
+    /// out, because a private address was let through: every address on a
+    /// customer network is private, so the limit held nothing back.
     #[test]
     fn a_subnet_limit_stops_the_crawl_leaving_the_estate() {
-        // The limit's job is to stop the crawl following a WAN link
-        // out to a *public* address it did not name. A private address
-        // outside the listed subnets is still the estate's own and is
-        // followed — the login chips are the only gate for the estate.
         let f = DiscoveryFilter {
             subnets: vec![parse_cidr("10.0.0.0/8").unwrap()],
             ..Default::default()
@@ -352,34 +356,44 @@ mod tests {
         let all = estate();
         assert!(f.should_crawl(&all[0]));
         // all[4] is a switch on 192.168.50.1 — private, outside 10/8 — and is
-        // now followed, where the limit held it back.
-        assert!(f.should_crawl(&all[4]), "a private switch outside the listed subnet is still the estate's own");
-        // A public address outside the limit is still not followed.
+        // listed, drawn, and not dialled.
+        assert_eq!(f.why_not_crawled(&all[4]).as_deref(), Some("its address is outside the subnet limit"), "a private switch outside the listed subnet stays outside");
+        // A public address outside the limit is not followed either.
         let out = device("ISP-RTR", "203.0.113.9", DeviceClass::Router);
         assert!(!f.should_crawl(&out), "a public address the limit did not name is a WAN link out");
+        // The default gateway meets the same boundary.
+        assert!(f.allows_address("10.200.0.1"));
+        assert!(!f.allows_address("192.168.50.254"), "a private gateway outside the list is not dialled");
+        assert!(!f.allows_address("203.0.113.1"));
     }
 
-    /// The "Log in to" chips are the only gate for the estate's own
-    /// kit. A ticked kind on a private address is followed wherever it sits;
-    /// a public one still needs the subnet to name it; an exclusion and an
-    /// un-ticked kind still win.
+    /// "Discover everything": the "Log in to" chips become the only
+    /// gate for the estate's own kit. A ticked kind on a private address is
+    /// followed wherever it sits; a public one still needs the subnet to
+    /// name it; an exclusion and an un-ticked kind still win.
     #[test]
-    fn a_selected_kind_on_a_private_address_is_followed_regardless_of_the_subnet_limit() {
+    fn a_selected_kind_on_a_private_address_is_followed_when_asked() {
         let f = DiscoveryFilter {
             subnets: vec![parse_cidr("10.1.1.0/24").unwrap()],
             crawl_classes: vec![DeviceClass::Switch, DeviceClass::Router, DeviceClass::Firewall, DeviceClass::WirelessController],
+            follow_anywhere: true,
             ..Default::default()
         };
         // A core switch on a management range the operator did not list.
         assert!(f.should_crawl(&device("CORE", "10.200.0.2", DeviceClass::Switch)));
         assert!(f.should_crawl(&device("FW", "172.20.0.1", DeviceClass::Firewall)));
+        assert!(f.allows_address("192.168.50.254"), "and a private gateway wherever it is");
         // A public address it did not name is still held back.
         assert_eq!(f.why_not_crawled(&device("ISP", "198.51.100.5", DeviceClass::Router)).as_deref(), Some("its address is outside the subnet limit"));
+        assert!(!f.allows_address("203.0.113.1"));
         // An un-ticked kind is still only drawn, wherever it is.
         assert!(f.why_not_crawled(&device("CAM", "10.9.9.9", DeviceClass::Camera)).is_some());
         // An excluded private address still wins.
-        let with_hole = DiscoveryFilter { exclude_subnets: vec![parse_cidr("10.200.0.0/24").unwrap()], ..f };
+        let with_hole = DiscoveryFilter { exclude_subnets: vec![parse_cidr("10.200.0.0/24").unwrap()], ..f.clone() };
         assert!(!with_hole.should_crawl(&device("CORE", "10.200.0.2", DeviceClass::Switch)));
+        // Off, the same filter holds the same switch back.
+        let bounded = DiscoveryFilter { follow_anywhere: false, ..f };
+        assert_eq!(bounded.why_not_crawled(&device("CORE", "10.200.0.2", DeviceClass::Switch)).as_deref(), Some("its address is outside the subnet limit"));
     }
 
     #[test]
@@ -434,7 +448,10 @@ mod tests {
         assert!(estate.allows_address("198.51.100.10"), "the second");
         assert!(estate.allows_address("203.0.113.10"), "the third");
         assert!(!estate.allows_address("8.8.8.8"), "a public address in none of them");
-        assert!(estate.allows_address("10.0.0.1"), "a private address is followed even when unlisted");
+        assert!(!estate.allows_address("10.0.0.1"), "a private address outside every one of them is not");
+        let everything = DiscoveryFilter { follow_anywhere: true, ..estate.clone() };
+        assert!(everything.allows_address("10.0.0.1"), "unless Discover everything is on");
+        assert!(!everything.allows_address("8.8.8.8"), "which still holds a public address back");
         // And an exclusion still wins over every one of them.
         let with_hole = DiscoveryFilter {
             exclude_subnets: vec![parse_cidr("198.51.100.0/25").unwrap()],

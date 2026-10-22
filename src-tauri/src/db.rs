@@ -1394,7 +1394,7 @@ pub fn all_settings(conn: &Connection) -> rusqlite::Result<std::collections::Has
 ///
 /// Everything a backup run is shaped by: where it writes, what it names the
 /// files, which commands it sends, which checks it applies.
-pub const PROJECT_KEYS: [&str; 21] = [
+pub const PROJECT_KEYS: [&str; 22] = [
     // Shadow mode — both parsers on every collection in this project.
     "collectorShadow",
     // Where this customer's work is written.
@@ -1417,6 +1417,9 @@ pub const PROJECT_KEYS: [&str; 21] = [
     "scanSubnets",
     // Which of them have their scan box ticked; per project too.
     "scanSweep",
+    // And whether Discover everything is ticked; the shape of one
+    // estate's run.
+    "scanFollowAnywhere",
     "scanPort",
     "scanMaxHops",
     "scanCredentialId",

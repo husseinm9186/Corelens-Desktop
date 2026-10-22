@@ -112,6 +112,13 @@ check("which the store remembers as open", (await st(() => window.__cvStore.getS
     await page.waitForTimeout(100);
     check(`${which}: a "Log in to" chip toggles when pressed`, (await chip("Servers").getAttribute("aria-pressed")) !== before && !(await chip("Servers").isDisabled()), `${before} → ${await chip("Servers").getAttribute("aria-pressed")}`);
     await chip("Servers").click();
+    const everything = step("seeds").locator('[data-region="follow-anywhere"] input');
+    const note = () => step("seeds").locator('[data-region="follow-anywhere-note"]').textContent();
+    check(`${which}: Discover everything sits under the subnets, off by default`, (await everything.count()) === 1 && !(await everything.isChecked()) && !(await everything.isDisabled()) && /no boundary|outside/.test(await note()), await note());
+    await everything.check();
+    await page.waitForTimeout(100);
+    check(`${which}: ticked, the note says neighbours are followed wherever they are`, (await everything.isChecked()) && /wherever they are/.test(await note()), await note());
+    await everything.uncheck();
     await step("logins").locator("select.cv-input", { has: page.locator('option[value="sshThenTelnet"]') }).selectOption("sshThenTelnet");
     await page.waitForTimeout(100);
     check(`${which}: Reach devices over takes a choice, and the telnet warning follows`, (await step("logins").locator("select.cv-input", { has: page.locator('option[value="sshThenTelnet"]') }).inputValue()) === "sshThenTelnet" && (await step("logins").locator(".cv-transport-warning").count()) === 1);

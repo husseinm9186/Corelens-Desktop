@@ -461,6 +461,8 @@ export const en = {
   'discover.engine': 'Engine',
   'discover.engineCollector': 'Corelens collector',
   'discover.engineClassic': 'Classic crawler',
+  'discover.followAnywhere': 'Discover everything',
+  'discover.followAnywhereHelp': 'Ticked, the crawl follows every neighbour of a kind ticked under Log in to, wherever its address is; the subnets above then only name public ranges it may enter. Unticked, nothing outside those subnets is logged in to: a neighbour outside is drawn from what its neighbour said and left alone, so its own neighbours are never seen. With no subnets listed the crawl has no boundary either way.',
   'discover.engineHelp': "The collector reads each device with its own OS's commands and follows CDP/LLDP neighbours, the default route and the ARP table; the classic crawler is the older one, kept while the new one meets the rest of your estate.",
   'discover.collecting': 'Collecting {host}…',
   'discover.collectingStep': 'Collecting {host} — last answered: {cmd}',

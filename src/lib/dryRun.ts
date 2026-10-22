@@ -86,7 +86,7 @@ export function credentialOrder(
 }
 
 export function dryRun(
-  input: Pick<CrawlInput, 'seed' | 'subnets' | 'maxHops' | 'maxDevices' | 'port' | 'details' | 'reverseDns' | 'concurrency' | 'perHostTimeoutSecs' | 'retries' | 'secondFactor'> & {
+  input: Pick<CrawlInput, 'seed' | 'subnets' | 'followAnywhere' | 'maxHops' | 'maxDevices' | 'port' | 'details' | 'reverseDns' | 'concurrency' | 'perHostTimeoutSecs' | 'retries' | 'secondFactor'> & {
     bindings?: BindingInput[];
     snmpCount?: number;
     transport?: CrawlInput['transport'];
@@ -128,7 +128,11 @@ export function dryRun(
 
   const limits = [
     `Up to ${input.maxHops} hop${input.maxHops === 1 ? '' : 's'} from a seed and ${input.maxDevices} devices`,
-    input.subnets.length ? `Only inside ${input.subnets.join(', ')}` : 'No subnet limit — a crawl can follow a link out of the estate',
+    input.subnets.length
+      ? input.followAnywhere
+        ? `Inside ${input.subnets.join(', ')}, and any neighbour of a ticked kind on a private address beyond them — Discover everything is on`
+        : `Only inside ${input.subnets.join(', ')} — a neighbour outside is drawn from what its neighbour said and never logged in to`
+      : 'No subnet limit — a crawl can follow a link out of the estate',
     `${input.concurrency ?? 4} at once${input.secondFactor ? ', logging in one at a time for the push factor' : ''}`,
     `Give up on a device after ${Math.round((input.perHostTimeoutSecs ?? 300) / 60)} min; retry one that does not answer ${input.retries ?? 1} time${(input.retries ?? 1) === 1 ? '' : 's'}`,
     `${input.transport === 'telnet' ? 'Telnet' : input.transport === 'sshThenTelnet' ? 'SSH, then telnet' : 'SSH'} on port ${input.port}`,

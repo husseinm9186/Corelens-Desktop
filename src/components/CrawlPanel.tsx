@@ -217,6 +217,8 @@ export function CrawlPanel({
   const [subnets, setSubnets] = useState<string[]>([]);
   // The subnets whose scan box is ticked.
   const [sweep, setSweep] = useState<string[]>([]);
+  // Discover everything: follow neighbours beyond the listed subnets.
+  const [followAnywhere, setFollowAnywhere] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [enablePassword, setEnablePassword] = useState('');
@@ -343,6 +345,7 @@ export function CrawlPanel({
         if (st.scanSeed) setSeed(st.scanSeed);
         if (st.scanSubnets) setSubnets(st.scanSubnets.split(',').filter(Boolean));
         if (st.scanSweep) setSweep(st.scanSweep.split(',').filter(Boolean));
+        if (st.scanFollowAnywhere) setFollowAnywhere(st.scanFollowAnywhere === 'true');
         if (st.scanPort) setPort(Number(st.scanPort) || 22);
         if (st.scanMaxHops) setMaxHops(Number(st.scanMaxHops) || 4);
         // What *this project* keeps wins over the machine-wide
@@ -383,13 +386,14 @@ export function CrawlPanel({
       ['scanSeed', seed.trim() || null],
       ['scanSubnets', subnets.length ? subnets.join(',') : null],
       ['scanSweep', scannedOf(subnets, sweep).join(',') || null],
+      ['scanFollowAnywhere', followAnywhere ? 'true' : null],
       ['scanPort', String(port)],
       ['scanMaxHops', String(maxHops)],
       ['scanCredentialId', credentialId],
       ['scanSnmpRows', snmpOpen ? snmpRowsShape(snmpRows) : null],
     ];
     for (const [key, value] of save) void ipc.setSetting(key, value).catch(() => {});
-  }, [restored, seed, subnets, sweep, port, maxHops, credentialId, snmpOpen, snmpRows]);
+  }, [restored, seed, subnets, sweep, followAnywhere, port, maxHops, credentialId, snmpOpen, snmpRows]);
 
   const seenKeys = useRef<Set<string>>(new Set());
 
@@ -555,7 +559,7 @@ export function CrawlPanel({
             transport,
             apiCredentialId: apiCredentialId || undefined,
             snmpCredentialId: snmpSaved || undefined,
-            follow: { maxHops, maxDevices: 500, subnetLimit: subnets.join(', ') || undefined },
+            follow: { maxHops, maxDevices: 500, subnetLimit: subnets.join(', ') || undefined, followAnywhere },
             // The ticked subnets, swept and logged into after the neighbours.
             scanSubnets: scannedOf(subnets, sweep),
             // The project's other saved SSH logins, tried in turn when
@@ -582,6 +586,7 @@ export function CrawlPanel({
           seed: seed.trim(),
           subnets,
           crawlClasses: loginClasses,
+          followAnywhere,
           maxHops,
           maxDevices: 500,
           secondFactor,
@@ -807,7 +812,7 @@ export function CrawlPanel({
   const currentProfile = (name: string): CrawlProfile => ({
     id: uid(), name, seed, subnets, maxHops, preference, port, transport,
     credentialId: credentialId ?? null, snmp: snmpOpen ? snmpRowsShape(snmpRows) : null, details, reverseDns,
-    concurrency, perHostTimeoutSecs: perHost, retries, secondFactor, hopThrough,
+    concurrency, perHostTimeoutSecs: perHost, retries, secondFactor, hopThrough, followAnywhere,
   });
   const applyProfile = (raw: CrawlProfile) => {
     const p = readProfile(raw);
@@ -829,6 +834,7 @@ export function CrawlPanel({
     setRetries(p.retries);
     setSecondFactor(p.secondFactor);
     setHopThrough(p.hopThrough);
+    setFollowAnywhere(p.followAnywhere);
     setPlan(null);
     useStore.getState().setStatusMessage(`Loaded the ${p.name} profile. Passwords are not part of a profile.`);
   };
@@ -916,6 +922,20 @@ export function CrawlPanel({
       </div>
       <SubnetList label="Stay inside these subnets" subnets={subnets} onChange={setSubnets}
         disabled={running} placeholder="10.1.0.0/16" scanned={sweep} onScannedChange={setSweep} />
+      {/* Off, the subnets are a boundary: a neighbour outside them is drawn
+          and never dialled, so a survey of one site stays on that site. On,
+          the chips below are the only gate and the crawl maps the estate. */}
+      <label className="cv-check cv-follow-anywhere" data-region="follow-anywhere" title={t('discover.followAnywhereHelp')}>
+        <input type="checkbox" checked={followAnywhere} disabled={running} onChange={(e) => setFollowAnywhere(e.target.checked)} />
+        {t('discover.followAnywhere')}
+      </label>
+      <span className="cv-help" data-region="follow-anywhere-note">
+        {followAnywhere
+          ? 'Neighbours of the kinds ticked below are followed wherever they are; the subnets above only add public ranges.'
+          : subnets.length
+            ? 'Nothing outside the subnets above is logged in to. A neighbour outside is drawn from what its neighbour said and left alone.'
+            : 'No subnets listed, so the crawl has no boundary. List one to stay on a site, or tick this to say so on purpose.'}
+      </span>
 
       {/* Chosen before the run, because a connection attempt to a phone or a
           camera is what sets off an intrusion alert, and by then it has
@@ -1301,7 +1321,7 @@ export function CrawlPanel({
                 const runLogin = credentialId ? `${label(credentialId)} (chosen above)` : username ? `${username} (typed above)` : 'no login given';
                 const snmp = snmpForRun();
                 setPlan(dryRun({
-                  seed, subnets, maxHops, maxDevices: 500, port, details, reverseDns, concurrency,
+                  seed, subnets, followAnywhere, maxHops, maxDevices: 500, port, details, reverseDns, concurrency,
                   perHostTimeoutSecs: perHost, retries, secondFactor, transport,
                   bindings: bindingsFor(useStore.getState().doc),
                   snmpCount: snmp.typed.length + snmp.savedIds.length,

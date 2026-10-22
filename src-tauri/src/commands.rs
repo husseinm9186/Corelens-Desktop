@@ -942,7 +942,7 @@ pub fn set_setting(
     // This table is plain text in the same database as the projects, and
     // nothing typed into Corelens is ever written where it could leave the
     // machine.
-    const ALLOWED: [&str; 32] = [
+    const ALLOWED: [&str; 33] = [
         // The shadow-mode feature flag, per project.
         "collectorShadow",
         "backupFolder",
@@ -953,6 +953,8 @@ pub fn set_setting(
         "scanSubnets",
         // Which of them have their scan box ticked.
         "scanSweep",
+        // Whether Discover everything is ticked.
+        "scanFollowAnywhere",
         "scanPort",
         "scanMaxHops",
         "scanCredentialId",

@@ -75,7 +75,7 @@ const SNMP_INPUT_KEYS = ['version', 'community', 'username', 'authProtocol', 'au
 export const crawlInput = (input: object) => {
   const i = input as Obj;
   const out = pickAll(i, [
-    'seed', 'subnets', 'crawlClasses', 'maxHops', 'maxDevices', 'secondFactor', 'addressPreference', 'interfaceName', 'port',
+    'seed', 'subnets', 'crawlClasses', 'followAnywhere', 'maxHops', 'maxDevices', 'secondFactor', 'addressPreference', 'interfaceName', 'port',
     'transport', 'vdom', 'snmp', 'credentialId', 'snmpCredentialIds', 'details', 'bindings', 'reverseDns', 'concurrency',
     'perHostTimeoutSecs', 'retries', 'debugLog', 'supportCapture', 'fallbackCredentialIds', 'projectId', 'reach', 'scanSubnets',
   ]);
@@ -101,7 +101,7 @@ export const collectionInput = (o: object) => {
   const i = o as Obj;
   const out = pickAll(i, ['projectId', 'targets', 'port', 'osHint', 'roleOverride', 'planOnly', 'lightOnly', 'credentialId', 'keepDiagnostic', 'askAgain', 'loginClasses', 'transport', 'connectTimeoutSecs', 'authTimeoutSecs', 'apiCredentialId', 'fmcHost', 'snmpCredentialId', 'follow', 'fallbackCredentialIds', 'scanSubnets']);
   // How far to follow neighbours.
-  if (i.follow && typeof i.follow === 'object') out.follow = pickAll(i.follow, ['maxHops', 'maxDevices', 'subnetLimit']);
+  if (i.follow && typeof i.follow === 'object') out.follow = pickAll(i.follow, ['maxHops', 'maxDevices', 'subnetLimit', 'followAnywhere']);
   return out;
 };
 

@@ -544,7 +544,7 @@ MIT OR Apache-2.0 (355), MIT (135), Apache-2.0 OR MIT (99), MIT/Apache-2.0 (34),
 | rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 |
 | rustls-platform-verifier | 0.7.1 | MIT OR Apache-2.0 |
 | rustls-platform-verifier-android | 0.2.0 | MIT OR Apache-2.0 |
-| rustls-webpki | 0.103.15 | ISC |
+| rustls-webpki | 0.103.16 | ISC |
 | rustversion | 1.0.23 | MIT OR Apache-2.0 |
 | rustybuzz | 0.20.1 | MIT |
 | ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 |
@@ -718,8 +718,8 @@ MIT OR Apache-2.0 (355), MIT (135), Apache-2.0 OR MIT (99), MIT/Apache-2.0 (34),
 | web-time | 1.1.0 | MIT OR Apache-2.0 |
 | webkit2gtk | 2.0.2 | MIT |
 | webkit2gtk-sys | 2.0.2 | MIT |
-| webpki-root-certs | 1.0.9 | CDLA-Permissive-2.0 |
-| webpki-roots | 1.0.9 | CDLA-Permissive-2.0 |
+| webpki-root-certs | 1.0.10 | CDLA-Permissive-2.0 |
+| webpki-roots | 1.0.10 | CDLA-Permissive-2.0 |
 | webview2-com | 0.38.2 | MIT |
 | webview2-com-macros | 0.8.1 | MIT |
 | webview2-com-sys | 0.38.2 | MIT |
@@ -9100,8 +9100,8 @@ SOFTWARE.
 
 ### 2 components
 
-- webpki-root-certs 1.0.9
-- webpki-roots 1.0.9
+- webpki-root-certs 1.0.10
+- webpki-roots 1.0.10
 
 ```
 # Community Data License Agreement - Permissive - Version 2.0
@@ -18489,7 +18489,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### rustls-webpki 0.103.15
+### rustls-webpki 0.103.16
 
 ```
 Except as otherwise noted, this project is licensed under the following

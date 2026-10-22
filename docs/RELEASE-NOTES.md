@@ -26,6 +26,12 @@ Newest first.
   met; a Catalyst 9000 is now recognised by the shape of its model number,
   so the next one needs no entry.
 
+**Dependencies**
+- `rustls-webpki` 0.103.16 and `webpki-roots` / `webpki-root-certs` 1.0.10,
+  for this week's advisories on certificate verification and the bundled
+  roots; they are what the collector's HTTPS clients verify device APIs
+  with.
+
 ## 2.12.3 — 2026-10-17
 
 **The strip's menus show again**

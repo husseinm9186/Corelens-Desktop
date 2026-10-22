@@ -2,6 +2,44 @@
 
 Newest first.
 
+## 2.13.0 — 2026-10-22
+
+**Projects shared through a company folder**
+- Choose the folder your company keeps its projects in — a SharePoint
+  library synced through OneDrive, a mapped drive, any folder every
+  engineer's machine sees — under *Settings → Application → Shared
+  projects* or on the start screen. Keep a project there with one press
+  under its *Settings → Folders*, or tick it when you create one: it is
+  written as `project.corelens` with a readable `project.yaml` beside it
+  after every save, and the start screen lists every project in the
+  folder for *Open from the shared folder* on any machine.
+- Whoever saved last is what everyone opens: opening a kept project reads
+  the shared copy first and takes it when a colleague has saved since. A
+  lock file names who has a project open; a second engineer sees a banner
+  and is told the later save wins, not stopped. Saved logins, event
+  history and probe samples never go to the folder.
+
+**Exports**
+- *Project package with saved credentials* carried every credential in the
+  vault, other projects' included. It now carries the ones this project
+  refers to and no other, and the status line says how many.
+- *This page* at the top of the Export menu now narrows every export, not
+  only the drawings: the CSV tables list that page, and a package or a
+  folder exported with it is a one-page project of that page and its
+  checks, which imports as one.
+
+**The chrome**
+- Every menu in the top bar closes when you click anywhere else or press
+  Escape, and opening one closes the others. On a short window the Export
+  menu stays inside it and scrolls.
+- A click on empty canvas clears the selection, a multi-selection too.
+- A saved-credential rule under Discover devices is one line again:
+  match, value, credential and remove side by side.
+- The breadcrumb above the canvas names a folded group or a device, never
+  by its id.
+- A Catalyst 9400 chassis (C9404R, C9407R, C9410R) classifies as a switch.
+- The Views panel's help line reads as a sentence.
+
 ## 2.12.4 — 2026-10-22
 
 **Stay inside these subnets is a boundary again**

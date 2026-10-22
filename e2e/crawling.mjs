@@ -166,6 +166,17 @@ await panel.getByLabel("Match by").nth(1).selectOption("vendor");
 await panel.getByLabel("Subnet or vendor").nth(1).fill("FortiSwitch");
 await panel.getByLabel("Saved credential for this rule").nth(1).selectOption("cred-core");
 check("rules are kept with the project", await page.evaluate(() => window.__cvStore.getState().doc.credentialRules?.length === 2));
+{
+  // One rule is one line: the match, the value, the credential and the
+  // remove button side by side, none of them the whole width of the dock.
+  const row = panel.locator(".cv-cred-rule").first();
+  const shape = await row.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const controls = [...el.querySelectorAll("select, input, button")].map((c) => c.getBoundingClientRect());
+    return { rowHeight: Math.round(r.height), tallest: Math.round(Math.max(...controls.map((c) => c.height))), widths: controls.map((c) => Math.round((100 * c.width) / r.width)) };
+  });
+  check("a rule's controls sit on one line, none taking the whole width", shape.rowHeight < 2 * shape.tallest && shape.widths.every((w) => w < 70), JSON.stringify(shape));
+}
 
 // --------------------------------------------------- what is read
 const tables = panel.locator(".cv-crawl-details input[type=checkbox]");
@@ -455,5 +466,24 @@ check("with a status naming the run", /Collected 2 devices, 1 failed — collect
 check("and the device that failed, with the reason", /192\.0\.2\.11/.test(await panel.textContent()) && /login was refused/.test(await panel.textContent()));
 
 await browser.close();
+// ------------------------------------------------ a package with credentials carries this project's, by id
+{
+  const menu = page.locator(".cv-dropdown").filter({ has: page.locator("summary", { hasText: "Export" }) });
+  await menu.locator("summary").click();
+  await page.waitForTimeout(150);
+  await menu.locator("button", { hasText: "Project package with saved credentials" }).click();
+  await page.waitForTimeout(800);
+  const ids = (await lastCall("export_vault"))?.ids;
+  const referred = await page.evaluate(() => {
+    const d = window.__cvStore.getState().doc;
+    const ids = new Set([d.credentialDefaults?.ssh, ...(d.credentialDefaults?.sshMore ?? []), ...(d.credentialDefaults?.snmp ?? []), ...(d.credentialRules ?? []).map((r) => r.credentialId)]);
+    for (const p of d.pages) for (const n of p.nodes) { ids.add(n.data?.sshCredentialId); ids.add(n.data?.snmpCredentialId); }
+    return [...ids].filter(Boolean);
+  });
+  check("a package with credentials asks the vault for the ids this project refers to, and no other",
+    Array.isArray(ids) && ids.length > 0 && ids.includes("cred-core") && ids.every((id) => referred.includes(id)) && referred.every((id) => ids.includes(id)),
+    JSON.stringify({ ids, referred }));
+}
+
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);

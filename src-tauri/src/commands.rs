@@ -942,11 +942,16 @@ pub fn set_setting(
     // This table is plain text in the same database as the projects, and
     // nothing typed into Corelens is ever written where it could leave the
     // machine.
-    const ALLOWED: [&str; 33] = [
+    const ALLOWED: [&str; 35] = [
         // The shadow-mode feature flag, per project.
         "collectorShadow",
         "backupFolder",
         "exportFolder",
+        // The company folder every engineer's machine sees, where
+        // projects are kept and read back; this computer's. And, per
+        // project, the folder that project is kept in.
+        "sharedProjectsFolder",
+        "projectFolder",
         "iconLibraryDir",
         "addressPreference",
         "scanSeed",

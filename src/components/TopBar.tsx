@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { useStore } from '../state/store';
+import { useStore, type ProjectDocument } from '../state/store';
 import { ipc } from '../lib/ipc';
 import { ChromeIcon, IconButton } from './chromeIcons';
 import { formatTime } from '../lib/timeFormat';
@@ -10,6 +10,8 @@ import { renderDiagramSvg } from '../lib/diagram';
 import { allPrinted, isPrinted, layersOf } from '../lib/layers';
 import { PAPERS, describePage, paperById, sheetSize, sheetsFor, tileRects } from '../lib/paper';
 import { eventsToCsv, linksToCsv, nodesToCsv } from '../lib/csv';
+import { credentialsUsedBy } from '../lib/credentialScope';
+import { documentForPages } from '../lib/pageScope';
 import type { DeviceNodeData, HealthStatus, LinkData, NodeAddress } from '../types/domain';
 import { STATUS_LABEL } from '../types/domain';
 import { activePage, allEdges, allNodes } from '../lib/pages';
@@ -86,20 +88,23 @@ export function TopBar({ onExit }: { onExit: () => void }) {
   const save = saveIndicator({ dirty, lastSavedAt, savedAck, now: Date.now() });
 
   // A bare <details> opens and then stays open: neither Escape nor a click
-  // elsewhere closes it, so the export menu sat over the canvas until someone
-  // clicked "Export" a second time. Give it the dismissal every other menu has.
+  // elsewhere closes it, so a menu sat over the canvas until its own summary
+  // was clicked again. Every dropdown in the bar — Export, the "…" menu and
+  // any other — closes on a pointer-down outside it and on Escape, so
+  // opening one closes the rest.
   useEffect(() => {
+    const openMenus = () => [...document.querySelectorAll<HTMLDetailsElement>('details.cv-dropdown[open]')];
     const away = (e: Event) => {
-      const el = exportMenu.current;
-      if (el?.open && !el.contains(e.target as Node)) el.open = false;
+      for (const el of openMenus()) if (!el.contains(e.target as Node)) el.open = false;
     };
     const key = (e: KeyboardEvent) => {
-      const el = exportMenu.current;
-      if (e.key !== 'Escape' || !el?.open) return;
-      el.open = false;
+      if (e.key !== 'Escape') return;
+      const open = openMenus();
+      if (open.length === 0) return;
+      for (const el of open) el.open = false;
       // Focus goes back to the control that opened it, or it lands on <body>
       // and the next Tab restarts from the top of the page.
-      el.querySelector('summary')?.focus();
+      open[0]?.querySelector('summary')?.focus();
     };
     document.addEventListener('pointerdown', away);
     document.addEventListener('keydown', key);
@@ -163,6 +168,11 @@ export function TopBar({ onExit }: { onExit: () => void }) {
   const shown = printedOf(pg);
   /** The pages a drawing export covers. */
   const exportPages = () => (pageScope === 'all' ? doc.pages : [pg]);
+  /** The document an export reads — every page, or the open one alone:
+   *  its nodes, links and probes, with the project-wide rest. The tables
+   *  and the package follow the same choice as the drawings. */
+  const scopeOf = (d: ProjectDocument) => (pageScope === 'all' || d.pages.length <= 1 ? d : documentForPages(d, [pg.id]));
+  const scopedDoc = () => scopeOf(doc);
   /** A file name for one page of several. */
   const pageFile = (page: ProjectPage, ext: string) =>
     exportPages().length > 1 ? `${slug(meta.name)}-${slug(page.name) || 'page'}.${ext}` : `${slug(meta.name)}-diagram.${ext}`;
@@ -482,9 +492,9 @@ export function TopBar({ onExit }: { onExit: () => void }) {
   /** The diagram as the two files the importer reads back. Every page:
    *  this is an inventory, not a drawing, and a device missing
    *  from it because the wrong tab was open would be a real surprise. */
-  /** Every cable between devices, on every page. */
+  /** Every cable between devices, on the pages chosen. */
   const exportCableSchedule = () => {
-    const rows = cableSchedule(doc);
+    const rows = cableSchedule(scopedDoc());
     if (rows.length === 0) {
       useStore.getState().setStatusMessage('There are no links between devices to list.');
       return;
@@ -493,12 +503,13 @@ export function TopBar({ onExit }: { onExit: () => void }) {
   };
 
   const exportTopologyCsv = () => {
-    const devices = allNodes(doc).filter((n) => n.type === 'device');
+    const scoped = scopedDoc();
+    const devices = allNodes(scoped).filter((n) => n.type === 'device');
     const nameOf = new Map(
       devices.map((n) => [n.id, String((n.data as DeviceNodeData).label ?? '')]),
     );
     const probeFor = (nodeId: string) =>
-      doc.probes.find((p) => p.objectKind === 'node' && p.objectId === nodeId);
+      scoped.probes.find((p) => p.objectKind === 'node' && p.objectId === nodeId);
 
     const rows = devices.map((n) => {
       const d = n.data as DeviceNodeData;
@@ -539,7 +550,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
 
     // Links reference devices by name, because that is what the importer
     // matches on and what a person reading the file can follow.
-    const links = allEdges(doc)
+    const links = allEdges(scoped)
       .filter((e) => nameOf.has(e.source) && nameOf.has(e.target))
       .map((e) => {
         const d = (e.data ?? {}) as LinkData;
@@ -604,8 +615,8 @@ export function TopBar({ onExit }: { onExit: () => void }) {
       events: events,
       counts,
       // Every page: a validation report is a record, not a drawing.
-      nodeCount: allNodes(doc).filter((n) => n.type === 'device').length,
-      linkCount: allEdges(doc).length,
+      nodeCount: allNodes(scopedDoc()).filter((n) => n.type === 'device').length,
+      linkCount: allEdges(scopedDoc()).length,
       sessionStart: session.startedAt,
       sessionEnd: session.state === 'stopped' ? Date.now() : null,
       cables: cableSchedule(doc),
@@ -622,8 +633,9 @@ export function TopBar({ onExit }: { onExit: () => void }) {
       const folder = settings.exportFolder || null;
       // What is on screen, not what was last saved.
       if (dirty) await useStore.getState().saveProject();
-      const pkg = await ipc.loadProject(meta.id);
-      if (!pkg) return;
+      const loaded = await ipc.loadProject(meta.id);
+      if (!loaded) return;
+      const pkg = { ...loaded, document: scopeOf(loaded.document as ProjectDocument) };
       const project = vendorSafe ? { ...pkg, document: vendorSafeDocument(pkg.document) } : pkg;
       const { json, yaml } = projectFolderFiles(project as unknown as Record<string, unknown>);
       // The folder is a token a dialog (or the chosen export folder) gave.
@@ -637,17 +649,29 @@ export function TopBar({ onExit }: { onExit: () => void }) {
   };
 
   const exportPackage = async (withCredentials = false) => {
-    const pkg = await ipc.loadProject(meta.id);
-    if (!pkg) return;
+    const loaded = await ipc.loadProject(meta.id);
+    if (!loaded) return;
+    // "This page" makes a one-page project of it, which imports as one.
+    const pkg = { ...loaded, document: scopeOf(loaded.document as ProjectDocument) };
     // Credentials are app-wide rather than part of a project, so they are
     // never in an export unless asked for. A project package is the thing
     // people send to each other, and quietly including every saved password
-    // in it is how they escape.
+    // in it is how they escape — and when they are asked for, only the ones
+    // this project refers to go: a package once carried the whole vault,
+    // other projects' logins included.
     // A vendor-safe package holds no imported artwork on any page.
     const project = vendorSafe ? { ...pkg, document: vendorSafeDocument(pkg.document) } : pkg;
+    const wanted = [...credentialsUsedBy(project.document as ProjectDocument)];
     const payload = withCredentials
-      ? { ...project, vault: await ipc.exportVault() }
+      ? { ...project, vault: await ipc.exportVault(wanted) }
       : project;
+    if (withCredentials) {
+      useStore.getState().setStatusMessage(
+        wanted.length
+          ? `The package carries ${wanted.length} saved ${wanted.length === 1 ? 'credential' : 'credentials'} — the ones this project refers to, and no other project's.`
+          : 'This project refers to no saved credential, so the package carries none.',
+      );
+    }
     await runExport(
       withCredentials ? `${slug(meta.name)}-with-credentials.corelens` : `${slug(meta.name)}.corelens`,
       () => JSON.stringify(payload, null, 2),
@@ -922,17 +946,17 @@ export function TopBar({ onExit }: { onExit: () => void }) {
               Cable schedule as CSV
             </button>
             {/* The rest of the project's tables. */}
-            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-ports.csv`, () => portsCsv(doc), 'text/csv')}>
+            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-ports.csv`, () => portsCsv(scopedDoc()), 'text/csv')}>
               Ports as CSV
             </button>
-            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-vlans.csv`, () => vlansCsv(doc), 'text/csv')}>
+            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-vlans.csv`, () => vlansCsv(scopedDoc()), 'text/csv')}>
               VLANs as CSV
             </button>
-            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-probe-results.csv`, () => probeResultsCsv(doc, runtime, recentSamples), 'text/csv')}>
+            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-probe-results.csv`, () => probeResultsCsv(scopedDoc(), runtime, recentSamples), 'text/csv')}>
               Probe results as CSV
             </button>
             {/* The address register. */}
-            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-addresses.csv`, () => ipamCsv(doc), 'text/csv')}>
+            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-addresses.csv`, () => ipamCsv(scopedDoc()), 'text/csv')}>
               Addresses as CSV
             </button>
             {/* Devices, interfaces, addresses, cables and VLANs the

@@ -6,6 +6,7 @@ import { Canvas } from './components/Canvas';
 import { Inspector } from './components/inspector/Inspector';
 import { Palette } from './components/Palette';
 import { ProjectScreen } from './components/ProjectScreen';
+import { SharedNotice } from './components/SharedProjects';
 import { HelpScreen } from './components/HelpScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { ToolsScreen } from './components/ToolsScreen';
@@ -170,6 +171,8 @@ export default function App() {
         <ErrorBoundary what="The rail"><NavRail /></ErrorBoundary>
         <div className="cv-shell">
         <ErrorBoundary what="The toolbar"><TopBar onExit={() => undefined} /></ErrorBoundary>
+        {/* Who else has a kept project open, while they do. */}
+        <SharedNotice />
         {/* A device or a finding, at a width the rail cannot give. */}
         <ErrorBoundary what="The drawer"><DrawerHost /></ErrorBoundary>
         {/* The register takes the whole workspace when it is open. The

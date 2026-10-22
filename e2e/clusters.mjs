@@ -142,6 +142,8 @@ await zoomTo(100);
   await bring(["dist1"]);
   const zoomBefore = await zoomNow();
   await chips().first().click();
+  await page.waitForTimeout(300);
+  check("no crumb is an id", (await crumbs().count()) === 0 || !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/.test(await crumbs().innerText()), await crumbs().innerText().catch(() => ""));
   await page.waitForTimeout(600);
   check("opening the chip brings the fan back", (await page.locator('.react-flow__node[data-id^="a"]').count()) === 8 && (await chips().count()) === 0);
   check("and the breadcrumb names the way in", /Diagram\s*›\s*DIST-1/.test(await crumbs().innerText()), await crumbs().innerText());

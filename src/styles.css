@@ -733,6 +733,9 @@ select.cv-input option { background: var(--bg-raised); color: var(--text); }
 .cv-dropdown summary::-webkit-details-marker { display: none; }
 .cv-dropdown-menu {
   position: absolute; right: 0; top: 2.30769231rem; z-index: 40; min-width: 16.92307692rem;
+  /* Never past the bottom of the window: on a short one the menu scrolls,
+     so its last entries can still be reached. */
+  max-height: calc(100vh - 4.61538462rem); overflow-y: auto;
   background: var(--panel); border: 1px solid var(--line-strong);
   border-radius: var(--radius); padding: 0.30769231rem; display: flex; flex-direction: column;
   box-shadow: 0 12px 32px var(--shadow);
@@ -1354,6 +1357,11 @@ button.cv-start-card:hover { border-color: var(--accent); }
 }
 .cv-folder-title { font-weight: 600; }
 .cv-folder-actions { display: flex; gap: 0.46153846rem; }
+.cv-shared-list { list-style: none; margin: 0.61538462rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.46153846rem; }
+.cv-shared-row { display: flex; align-items: center; justify-content: space-between; gap: 0.92307692rem; padding: 0.61538462rem 0.92307692rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); }
+.cv-shared-text { display: flex; flex-direction: column; gap: 0.15384615rem; min-width: 0; }
+.cv-shared-held { color: var(--warning); }
+.cv-shared-notice { padding: 0.46153846rem 0.92307692rem; background: var(--panel-2); color: var(--text); border-bottom: 1px solid var(--warning); font-size: var(--text-sm); }
 .cv-folder-path {
   display: block; margin: 0.61538462rem 0 0.46153846rem; padding: 0.46153846rem 0.61538462rem;
   background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
@@ -3358,7 +3366,12 @@ details[open] > .cv-palette-lib::before { content: '▾'; }
 /* Credential rules by subnet or vendor. */
 .cv-cred-rules { margin: 0.46153846rem 0; }
 .cv-cred-rules summary { cursor: pointer; font-size: var(--text-md); color: var(--text); }
-.cv-cred-rule { align-items: center; }
+/* One rule on one line: a bare field in the row is otherwise a full-width
+   field, which stacked the three controls one under the other. */
+.cv-cred-rule { align-items: center; flex-wrap: wrap; }
+.cv-cred-rule > select.cv-input { width: auto; flex: 0 1 9.23076923rem; min-width: 6.92307692rem; }
+.cv-cred-rule > input.cv-input { width: auto; flex: 1 1 7.69230769rem; min-width: 6.92307692rem; max-width: 18.46153846rem; }
+.cv-cred-rule > .cv-field, .cv-cred-rule > label { flex: 1 1 9.23076923rem; min-width: 7.69230769rem; max-width: 18.46153846rem; }
 .cv-cred-rule-problem { color: var(--warning); flex-basis: 100%; }
 .cv-seed-csv { align-self: flex-end; cursor: pointer; }
 /* The live crawl table. State is carried by words and a border style,

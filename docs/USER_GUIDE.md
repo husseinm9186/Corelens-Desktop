@@ -1450,14 +1450,18 @@ The **Export** menu gives you:
 - **Events as CSV** — every state transition with timestamp, object, target,
   probe type, RTT and the failure text
 - **Devices and links**, **Cable schedule**, **Ports**, **VLANs** and **Probe
-  results as CSV** — every page
+  results as CSV** — the pages chosen under **Pages** at the top of the
+  menu: this page, or all of them
 - **Validation report (Markdown)** — project metadata, object counts, status
   summary, the drawings (as images inside the file), the full transition table
   and the cable schedule
 - **Project as a folder** — `project.corelens` and a readable `project.yaml` in
   a folder of their own, ready for Git. Unchanged projects write identical
   files; saved credentials are never included
-- **Project package (.corelens)** — the whole project, importable elsewhere
+- **Project package (.corelens)** — the project, importable elsewhere. With
+  **This page** chosen it is a one-page project of that page and its
+  checks. **With saved credentials** adds the logins this project refers
+  to — and no other project's — still sealed with your vault passphrase
 
 ## A report as a PDF
 
@@ -1507,6 +1511,41 @@ plugged in. Walk with `-On` for the most complete result.
 Export the `.corelens` package, copy it over, and use **Import project** on the
 welcome screen. Diagram, metadata, probes and health rules come across. Event
 history does not — it stays with the machine that recorded it.
+
+## Share projects through a company folder
+
+A team keeps its projects in one folder every engineer's machine can see —
+a SharePoint library synced through OneDrive, a mapped drive, a Git
+checkout — and each machine opens the same projects from it.
+
+- **Choose the folder once**, under **Settings → Application → Shared
+  projects**, or from the **Shared with the team** section on the start
+  screen. It is this computer's setting; nothing is written there until a
+  project is kept in it.
+- **Keep a project there**: open it and press **Keep in the shared folder**
+  under **Settings → Folders**, or tick it when you create one. The project
+  is written as `project.corelens` with a readable `project.yaml` beside it,
+  in a folder named after it, after every save. **Stop keeping** leaves the
+  files where they are.
+- **Open one from another machine**: the start screen lists every project
+  in the folder. **Open from the shared folder** brings one onto this
+  machine under its own id and opens it; from then on it is kept there
+  from this machine too.
+- **Whoever saved last is what everyone opens.** Opening a kept project
+  reads the shared copy first; if a colleague has saved since this machine
+  last did, theirs opens and replaces this machine's copy, and the status
+  line says who saved it and when. If the shared copy is missing, this
+  machine's copy opens and the line says so.
+- **A lock file says who has a project open.** Opening one a colleague
+  has open shows a banner naming them and the rule: if you both save, the
+  later save wins. It tells you; it does not stop you. A save that replaces
+  a copy newer than the one this machine last saw says whose it replaced.
+  A lock left behind by a laptop that crashed is ignored after three
+  minutes.
+
+Saved logins never go to the shared folder — they stay in each machine's
+own vault, and the project refers to them by id. Event history and probe
+samples stay on the machine that recorded them.
 
 ## Keep Corelens up to date
 

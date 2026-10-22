@@ -37,6 +37,25 @@ export function foldLabel(key: string, members: TopoNode[]): string {
   return key.startsWith(SITE_KEY_PREFIX) ? key.slice(SITE_KEY_PREFIX.length) : nameForGroup(members);
 }
 
+/** What a breadcrumb calls a place the view went into: a folded group by
+ *  its site or by what is inside it, a device by its label — and never an
+ *  id, which is what a crumb once showed for a group that had since unfolded
+ *  or a device with no label. */
+export function crumbLabel(id: string, nodes: TopoNode[]): string {
+  const membersOf = (key: string) => nodes.filter((n) => foldKeyOf(n, new Set([key])) === key);
+  if (isCollapsed(id)) {
+    const key = groupIdOf(id);
+    return foldLabel(key, membersOf(key));
+  }
+  const node = nodes.find((n) => n.id === id);
+  if (node) {
+    const d = node.data as { hostname?: string };
+    return labelOf(node).trim() || d.hostname?.trim() || 'Unnamed device';
+  }
+  const members = membersOf(id);
+  return members.length ? foldLabel(id, members) : 'Folded group';
+}
+
 function labelOf(node: TopoNode): string {
   const d = node.data as Partial<DeviceNodeData> & { title?: string };
   return d.label ?? d.title ?? '';

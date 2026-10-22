@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { t } from '../i18n';
 import { CredentialOverride } from './CredentialOverride';
 import { FolderSettings } from './FolderSettings';
+import { SharedSettings } from './SharedProjects';
 import { MerakiSettings } from './MerakiSettings';
 import { credentialsUsedBy } from '../lib/credentialScope';
 import { ipc, isDesktop, type CredentialSummary } from '../lib/ipc';
@@ -27,11 +28,11 @@ import { TIME_FORMATS, isLocalFormat, zoneLabel, type TimeFormat } from '../lib/
  * The rest of the vault is one disclosure away and says plainly that it is the
  * whole machine.
  */
-type SectionId = 'display' | 'terminal' | 'updates' | 'logins' | 'folders' | 'sftp' | 'meraki' | 'credentials';
+type SectionId = 'display' | 'terminal' | 'updates' | 'shared' | 'logins' | 'folders' | 'sftp' | 'meraki' | 'credentials';
 
 /** The sections, in the order they are shown, grouped by whose they are. */
 const NAV: { key: 'application' | 'project'; sections: SectionId[] }[] = [
-  { key: 'application', sections: ['display', 'terminal', 'updates'] },
+  { key: 'application', sections: ['display', 'terminal', 'updates', 'shared'] },
   { key: 'project', sections: ['logins', 'folders', 'sftp', 'meraki', 'credentials'] },
 ];
 
@@ -252,6 +253,7 @@ export function SettingsView() {
         <p className="cv-help">{t('settings.updateOnStartHint')}</p>
         <p className="cv-help">{t('settings.updateReleases')}</p>
       </section>
+      <SharedSettings />
         </div>
         <div className="cv-settings-group" data-region="settings-project">
           <h2 className="cv-settings-group-title">{t('settings.group.project')}</h2>

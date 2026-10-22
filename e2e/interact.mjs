@@ -3610,6 +3610,58 @@ await dismissRecovery();
   check("and the timestamp comes back", /Saved .*\d/.test(text), text);
 }
 
+// ------------------------------------------------ menus close when you click away; a click on empty canvas clears the selection
+{
+  const exportMenu = page.locator(".cv-dropdown").filter({ has: page.locator("summary", { hasText: "Export" }) });
+  const more = page.locator("details.cv-more");
+  const isOpen = (d) => d.evaluate((el) => el.open);
+  // An empty spot on the canvas: where the pane itself is under the pointer.
+  const emptySpot = async () => {
+    const box = await page.locator(".react-flow__pane").boundingBox();
+    return page.evaluate(({ x, y, w, h }) => {
+      for (let dy = 30; dy < h - 30; dy += 40) for (let dx = 30; dx < w - 30; dx += 40) {
+        const el = document.elementFromPoint(x + dx, y + dy);
+        if (el && el.classList.contains("react-flow__pane")) return { x: x + dx, y: y + dy };
+      }
+      return null;
+    }, { x: box.x, y: box.y, w: box.width, h: box.height });
+  };
+  await exportMenu.locator("summary").click();
+  await page.waitForTimeout(150);
+  await more.locator("summary").click();
+  await page.waitForTimeout(150);
+  check("opening the … menu closes the Export menu", !(await isOpen(exportMenu)) && (await isOpen(more)));
+  const spot = await emptySpot();
+  await page.mouse.click(spot.x, spot.y);
+  await page.waitForTimeout(150);
+  check("a click on the canvas closes the … menu", !(await isOpen(more)));
+  await page.setViewportSize({ width: 1600, height: 560 });
+  await exportMenu.locator("summary").click();
+  await page.waitForTimeout(150);
+  const menuBox = await exportMenu.locator(".cv-dropdown-menu").boundingBox();
+  const last = exportMenu.locator(".cv-dropdown-menu button").last();
+  await last.scrollIntoViewIfNeeded();
+  check("on a short window the Export menu stays inside it and scrolls to its last entry",
+    menuBox.y + menuBox.height <= 560 && (await last.evaluate((el) => { const r = el.getBoundingClientRect(); return r.bottom <= window.innerHeight && r.top >= 0; })),
+    JSON.stringify(menuBox));
+  await page.keyboard.press("Escape");
+  check("Escape closes it", !(await isOpen(exportMenu)));
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    const s = window.__cvStore.getState();
+    const pg = s.doc.pages.find((p) => p.id === s.doc.activePageId);
+    s.onNodesChange(pg.nodes.map((n) => ({ type: "select", id: n.id, selected: true })));
+  });
+  await page.waitForTimeout(200);
+  const before = await page.locator(".react-flow__node.selected").count();
+  const spot2 = await emptySpot();
+  await page.mouse.click(spot2.x, spot2.y);
+  await page.waitForTimeout(250);
+  const after = await page.locator(".react-flow__node.selected").count();
+  check("a click on empty canvas clears a multi-selection", before >= 2 && after === 0 && (await page.evaluate(() => window.__cvStore.getState().selectedNodeId)) === null, `${before} → ${after}`);
+}
+
 if (out) await page.screenshot({ path: `${out}/interact-final.png` });
 await browser.close();
 console.log(failures === 0 ? "\nall interaction checks passed" : `\n${failures} failed`);

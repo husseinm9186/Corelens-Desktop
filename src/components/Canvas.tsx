@@ -41,7 +41,7 @@ import { TraceroutePanel } from './TraceroutePanel';
 import { Page } from './Page';
 import { PageTabs } from './PageTabs';
 import { effectivePage, pageForContent } from '../lib/pageRect';
-import { collapseView, foldKeyOf, foldLabel, groupIdOf, isCollapsed } from '../lib/collapse';
+import { collapseView, crumbLabel, foldKeyOf, groupIdOf, isCollapsed } from '../lib/collapse';
 import { routeForView } from '../lib/routeLinks';
 import { alignmentFor, spacingHint, type Box, type Guide } from '../lib/alignment';
 import { allPrinted, isEditable, isPrinted, isVisible, layersOf } from '../lib/layers';
@@ -1461,14 +1461,7 @@ export function Canvas() {
   );
   const trail = useMemo<Crumb[]>(
     () =>
-      drill.map((id) => {
-        if (isCollapsed(id)) {
-          const key = groupIdOf(id);
-          return { id, label: foldLabel(key, pg.nodes.filter((n) => foldKeyOf(n, new Set([key])) === key)) };
-        }
-        const n = pg.nodes.find((x) => x.id === id);
-        return { id, label: (n?.data as DeviceNodeData | undefined)?.label ?? id };
-      }),
+      drill.map((id) => ({ id, label: crumbLabel(id, pg.nodes) })),
     [drill, pg.nodes],
   );
   const hiddenDevices = useMemo(
@@ -1840,7 +1833,12 @@ export function Canvas() {
           useStore.getState().updateEdgeData(edge.id, { texts });
         }}
         onPaneClick={() => {
-          useStore.getState().select(null, null);
+          const s = useStore.getState();
+          s.select(null, null);
+          // A multi-selection too: the lasso's and Shift-clicks' marks live
+          // on the nodes themselves.
+          const chosen = pg.nodes.filter((n) => n.selected);
+          if (chosen.length) s.onNodesChange(chosen.map((n) => ({ type: 'select' as const, id: n.id, selected: false })));
           setMenu(null);
         }}
         onNodeContextMenu={(e, n) => {

@@ -14,7 +14,12 @@ import { t } from '../i18n';
  */
 export function FolderSettings() {
   const settings = useStore((s) => s.settings);
-  const { backupFolder, exportFolder } = settings;
+  const { backupFolder, exportFolder, projectFolder, sharedProjectsFolder } = settings;
+  const [sharedProblem, setSharedProblem] = useState<string | null>(null);
+  const sharedAct = (run: () => Promise<unknown>) => {
+    setSharedProblem(null);
+    void run().catch((e: unknown) => setSharedProblem(e instanceof Error ? e.message : String(e)));
+  };
   // Both folders are a project's; with none open there is
   // nothing to keep them in, and the backend refuses the save.
   const project = useStore((s) => s.meta);
@@ -93,6 +98,32 @@ export function FolderSettings() {
         'Diagrams, reports and project packages are saved straight here. Leave it unset to be ' +
           'asked where to put each one.',
       )}
+      {/* The shared copy: this project's place in the company folder, where
+          other engineers open it from. The folder itself is chosen once
+          under Settings → Application. */}
+      <div className="cv-folder-row" data-region="shared-copy">
+        <div className="cv-folder-head">
+          <span className="cv-folder-title">{t('folderSettings.sharedCopy')}</span>
+          <span className="cv-folder-actions">
+            {projectFolder ? (
+              <button type="button" className="cv-btn cv-btn-small" onClick={() => sharedAct(() => useStore.getState().stopKeepingShared())}>
+                {t('folderSettings.stopKeeping')}
+              </button>
+            ) : (
+              <button type="button" className="cv-btn cv-btn-small" disabled={!sharedProjectsFolder}
+                title={sharedProjectsFolder ? undefined : t('folderSettings.needsSharedFolder')}
+                onClick={() => sharedAct(() => useStore.getState().keepInSharedFolder())}>
+                {t('folderSettings.keepShared')}
+              </button>
+            )}
+          </span>
+        </div>
+        <code className={projectFolder ? 'cv-folder-path' : 'cv-folder-path is-unset'}>
+          {projectFolder ?? (sharedProjectsFolder ? t('folderSettings.notKeptShared') : t('folderSettings.needsSharedFolder'))}
+        </code>
+        <p className="cv-help">{t('folderSettings.sharedNote')}</p>
+        {sharedProblem && <p className="cv-error cv-folder-problem">{t('folderSettings.notKeptWhy', { reason: sharedProblem })}</p>}
+      </div>
     </section>
   );
 }

@@ -4,7 +4,9 @@ import { create } from 'zustand';
 import type { Edge, Node } from '@xyflow/react';
 import { applyEdgeChanges, applyNodeChanges, type EdgeChange, type NodeChange } from '@xyflow/react';
 
-import { ipc, isDesktop, type ProbeResultDto, type IconLibEntry, type StoredSettings, type JobSnapshot, type CrawledDevice, type Neighbor, setCurrentProject } from '../lib/ipc';
+import { ipc, isDesktop, type ProbeResultDto, type IconLibEntry, type StoredSettings, type JobSnapshot, type CrawledDevice, type Neighbor, type ProjectPackage, type SharedEntry, setCurrentProject } from '../lib/ipc';
+import { projectFolderFiles } from '../lib/projectFolder';
+import { copyToOpen, folderName, heldBy, overwroteNotice } from '../lib/sharedProjects';
 import { applyJob } from '../lib/jobs';
 import { forgetSummary, rememberSummary, summarise } from '../lib/projectSummary';
 import { staleCredentials, withoutStaleCredentials } from '../lib/credentialScope';
@@ -296,6 +298,10 @@ export interface AppSettings {
    *  well away from exports: a running-config holds SNMP communities and
    *  hashed passwords, and must not travel inside a project someone shares. */
   backupFolder: string | null;
+  /** The company folder projects are kept in; this computer's. */
+  sharedProjectsFolder: string | null;
+  /** Where the open project is kept for other engineers, or null. */
+  projectFolder: string | null;
   /** Where exports land without prompting. Null falls back to a save dialog. */
   exportFolder: string | null;
   /** The SFTP server a Cisco device sends its configuration to under a
@@ -521,7 +527,20 @@ interface Store {
 
   // actions
   refreshProjects: () => Promise<void>;
-  createProject: (meta: Partial<ProjectMeta>, doc?: ProjectDocument) => Promise<void>;
+  createProject: (meta: Partial<ProjectMeta>, doc?: ProjectDocument, opts?: { keepShared?: boolean }) => Promise<void>;
+  /** Projects found in the company folder, for the start screen. */
+  sharedProjects: SharedEntry[];
+  /** The banner while somebody else has the open project open. */
+  sharedNotice: string | null;
+  refreshSharedProjects: () => Promise<void>;
+  chooseSharedFolder: () => Promise<string | null>;
+  clearSharedFolder: () => Promise<void>;
+  /** Keeps the open project in the shared folder from now on. */
+  keepInSharedFolder: () => Promise<string>;
+  stopKeepingShared: () => Promise<void>;
+  /** Opens a project from the shared folder, bringing it onto this
+   *  machine first when it is not here yet. */
+  openSharedProject: (entry: SharedEntry) => Promise<void>;
   openProject: (id: string) => Promise<void>;
   closeProject: () => Promise<void>;
   saveProject: (opts?: { auto?: boolean }) => Promise<void>;
@@ -1184,6 +1203,30 @@ const recoveryKey = (id: string) => `corelens.recovery.${id}`;
 let recoveryTimer: ReturnType<typeof setInterval> | null = null;
 let recoveryUnload: (() => void) | null = null;
 
+// A project kept in the company folder: the shared copy's `updatedAt`
+// this machine last saw, and the minute-by-minute refresh of its lock.
+let keptSeenAt: number | null = null;
+let lockTimer: ReturnType<typeof setInterval> | null = null;
+const when = (ms: number) => new Date(ms).toLocaleString();
+
+function stopWatchingLock(): void {
+  if (lockTimer) clearInterval(lockTimer);
+  lockTimer = null;
+}
+
+/** Takes or refreshes this machine's lock, and keeps the banner honest
+ *  about whose it is; then again every minute while the project is open. */
+async function watchLock(get: () => Store, set: (patch: Partial<Store>) => void, id: string): Promise<void> {
+  stopWatchingLock();
+  const refresh = async () => {
+    if (get().meta?.id !== id || !get().settings.projectFolder) return;
+    const lock = await ipc.keepProjectLock(id).catch(() => null);
+    set({ sharedNotice: heldBy(lock, when) });
+  };
+  await refresh();
+  lockTimer = setInterval(() => void refresh(), 60_000);
+}
+
 function writeRecovery(get: () => Store): void {
   const { meta, doc, dirty } = get();
   if (!meta || !dirty) return;
@@ -1397,6 +1440,8 @@ export const useStore = create<Store>((set, get) => ({
     orientation: 'landscape',
     ground: 'dark',
     backupFolder: null,
+    sharedProjectsFolder: null,
+    projectFolder: null,
     exportFolder: null,
     sftpHost: '',
     sftpPort: '',
@@ -1458,7 +1503,10 @@ export const useStore = create<Store>((set, get) => ({
     set({ projects, folderTree, ...(still ? {} : { projectFolderId: null }) });
   },
 
-  async createProject(partial, doc) {
+  sharedProjects: [],
+  sharedNotice: null,
+
+  async createProject(partial, doc, opts) {
     const now = Date.now();
     const meta: ProjectMeta = {
       id: uid(),
@@ -1486,12 +1534,17 @@ export const useStore = create<Store>((set, get) => ({
     await setCurrentProject(meta.id);
     await get().loadSettings();
     await get().refreshProjects();
+    // Asked for on the create dialog: kept in the company folder from
+    // its first save.
+    if (opts?.keepShared && get().settings.sharedProjectsFolder) {
+      await get().keepInSharedFolder().catch((err: unknown) => set({ statusMessage: `Not kept in the shared folder: ${err instanceof Error ? err.message : String(err)}` }));
+    }
   },
 
   async openProject(id) {
     await get().closeProject();
-    const pkg = await ipc.loadProject(id);
-    if (!pkg) {
+    const local = await ipc.loadProject(id);
+    if (!local) {
       set({ statusMessage: 'That project could not be found in local storage.' });
       return;
     }
@@ -1502,6 +1555,29 @@ export const useStore = create<Store>((set, get) => ({
     // where there was no project — so it saw this computer's preferences and
     // none of this project's.
     await get().loadSettings();
+    // A project kept in the company folder opens from the shared copy
+    // when another engineer has saved since this machine last did; the
+    // local copy is replaced by it. Then this machine's lock, refreshed
+    // every minute while the project is open.
+    let pkg = local;
+    if (get().settings.projectFolder) {
+      const status = await ipc.keptProjectStatus(id).catch(() => null);
+      const choice = copyToOpen(local.meta.updatedAt, status, when);
+      let notice = choice.notice;
+      if (choice.use === 'shared') {
+        try {
+          const shared = JSON.parse(await ipc.readKeptProject(id)) as Partial<ProjectPackage>;
+          if (shared?.meta?.id !== id || !shared.document) throw new Error('it is not this project');
+          pkg = { meta: shared.meta, documentVersion: shared.documentVersion ?? 1, document: shared.document };
+          await ipc.saveProject(pkg);
+        } catch (err) {
+          pkg = local;
+          notice = `The shared copy could not be read (${err instanceof Error ? err.message : String(err)}), so this is this machine's copy.`;
+        }
+      }
+      keptSeenAt = status?.updatedAt ?? pkg.meta.updatedAt;
+      if (notice) set({ statusMessage: notice });
+    }
     // Wraps a pre-LT-094 document into a single page, then brings an
     // old document's device glyphs onto square bounds so the selection ring
     // and corners hug them. Marks the doc dirty only when it actually
@@ -1521,6 +1597,8 @@ export const useStore = create<Store>((set, get) => ({
       selectedNodeId: null,
       selectedEdgeId: null,
     });
+    // The lock, once the project counts as open on this machine.
+    if (get().settings.projectFolder) await watchLock(get, set, id);
     // The undo history of the save being opened, if it is still that
     // save. A document that had to be migrated is not the one its history was
     // taken from, so it starts fresh.
@@ -1594,11 +1672,15 @@ export const useStore = create<Store>((set, get) => ({
         return;
       }
     }
+    // This machine's lock on a kept project goes with the project.
+    stopWatchingLock();
+    if (get().meta && get().settings.projectFolder) await ipc.releaseProjectLock(get().meta!.id).catch(() => undefined);
+    keptSeenAt = null;
     // Nothing that follows may read another project's settings or backups —
     // and what this one chose is dropped rather than left in the form for the
     // next project to inherit, which is the whole.
     await setCurrentProject(null).catch(() => undefined);
-    set((s) => ({ settings: { ...s.settings, backupFolder: null, exportFolder: null, sftpHost: '', sftpPort: '', sftpFolder: '', sftpCredentialId: '' } }));
+    set((s) => ({ settings: { ...s.settings, backupFolder: null, exportFolder: null, projectFolder: null, sftpHost: '', sftpPort: '', sftpFolder: '', sftpCredentialId: '' }, sharedNotice: null }));
     if (recoveryTimer) {
       clearInterval(recoveryTimer);
       recoveryTimer = null;
@@ -1631,6 +1713,20 @@ export const useStore = create<Store>((set, get) => ({
     await ipc.saveProject({ meta: updated, documentVersion: 1, document: doc });
     // The save is real, so the crash slot for it is stale.
     clearRecovery(meta.id);
+    // And the shared copy, for a project kept in the company folder —
+    // the same files the folder export writes, never the vault. A save that
+    // replaced somebody's newer copy says so.
+    if (get().settings.projectFolder) {
+      const { json, yaml } = projectFolderFiles({ meta: updated, documentVersion: 1, document: doc } as unknown as Record<string, unknown>);
+      try {
+        const written = await ipc.keepProject(meta.id, json, yaml, keptSeenAt);
+        keptSeenAt = updated.updatedAt;
+        const note = overwroteNotice(written, when);
+        set({ sharedNotice: heldBy(written.lock, when), ...(note ? { statusMessage: note } : {}) });
+      } catch (err) {
+        set({ statusMessage: `Saved on this machine, but not to the shared folder: ${err instanceof Error ? err.message : String(err)}` });
+      }
+    }
     // What the project card says about it, as of now, on this machine.
     rememberSummary(meta.id, summarise(doc, get().nodeStatus, updated.updatedAt));
     // An explicit save says so; autosave stays quiet, because a
@@ -1644,6 +1740,66 @@ export const useStore = create<Store>((set, get) => ({
     // This save's undo history, kept on this machine only.
     void saveHistory(meta.id, updated.updatedAt, get().past, get().future);
     await get().refreshProjects();
+  },
+
+  async refreshSharedProjects() {
+    if (!get().settings.sharedProjectsFolder) {
+      set({ sharedProjects: [] });
+      return;
+    }
+    set({ sharedProjects: await ipc.listSharedProjects().catch(() => []) });
+  },
+
+  async chooseSharedFolder() {
+    const picked = await ipc.pickFolder('Choose the folder your company keeps its projects in', get().settings.sharedProjectsFolder ?? undefined);
+    if (!picked) return null;
+    await ipc.checkFolderWritable(picked);
+    await ipc.setSetting('sharedProjectsFolder', picked);
+    set((s) => ({ settings: { ...s.settings, sharedProjectsFolder: picked } }));
+    await get().refreshSharedProjects();
+    return picked;
+  },
+
+  async clearSharedFolder() {
+    await ipc.setSetting('sharedProjectsFolder', null);
+    set((s) => ({ settings: { ...s.settings, sharedProjectsFolder: null }, sharedProjects: [] }));
+  },
+
+  async keepInSharedFolder() {
+    const meta = get().meta;
+    if (!meta) throw new Error('No project is open.');
+    const dir = await ipc.linkProjectFolder(meta.id, folderName(meta.name, meta.id));
+    set((s) => ({ settings: { ...s.settings, projectFolder: dir } }));
+    keptSeenAt = null;
+    // Written now, whether or not anything has changed, so the folder
+    // holds the project from this moment.
+    await get().saveProject();
+    await watchLock(get, set, meta.id);
+    return dir;
+  },
+
+  async stopKeepingShared() {
+    const meta = get().meta;
+    if (!meta) return;
+    stopWatchingLock();
+    await ipc.unlinkProjectFolder(meta.id);
+    keptSeenAt = null;
+    set((s) => ({ settings: { ...s.settings, projectFolder: null }, sharedNotice: null }));
+  },
+
+  async openSharedProject(entry) {
+    if (get().projects.some((p) => p.id === entry.id)) {
+      await get().openProject(entry.id);
+      return;
+    }
+    // Not on this machine yet: the shared copy is saved here under its
+    // own id, and the folder remembered as the project's, before it opens.
+    const text = await ipc.adoptSharedProject(entry.folder);
+    const pkg = JSON.parse(text) as Partial<ProjectPackage>;
+    if (!pkg?.meta?.id || !pkg.meta.name || !pkg.document) throw new Error(`${entry.folder} does not hold a Corelens project.`);
+    await ipc.saveProject({ meta: pkg.meta, documentVersion: pkg.documentVersion ?? 1, document: pkg.document });
+    await get().refreshProjects();
+    await get().openProject(pkg.meta.id);
   },
 
   async duplicateProject(id) {
@@ -4164,6 +4320,8 @@ export const useStore = create<Store>((set, get) => ({
         ...s.settings,
         backupFolder: stored.backupFolder ?? null,
         exportFolder: stored.exportFolder ?? null,
+        sharedProjectsFolder: stored.sharedProjectsFolder ?? null,
+        projectFolder: stored.projectFolder ?? null,
         sftpHost: stored.sftpHost ?? '',
         sftpPort: stored.sftpPort ?? '',
         sftpFolder: stored.sftpFolder ?? '',

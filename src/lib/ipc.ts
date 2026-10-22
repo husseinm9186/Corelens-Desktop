@@ -41,6 +41,45 @@ export interface ProjectPackage {
   document: unknown;
 }
 
+/** `project.lock` beside a kept project, as `shared.rs` reports it. */
+export interface LockView {
+  engineer: string;
+  machine: string;
+  sinceMs: number;
+  seenMs: number;
+  mine: boolean;
+  stale: boolean;
+}
+
+/** One project found in the shared folder. */
+export interface SharedEntry {
+  folder: string;
+  id: string;
+  name: string;
+  customer: string;
+  site: string;
+  ticket: string;
+  engineer: string;
+  updatedAt: number;
+  lock: LockView | null;
+}
+
+/** The shared copy of a kept project, as it stands. */
+export interface KeptStatus {
+  folder: string;
+  exists: boolean;
+  updatedAt: number | null;
+  lock: LockView | null;
+}
+
+/** What writing the shared copy did. */
+export interface KeptWritten {
+  folder: string;
+  /** The `updatedAt` of a newer shared copy this write replaced. */
+  overwrote: number | null;
+  lock: LockView | null;
+}
+
 export interface ProbeResultDto {
   probeId: string;
   timestampMs: number;
@@ -1018,6 +1057,10 @@ export type StoredSettings = Partial<{
   scanSeed: string;
   /** Comma-separated, because a setting is one string. */
   scanSubnets: string;
+  /** The company folder projects are kept in; this computer's. */
+  sharedProjectsFolder: string;
+  /** Where this project is kept for other engineers; the project's. */
+  projectFolder: string;
   /** The subnets whose scan box is ticked, comma-separated. */
   scanSweep: string;
   /** "true" when Discover everything is ticked. */
@@ -1145,6 +1188,47 @@ export const ipc = {
   },
   saveProjectFolder(token: string, name: string, json: string, yaml: string) {
     return invoke<string>('save_project_folder', { token, name, json, yaml });
+  },
+
+  // Projects kept in the company folder (`shared.rs`). The folder a save
+  // goes to is read in Rust from the project's own setting; the page
+  // never names it.
+  async listSharedProjects(): Promise<SharedEntry[]> {
+    if (!isDesktop) return [];
+    return camel<SharedEntry[]>(await invoke('list_shared_projects'));
+  },
+  async linkProjectFolder(projectId: string, name: string): Promise<string> {
+    if (!isDesktop) throw new BackendUnavailable('Keeping a project in a shared folder');
+    return invoke<string>('link_project_folder', { projectId, name });
+  },
+  async unlinkProjectFolder(projectId: string): Promise<void> {
+    if (!isDesktop) return;
+    await invoke('unlink_project_folder', { projectId });
+  },
+  /** The shared copy's text, and the folder remembered as that project's. */
+  async adoptSharedProject(folder: string): Promise<string> {
+    if (!isDesktop) throw new BackendUnavailable('Opening a shared project');
+    return invoke<string>('adopt_shared_project', { folder });
+  },
+  async keptProjectStatus(projectId: string): Promise<KeptStatus | null> {
+    if (!isDesktop) return null;
+    return camel<KeptStatus | null>(await invoke('kept_project_status', { projectId }));
+  },
+  async readKeptProject(projectId: string): Promise<string> {
+    if (!isDesktop) throw new BackendUnavailable('Reading a shared project');
+    return invoke<string>('read_kept_project', { projectId });
+  },
+  async keepProject(projectId: string, json: string, yaml: string, knownUpdatedAt: number | null): Promise<KeptWritten> {
+    if (!isDesktop) return { folder: '', overwrote: null, lock: null };
+    return camel<KeptWritten>(await invoke('keep_project', { projectId, json, yaml, knownUpdatedAt }));
+  },
+  async keepProjectLock(projectId: string): Promise<LockView | null> {
+    if (!isDesktop) return null;
+    return camel<LockView | null>(await invoke('keep_project_lock', { projectId }));
+  },
+  async releaseProjectLock(projectId: string): Promise<void> {
+    if (!isDesktop) return;
+    await invoke('release_project_lock', { projectId });
   },
 
   /** Native folder picker. Returns null if the user cancelled. */
@@ -1754,8 +1838,10 @@ export const ipc = {
   },
   /** The vault as ciphertext, for moving it to another machine. Opening it
    *  elsewhere still needs the passphrase. */
-  exportVault() {
-    return invoke<unknown>('export_vault');
+  /** The sealed credentials a package carries: those the project refers
+   *  to, by id, and no other. */
+  exportVault(ids: string[]) {
+    return invoke<unknown>('export_vault', { ids });
   },
   /** Takes the credentials out of an exported package. Needs the passphrase
    *  of the vault they were exported from, and this vault unlocked.

@@ -271,6 +271,29 @@ await exportButton("Diagram for Visio");
 const vsdx = (await calls("diagram_vsdx")).at(-1)?.args.drawing;
 check("Visio gets every page, with each link's bends", vsdx?.pages.length === pagesCount && vsdx.pages[0].links.some((l) => l.points.length === 2), JSON.stringify(vsdx?.pages?.[0]?.links));
 
+// "This page": the tables and the package narrow to the open page, not
+// only the drawings.
+await menu.locator("summary").click();
+await page.waitForTimeout(150);
+await menu.getByLabel("Pages to export").selectOption("page");
+await menu.locator("summary").click();
+await clearExports();
+await exportButton("Devices and links as CSV");
+const onePageDevices = (await exported()).map((e) => e.text).join("\n");
+check("This page: the devices CSV lists the open page's devices only", onePageDevices.includes("CORE-SW1") && !onePageDevices.includes("BR-SW1"), onePageDevices.slice(0, 160));
+await clearExports();
+await exportButton("Project package (.corelens)");
+const onePageText = (await exported())[0]?.text ?? "";
+const onePage = onePageText ? JSON.parse(onePageText) : null;
+const onCore = new Set([...(onePage?.document?.pages?.[0]?.nodes ?? []).map((n) => n.id), ...(onePage?.document?.pages?.[0]?.edges ?? []).map((e) => e.id)]);
+check("and a package exported with This page is a one-page project, with that page's probes only",
+  onePage?.document?.pages?.length === 1 && onePage.document.pages[0].name === "Core" && onePage.document.activePageId === "p1" && onePage.document.probes.length > 0 && onePage.document.probes.every((p) => onCore.has(p.objectId)),
+  JSON.stringify({ pages: onePage?.document?.pages?.map((p) => p.name), probes: onePage?.document?.probes?.length }));
+await menu.locator("summary").click();
+await page.waitForTimeout(150);
+await menu.getByLabel("Pages to export").selectOption("all");
+await menu.locator("summary").click();
+
 await exportButton("Diagram as PDF");
 const pdf = (await calls("diagram_pdf_pages")).at(-1)?.args.svgs;
 check("a PDF of every page is one document of pages", pdf?.length === pagesCount && pdf.every((s) => s.includes("<svg")));

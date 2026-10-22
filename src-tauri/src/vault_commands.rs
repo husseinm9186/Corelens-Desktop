@@ -381,15 +381,20 @@ pub fn delete_credential(state: State<'_, AppState>, id: String) -> CmdResult<()
 /// It is still the most dangerous thing the app can write: it is every stored
 /// credential in one file, and its safety rests entirely on the passphrase. The
 /// interface defaults to leaving it out and says so plainly.
+///
+/// `ids` names the credentials the project being exported refers to; only
+/// those travel. A package exported from one project once carried every
+/// credential the vault held, other projects' included.
 #[tauri::command(async)]
-pub fn export_vault(state: State<'_, AppState>) -> CmdResult<serde_json::Value> {
+pub fn export_vault(state: State<'_, AppState>, ids: Option<Vec<String>>) -> CmdResult<serde_json::Value> {
     let conn = state.db.lock().map_err(db_err)?;
     let (salt, verifier) = db::vault_header(&conn)
         .map_err(db_err)?
         .ok_or("There is no vault to export.")?;
 
+    let all: Vec<String> = db::list_credentials(&conn).map_err(db_err)?.into_iter().map(|(id, ..)| id).collect();
     let mut items = Vec::new();
-    for (id, ..) in db::list_credentials(&conn).map_err(db_err)? {
+    for id in chosen(&all, ids.as_deref()) {
         if let Some(c) = db::credential(&conn, &id).map_err(db_err)? {
             items.push(serde_json::json!({
                 "id": c.id,
@@ -691,6 +696,32 @@ pub fn open_secret(key: &VaultKey, parts: &(Vec<u8>, Vec<u8>)) -> CmdResult<Stri
         },
     )
     .map_err(|e| e.to_string())
+}
+
+/// The credentials a package carries: those of `wanted` that exist, in the
+/// vault's order. `None` means every one, which only a caller that said so
+/// gets; an empty list is an empty list.
+pub fn chosen(all: &[String], wanted: Option<&[String]>) -> Vec<String> {
+    match wanted {
+        None => all.to_vec(),
+        Some(ids) => all.iter().filter(|id| ids.iter().any(|w| w == *id)).cloned().collect(),
+    }
+}
+
+#[cfg(test)]
+mod chosen_tests {
+    use super::chosen;
+
+    /// A project's package carries the credentials it refers to and no
+    /// other; one it names that the vault no longer holds is simply absent.
+    #[test]
+    fn a_package_carries_the_credentials_its_project_refers_to_only() {
+        let all: Vec<String> = ["cred-a", "cred-b", "cred-c"].iter().map(|s| s.to_string()).collect();
+        let wanted: Vec<String> = ["cred-c", "cred-a", "cred-gone"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(chosen(&all, Some(&wanted)), ["cred-a", "cred-c"]);
+        assert!(chosen(&all, Some(&[])).is_empty(), "a project with no logins exports none");
+        assert_eq!(chosen(&all, None), all, "only a caller that asked for everything gets everything");
+    }
 }
 
 #[cfg(test)]

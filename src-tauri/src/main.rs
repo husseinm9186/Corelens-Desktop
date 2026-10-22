@@ -23,6 +23,7 @@ mod terminal;
 mod vault_commands;
 mod meraki;
 mod updater;
+mod shared;
 mod db;
 
 use std::sync::{Arc, Mutex};
@@ -212,6 +213,15 @@ fn main() {
             commands::read_import,
             commands::read_spreadsheet,
             commands::save_project_folder,
+            shared::list_shared_projects,
+            shared::link_project_folder,
+            shared::unlink_project_folder,
+            shared::adopt_shared_project,
+            shared::kept_project_status,
+            shared::read_kept_project,
+            shared::keep_project,
+            shared::keep_project_lock,
+            shared::release_project_lock,
             commands::ipc_refused,
             terminal::ssh_open,
             terminal::ssh_send,

@@ -7,6 +7,7 @@ import { STATUS_COLOR } from './edges/LiveEdge';
 import { TEMPLATES, templateById } from '../lib/templates';
 import { ipc, isDesktop } from '../lib/ipc';
 import { FolderSettings } from './FolderSettings';
+import { SharedProjectsSection } from './SharedProjects';
 import { HostKeySettings } from './HostKeySettings';
 import { VaultSettings } from './VaultSettings';
 import type { ProjectMeta } from '../types/domain';
@@ -587,6 +588,8 @@ export function ProjectScreen() {
         </div>
         )}
 
+        {/* What the company keeps in its shared folder, when one is chosen. */}
+        <SharedProjectsSection />
         <FolderSettings />
 
         <VaultSettings />
@@ -689,6 +692,9 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
   // What the first page starts with.
   const [template, setTemplate] = useState('blank');
   const chosen = templateById(template);
+  // Kept in the company folder from its first save, when one is chosen.
+  const sharedFolder = useStore((s) => s.settings.sharedProjectsFolder);
+  const [keepShared, setKeepShared] = useState(true);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [k]: e.target.value });
@@ -738,6 +744,12 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
             {chosen?.description} Names and addresses are placeholders from the documentation ranges; nothing is monitored until you add it.
           </span>
         </label>
+        {sharedFolder && (
+          <label className="cv-check" data-region="create-keep-shared" title={sharedFolder}>
+            <input type="checkbox" checked={keepShared} onChange={(e) => setKeepShared(e.target.checked)} />
+            {t('projectScreen.keepShared')}
+          </label>
+        )}
         <div className="cv-modal-actions">
           <button type="button" className="cv-btn" onClick={onClose}>
             Cancel
@@ -747,7 +759,7 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
             className="cv-btn cv-btn-start"
             disabled={!form.name.trim()}
             onClick={() => {
-              void create(form, template === 'blank' ? undefined : chosen?.build());
+              void create(form, template === 'blank' ? undefined : chosen?.build(), { keepShared: Boolean(sharedFolder) && keepShared });
               onClose();
             }}
           >

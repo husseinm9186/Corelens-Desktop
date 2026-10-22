@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { collapseView, groupIdOf, isCollapsed, nameForGroup } from './collapse';
+import { collapseView, crumbLabel, groupIdOf, isCollapsed, nameForGroup } from './collapse';
 import type { TopoEdge, TopoNode } from '../state/store';
 
 const device = (id: string, group?: string, over: Record<string, unknown> = {}): TopoNode =>
@@ -126,5 +126,23 @@ describe('collapsed ids', () => {
     expect(isCollapsed('collapsed:hq')).toBe(true);
     expect(isCollapsed('n1')).toBe(false);
     expect(groupIdOf('collapsed:hq')).toBe('hq');
+  });
+});
+
+describe('what a breadcrumb calls a place', () => {
+  const dev = (id: string, label: string, extra: Record<string, unknown> = {}): TopoNode =>
+    ({ id, type: 'device', position: { x: 0, y: 0 }, data: { label, deviceType: 'access-switch', tags: [], addresses: [], ...extra } }) as unknown as TopoNode;
+  const nodes = [dev('n1', 'CORE-1', { site: 'HQ' }), dev('fcb89047-e7ff-4025-a910-b518c889506f', '', { hostname: 'edge-7.example.test' }), dev('n3', '   ')];
+
+  it('names a device by its label, then its hostname, and never by its id', () => {
+    expect(crumbLabel('n1', nodes)).toBe('CORE-1');
+    expect(crumbLabel('fcb89047-e7ff-4025-a910-b518c889506f', nodes)).toBe('edge-7.example.test');
+    expect(crumbLabel('n3', nodes)).toBe('Unnamed device');
+  });
+
+  it('names a folded site by the site, whether or not it is still folded', () => {
+    expect(crumbLabel('collapsed:site:HQ', nodes)).toBe('HQ');
+    expect(crumbLabel('site:HQ', nodes)).toBe('HQ');
+    expect(crumbLabel('no-such-thing', nodes)).toBe('Folded group');
   });
 });

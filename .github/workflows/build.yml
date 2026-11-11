@@ -49,15 +49,29 @@ jobs:
 
       # The probe crate is Tauri-free, so it needs none of the GTK stack.
       # src-tauri does; on Windows nothing extra is required.
+      # Bounded. When the runner cannot reach Ubuntu's mirrors, apt waits out
+      # every package in turn — one such run sat here for 46 minutes before it
+      # failed. Each fetch now gives up after 20 seconds, the whole install is
+      # tried three times from a fresh index (a stale one is what a 404 on a
+      # package means), and the step is stopped at ten minutes regardless.
       - name: Linux build dependencies
         if: matrix.os == 'ubuntu-latest'
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev libsoup-3.0-dev libssl-dev libdbus-1-dev \
-            libxdo-dev libayatana-appindicator3-dev librsvg2-dev \
-            build-essential curl wget file pkg-config \
-            iputils-ping traceroute
+          apt_opts="-o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o DPkg::Lock::Timeout=60"
+          for attempt in 1 2 3; do
+            if sudo apt-get $apt_opts update && sudo apt-get $apt_opts install -y \
+              libwebkit2gtk-4.1-dev libsoup-3.0-dev libssl-dev libdbus-1-dev \
+              libxdo-dev libayatana-appindicator3-dev librsvg2-dev \
+              build-essential curl wget file pkg-config \
+              iputils-ping traceroute; then
+              exit 0
+            fi
+            echo "::warning::apt attempt $attempt failed; retrying in 15s"
+            sleep 15
+          done
+          echo "::error::Could not install the Linux build dependencies after 3 attempts (Ubuntu mirrors unreachable from this runner?)"
+          exit 1
 
       - run: npm ci
 
@@ -166,15 +180,29 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # Bounded. When the runner cannot reach Ubuntu's mirrors, apt waits out
+      # every package in turn — one such run sat here for 46 minutes before it
+      # failed. Each fetch now gives up after 20 seconds, the whole install is
+      # tried three times from a fresh index (a stale one is what a 404 on a
+      # package means), and the step is stopped at ten minutes regardless.
       - name: Linux build dependencies
         if: matrix.os == 'ubuntu-latest'
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev libsoup-3.0-dev libssl-dev libdbus-1-dev \
-            libxdo-dev libayatana-appindicator3-dev librsvg2-dev \
-            build-essential curl wget file pkg-config \
-            xdg-utils
+          apt_opts="-o Acquire::Retries=2 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o DPkg::Lock::Timeout=60"
+          for attempt in 1 2 3; do
+            if sudo apt-get $apt_opts update && sudo apt-get $apt_opts install -y \
+              libwebkit2gtk-4.1-dev libsoup-3.0-dev libssl-dev libdbus-1-dev \
+              libxdo-dev libayatana-appindicator3-dev librsvg2-dev \
+              build-essential curl wget file pkg-config \
+              xdg-utils; then
+              exit 0
+            fi
+            echo "::warning::apt attempt $attempt failed; retrying in 15s"
+            sleep 15
+          done
+          echo "::error::Could not install the Linux build dependencies after 3 attempts (Ubuntu mirrors unreachable from this runner?)"
+          exit 1
 
       - run: npm ci
 

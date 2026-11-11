@@ -46,6 +46,11 @@ Newest first.
   and no longer re-renders every link with a port label when it is let go.
 - Line hops are worked out for diagrams of up to 1,200 links (it was 160).
 
+**Fixed**
+- *Project package* and *Project as a folder* failed, with nothing saved, on
+  a project last saved before pages existed. The stored project is brought
+  up to date before it is exported.
+
 **Security updates in the backend**
 - The libraries behind constant-time arithmetic and the project database
   are updated to the releases that fix the advisories published in late

@@ -105,7 +105,9 @@ await page.addInitScript(({ p }) => {
       const meta = { id: p.meta.id, name: p.meta.name, customer: "", site: "", ticket: "", engineer: "",
         description: "", created_at: p.meta.createdAt, updated_at: p.meta.updatedAt, archived: false };
       if (cmd === "list_projects") return Promise.resolve([meta]);
-      if (cmd === "load_project") return Promise.resolve({ meta, document_version: p.documentVersion, document: p.document });
+      // Like the backend: what was saved last is what a load returns.
+      if (cmd === "save_project") { window.__saved = args.package; return Promise.resolve(null); }
+      if (cmd === "load_project") return Promise.resolve(window.__saved ?? { meta, document_version: p.documentVersion, document: p.document });
       if (cmd === "get_settings") return Promise.resolve({});
       if (cmd === "start_crawl") return Promise.resolve(null);
       // The collector path.
@@ -123,7 +125,8 @@ await page.addInitScript(({ p }) => {
     },
   };
 }, { p: project });
-page.on("pageerror", (e) => console.log("PAGE EXCEPTION:", String(e).slice(0, 300)));
+let pageErrors = 0;
+page.on("pageerror", (e) => { pageErrors += 1; console.log("PAGE EXCEPTION:", String(e).slice(0, 300)); });
 await page.goto(URL, { waitUntil: "networkidle" });
 await page.locator(".cv-project-open").first().click();
 await page.waitForTimeout(700);
@@ -465,9 +468,10 @@ check("and what it found fills the table the review reads", (await panel.locator
 check("with a status naming the run", /Collected 2 devices, 1 failed — collection run col-9/.test(await panel.textContent()));
 check("and the device that failed, with the reason", /192\.0\.2\.11/.test(await panel.textContent()) && /login was refused/.test(await panel.textContent()));
 
-await browser.close();
 // ------------------------------------------------ a package with credentials carries this project's, by id
 {
+  // The package is made from the saved project.
+  await page.evaluate(() => window.__cvStore.getState().saveProject());
   const menu = page.locator(".cv-dropdown").filter({ has: page.locator("summary", { hasText: "Export" }) });
   await menu.locator("summary").click();
   await page.waitForTimeout(150);
@@ -485,5 +489,19 @@ await browser.close();
     JSON.stringify({ ids, referred }));
 }
 
+// ------------------------------------------------ a project stored before pages existed still exports
+{
+  // The stored copy goes back to the single-page shape this run began with.
+  await page.evaluate(() => { window.__saved = undefined; });
+  const before = pageErrors;
+  const menu = page.locator(".cv-dropdown").filter({ has: page.locator("summary", { hasText: "Export" }) });
+  await menu.locator("summary").click();
+  await page.waitForTimeout(150);
+  await menu.locator("button", { hasText: "Project package (.corelens)" }).click();
+  await page.waitForTimeout(800);
+  check("a project stored in the single-page shape exports as a package without an error", pageErrors === before);
+}
+
+await browser.close();
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);

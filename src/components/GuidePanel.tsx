@@ -15,7 +15,9 @@ export function GuidePanel() {
   const selectedDevice = useStore((s) => activePage(s.doc).nodes.some((n) => n.selected && n.type === 'device'));
   const selectedLink = useStore((s) => activePage(s.doc).edges.some((e) => e.selected));
   const sessionRunning = useStore((s) => s.session.state === 'running');
-  const runtime = useRuntimeSlowly();
+  // A step is ticked as its answer arrives, not a second later: the tour is
+  // watched while it is followed.
+  const runtime = useRuntimeSlowly(250);
 
   const state = { selectedDevice, selectedLink, sessionRunning, runtime, done: guide?.done ?? [] };
   const fresh = guide ? newlyDone(state) : [];

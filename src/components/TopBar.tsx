@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { useStore, type ProjectDocument } from '../state/store';
+import { useRuntimeSlowly, useStore, type ProjectDocument } from '../state/store';
+import { migrateDocument } from '../lib/migrate';
 import { ipc } from '../lib/ipc';
 import { ChromeIcon, IconButton } from './chromeIcons';
 import { formatTime } from '../lib/timeFormat';
@@ -52,7 +53,10 @@ export function TopBar({ onExit }: { onExit: () => void }) {
   const linkStatus = useStore((s) => s.linkStatus);
   const nodeStatus = useStore((s) => s.nodeStatus);
   // The live results are read when an export is asked for, not listened to:
-  // listening re-rendered the whole bar every time a probe answered.
+  // listening re-rendered the whole bar every time a probe answered. The
+  // health strip still has to follow them, so the bar is redrawn when they
+  // change, at most four times a second.
+  useRuntimeSlowly(250);
   const exportMenu = useRef<HTMLDetailsElement>(null);
   const [about, setAbout] = useState(false);
   const updateWaiting = useStore((s) => (s.update.state === 'available' ? s.update.version : null));
@@ -171,6 +175,8 @@ export function TopBar({ onExit }: { onExit: () => void }) {
   /** The document an export reads — every page, or the open one alone:
    *  its nodes, links and probes, with the project-wide rest. The tables
    *  and the package follow the same choice as the drawings. */
+  // A stored document is brought up to date before it is scoped: one saved
+  // before pages existed has no page list to narrow.
   const scopeOf = (d: ProjectDocument) => (pageScope === 'all' || d.pages.length <= 1 ? d : documentForPages(d, [pg.id]));
   const scopedDoc = () => scopeOf(doc);
   /** A file name for one page of several. */
@@ -635,7 +641,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
       if (dirty) await useStore.getState().saveProject();
       const loaded = await ipc.loadProject(meta.id);
       if (!loaded) return;
-      const pkg = { ...loaded, document: scopeOf(loaded.document as ProjectDocument) };
+      const pkg = { ...loaded, document: scopeOf(migrateDocument(loaded.document).doc) };
       const project = vendorSafe ? { ...pkg, document: vendorSafeDocument(pkg.document) } : pkg;
       const { json, yaml } = projectFolderFiles(project as unknown as Record<string, unknown>);
       // The folder is a token a dialog (or the chosen export folder) gave.
@@ -652,7 +658,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
     const loaded = await ipc.loadProject(meta.id);
     if (!loaded) return;
     // "This page" makes a one-page project of it, which imports as one.
-    const pkg = { ...loaded, document: scopeOf(loaded.document as ProjectDocument) };
+    const pkg = { ...loaded, document: scopeOf(migrateDocument(loaded.document).doc) };
     // Credentials are app-wide rather than part of a project, so they are
     // never in an export unless asked for. A project package is the thing
     // people send to each other, and quietly including every saved password

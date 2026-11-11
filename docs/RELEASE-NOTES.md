@@ -46,6 +46,14 @@ Newest first.
   and no longer re-renders every link with a port label when it is let go.
 - Line hops are worked out for diagrams of up to 1,200 links (it was 160).
 
+**Security updates in the backend**
+- The libraries behind constant-time arithmetic and the project database
+  are updated to the releases that fix the advisories published in late
+  October: `crypto-bigint`, `ctutils` and SQLite (through `rusqlite` 0.41).
+  The update checker moves to `tauri-plugin-updater` 2.14, which reads
+  update archives with the fixed `zip`, and Tauri to 2.12. Building from
+  source now needs Rust 1.90 or later.
+
 ## 2.13.0 — 2026-10-22
 
 **Projects shared through a company folder**

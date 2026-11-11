@@ -4,7 +4,7 @@ version = "2.5.0"
 authors = ["Mohammed Almoola <https://www.linkedin.com/in/malmoola>"]
 edition = "2021"
 # The same floor as the other crates, so clippy holds every crate to one Rust.
-rust-version = "1.77"
+rust-version = "1.88"
 description = "File readers for Corelens: Visio .vsdx, draw.io and Nmap XML, read as devices and links — no Tauri, so they test with plain cargo"
 license = "LicenseRef-Almoola-Free-Proprietary"
 # Proprietary: never published to crates.io.

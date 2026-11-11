@@ -277,7 +277,7 @@ const dragNode = async (selector, dx, dy, witnessSelector) => {
 // A still capture cannot show whether anything is moving, which is why these
 // sat as PARTIAL. The rule is that a healthy link carries travelling dots and
 // a failed one does not. The dots are drawn on one canvas for the whole page
-// (linkDots.ts), so the DOM says how many a link carries in `data-dots` on its
+// (dotStreams.ts), so the DOM says how many a link carries in `data-dots` on its
 // body, and the canvas is checked for having actually painted something.
 {
   const dotsOf = (id) => page.evaluate((id) =>

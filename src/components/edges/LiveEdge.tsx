@@ -47,7 +47,7 @@ import {
   subscribePaths,
 } from './pathRegistry';
 import { setTraced, tracedEdge } from './traced';
-import { setDots } from './linkDots';
+import { setDots } from './dotStreams';
 import { t } from '../../i18n';
 
 /** Kept as a named export because the diagram exporter and several panels
@@ -800,7 +800,7 @@ function LiveEdgeInner(props: EdgeProps) {
 
   // The dots that travel a live link are not drawn here: the link says what
   // its stream is, and one canvas draws every stream on the page in a single
-  // pass (see linkDots.ts for why). Six a link — three, each with a trailing
+  // pass (see dotStreams.ts for why). Six a link — three, each with a trailing
   // companion — and as many again, thinner, coming back on a two-way link.
   const flowsForward = direction === 'forward' || direction === 'both' || direction === 'none';
   const flowsBack = direction === 'reverse' || direction === 'both';

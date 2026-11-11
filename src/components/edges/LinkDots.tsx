@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useStoreApi } from '@xyflow/react';
 
-import { dotStreams, pointAlong, subscribeDots } from './linkDots';
+import { dotStreams, pointAlong, subscribeDots } from './dotStreams';
 
 /** Three dots a link, evenly spaced, each with one trailing companion:
  *  smaller, dimmer and slightly behind. Reads as a comet without the cost of

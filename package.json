@@ -31,7 +31,7 @@
     "e2e": "node e2e/interact.mjs && node e2e/change.mjs && node e2e/library.mjs && node e2e/responsive.mjs && node e2e/brand.mjs && node e2e/dnd.mjs"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.0.1",
     "@tauri-apps/plugin-fs": "^2.0.3",
     "@tauri-apps/plugin-opener": "^2.2.2",
@@ -46,7 +46,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "@tauri-apps/cli": "^2.1.0",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^26.4.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

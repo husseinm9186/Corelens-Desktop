@@ -5,11 +5,11 @@ import { centreLabelFraction, chipWidthOf, nameBlockHeight, placePortChip, pushC
 describe('where a port label sits', () => {
   it('is beside the line, a fixed way along, further for each parallel cable', () => {
     const a = placePortChip({ len: 400, rank: 0, endY: 0, dirY: 0, nameBottom: null, centreW: 0, chipW: 60 });
-    expect(a).toEqual({ along: 46, off: 36 });
+    expect(a).toEqual({ along: 32, off: 36 });
     const b = placePortChip({ len: 400, rank: 1, endY: 0, dirY: 0, nameBottom: null, centreW: 0, chipW: 60 });
-    expect(b.along).toBe(112);
+    expect(b.along).toBe(98);
     // A short link keeps the chip on its own half.
-    expect(placePortChip({ len: 90, rank: 0, endY: 0, dirY: 0, nameBottom: null, centreW: 0, chipW: 60 }).along).toBe(36);
+    expect(placePortChip({ len: 70, rank: 0, endY: 0, dirY: 0, nameBottom: null, centreW: 0, chipW: 60 }).along).toBe(28);
   });
 
   it('clears the device\'s name when the link leaves downward through it', () => {
@@ -17,7 +17,7 @@ describe('where a port label sits', () => {
     const p = placePortChip({ len: 180, rank: 0, endY: 63, dirY: 1, nameBottom: 110, centreW: 0, chipW: 60 });
     expect(p.along).toBe(55); // 110 + 8 - 63
     // Sideways, the name is not in the way.
-    expect(placePortChip({ len: 180, rank: 0, endY: 63, dirY: 0, nameBottom: 110, centreW: 0, chipW: 60 }).along).toBe(46);
+    expect(placePortChip({ len: 180, rank: 0, endY: 63, dirY: 0, nameBottom: 110, centreW: 0, chipW: 60 }).along).toBe(32);
     // On a very short link the name is unavoidable: the middle is the limit.
     expect(placePortChip({ len: 80, rank: 0, endY: 63, dirY: 1, nameBottom: 110, centreW: 0, chipW: 60 }).along).toBe(40);
   });

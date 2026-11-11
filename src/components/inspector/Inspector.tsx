@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULTS, deviceColor, statusMark } from '../../theme';
 
-import { useStore, type InspectorTab } from '../../state/store';
+import { useRuntimeSlowly, useStore, type InspectorTab } from '../../state/store';
 import { openSsh } from '../sshActions';
 import { InventorySection } from './InventorySection';
 import { whySays } from '../../lib/evidence';
@@ -915,7 +915,7 @@ function DiagramInspector() {
   const updateMeta = useStore((s) => s.updateMeta);
   const doc = useStore((s) => s.doc);
   const session = useStore((s) => s.session);
-  const runtime = useStore((s) => s.runtime);
+  const runtime = useRuntimeSlowly();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const filter = useStore((s) => s.canvasFilter);
   const timeFormat = useStore((s) => s.settings.timeFormat);
@@ -1740,7 +1740,7 @@ function primaryAddress(d: DeviceNodeData): string {
  */
 function DeviceStatus({ nodeId, data: d, status }: { nodeId: string; data: DeviceNodeData; status: HealthStatus }) {
   const probes = useStore((s) => s.doc.probes);
-  const runtime = useStore((s) => s.runtime);
+  const runtime = useRuntimeSlowly();
   const pages = useStore((s) => s.doc.pages);
   const own = probes.filter((p) => p.objectId === nodeId);
   const primary = own.find((p) => p.isPrimary && p.enabled) ?? own.find((p) => p.enabled);
@@ -2266,7 +2266,7 @@ function LinkInspector({ edgeId }: { edgeId: string }) {
   // The probes and the page's nodes, not the whole document.
   const probes = useStore((s) => s.doc.probes);
   const pageNodes = useStore((s) => activePage(s.doc).nodes);
-  const runtime = useStore((s) => s.runtime);
+  const runtime = useRuntimeSlowly();
   const sessionRunning = useStore((s) => s.session.state === 'running');
   const nodeStatusOf = useStore((s) => s.nodeStatus);
   const update = useStore((s) => s.updateEdgeData);

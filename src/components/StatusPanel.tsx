@@ -4,7 +4,7 @@ import { useReactFlow } from '@xyflow/react';
 import { findNodes } from '../lib/findNodes';
 import { t } from '../i18n';
 
-import { useStore, type DockTab } from '../state/store';
+import { useRuntimeSlowly, useStore, type DockTab } from '../state/store';
 import { JobsBar } from './JobsBar';
 import { EmptyState } from './EmptyState';
 import { useRovingTabindex } from './useRovingTabindex';
@@ -191,7 +191,7 @@ export function StatusPanel() {
   // The pages and the probes, not the whole document.
   const pages = useStore((s) => s.doc.pages);
   const probes = useStore((s) => s.doc.probes);
-  const runtime = useStore((s) => s.runtime);
+  const runtime = useRuntimeSlowly();
   const events = useStore((s) => s.events);
   const timeFormat = useStore((s) => s.settings.timeFormat);
   const session = useStore((s) => s.session);

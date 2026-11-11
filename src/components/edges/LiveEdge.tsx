@@ -6,51 +6,48 @@ import {
   getBezierPath,
   getSmoothStepPath,
   getStraightPath,
-  Position,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { DeviceNodeData, HealthStatus, LinkData } from '../../types/domain';
-import { SHAPE_DEVICE_TYPES } from '../../types/domain';
 import type { TopoNode } from '../../state/store';
 import { STATUS_LABEL } from '../../types/domain';
-import { useStore } from '../../state/store';
+import { probesOf, useStore } from '../../state/store';
 import { describeRule, shouldAnimate } from '../../health/evaluate';
 import { STATUS_COLOR_DARK, canvasPalette, readableOn, statusColors } from '../../theme';
 import { capPath, capsFor, doubleWidths, stepAlong, strokeFor } from '../../lib/linkStyle';
-import { jumpsFor, withJumps } from '../../lib/lineJumps';
+import { withJumps } from '../../lib/lineJumps';
 import { cableTag, centreLabel } from '../../lib/cables';
 import { cssOf } from '../../lib/textStyle';
-import { CORNER_RADIUS, laneAmong, laneOffset, laneShift, obstaclesFor, routeAround, routePath, type Side as RouteSide } from '../../lib/avoidRoute';
-import { useDragOverlay } from '../../state/dragOverlay';
+import { CORNER_RADIUS } from '../../lib/avoidRoute';
+import { type LinkLayout, RING_GAP, canvasShapeOf, orthoPoints, outlineAnchor, projectToOutline, ringSnap, sideAt } from '../../lib/linkLayout';
+import { linkPath } from '../../lib/linkPath';
+import { fractionWhereYReaches, measurePath, nearestFraction, pointAtFraction, pointAtLength } from '../../lib/pathMeasure';
+import type { Side } from '../../lib/routeLinks';
+import { useLinkLayout } from '../../state/linkLayoutStore';
 import { segmentMidpoints, waypointRoute } from '../../lib/waypointRoute';
 import { activePage, pageNodeById } from '../../lib/pages';
-import { bezierPath, type Side } from '../../lib/bezierPath';
+import { bezierPath, type Side as BezierSide } from '../../lib/bezierPath';
 import {
   anchorPoint,
-  bearingAnchor,
-  centreOf,
   nearestAnchorOnBox,
-  nearestSide,
   SIDE_TO_POSITION,
   snapToConnection,
 } from '../../lib/floatingAnchor';
-import { glyphOutlineAnchor } from '../../lib/glyphExtents';
 import { centreLabelFraction, chipWidthOf, nameBlockHeight, placePortChip } from '../../lib/portLabels';
-import { chipPush, chipVersion, forgetChip, registerChip, subscribeChips } from './chipRegistry';
+import { chipPush, chipPushKey, forgetChip, registerChip, subscribeChips } from './chipRegistry';
 import { CROWDED_LINKS, linkCountsOf } from '../../lib/linkCounts';
-import { anchorSide, labelledPortAnchor, nearestPort, portCountOf, portedOf, portsAlong, sideToward } from '../../lib/portPoints';
+import { nearestPort, portCountOf, portedOf, portsAlong, sideToward } from '../../lib/portPoints';
 import { dragSegment, pathVertices, segmentGrips } from '../../lib/elbowRoute';
 import {
-  MAX_EDGES_FOR_JUMPS,
-  allPaths,
-  rankAtStart,
   forgetPath,
-  pathVersion,
+  jumpPointsOf,
+  rankOf,
   registerPath,
   subscribePaths,
 } from './pathRegistry';
 import { setTraced, tracedEdge } from './traced';
+import { setDots } from './linkDots';
 import { t } from '../../i18n';
 
 /** Kept as a named export because the diagram exporter and several panels
@@ -68,66 +65,18 @@ export const STATUS_COLOR = STATUS_COLOR_DARK;
  */
 const PORT_LABEL_AT = 0.32;
 
-/** A point at a fraction along the drawn path, or null where SVG geometry
- *  is unavailable (jsdom) — callers fall back to the straight chord. */
-function pointAt(edgePath: string, at: number): { x: number; y: number } | null {
-  try {
-    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    p.setAttribute('d', edgePath);
-    const len = p.getTotalLength();
-    if (!len || !Number.isFinite(len)) return null;
-    const pt = p.getPointAtLength(len * Math.min(1, Math.max(0, at)));
-    return { x: pt.x, y: pt.y };
-  } catch {
-    return null;
-  }
-}
-
-/** The fraction along the drawn path where it first reaches `y`
- *  going down — where a label slid past a name lands on a bent path — or
- *  null without SVG geometry. */
-function fractionWhereYReaches(edgePath: string, y: number): number | null {
-  try {
-    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    p.setAttribute('d', edgePath);
-    const len = p.getTotalLength();
-    if (!len || !Number.isFinite(len)) return null;
-    for (let i = 0; i <= 80; i += 1) {
-      if (p.getPointAtLength((len * i) / 80).y >= y) return i / 80;
-    }
-    return 1;
-  } catch {
-    return null;
-  }
-}
+/** A point at a fraction along the drawn path; null for a path with no
+ *  length — callers fall back to the straight chord. Measured with
+ *  arithmetic (lib/pathMeasure.ts), not by asking the browser. */
+const pointAt = pointAtFraction;
 
 /** The fraction along the path nearest to a point — how a dragged label is
  *  kept on its link: the cursor roams, the label takes the closest
- *  spot on the line. Sampled, then refined once around the best sample.
- *  Exported for the canvas, which uses it to place a double-clicked text
- *  at the spot that was clicked. */
+ *  spot on the line. Exported for the canvas, which uses it to place a
+ *  double-clicked text at the spot that was clicked. */
 export function nearestFractionOnPath(edgePath: string, x: number, y: number): number | null {
-  try {
-    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    p.setAttribute('d', edgePath);
-    const len = p.getTotalLength();
-    if (!len || !Number.isFinite(len)) return null;
-    let best = 0;
-    let bestD = Infinity;
-    const probe = (t: number) => {
-      const pt = p.getPointAtLength(len * t);
-      const d = (pt.x - x) ** 2 + (pt.y - y) ** 2;
-      if (d < bestD) {
-        bestD = d;
-        best = t;
-      }
-    };
-    for (let i = 0; i <= 80; i += 1) probe(i / 80);
-    for (let i = -9; i <= 9; i += 1) probe(best + i / 800);
-    return Math.min(0.97, Math.max(0.03, best));
-  } catch {
-    return null;
-  }
+  const f = nearestFraction(edgePath, x, y);
+  return f === null ? null : Math.min(0.97, Math.max(0.03, f));
 }
 
 /** Where along the drawn path the two port labels sit.
@@ -146,16 +95,16 @@ interface ChipAt { x: number; y: number; ux: number; uy: number }
 const CHIP_H = 18;
 
 const noSubscribe = () => () => {};
+const NO_HOPS: readonly { x: number; y: number }[] = [];
 
 function portAnchors(
   edgePath: string,
   rank: number,
   ends: { source: { nameBottom: number | null; chipW: number }; target: { nameBottom: number | null; chipW: number }; centreW: number },
 ): { s: ChipAt; t: ChipAt } | null {
-  try {
-    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    p.setAttribute('d', edgePath);
-    const len = p.getTotalLength();
+  {
+    const measured = measurePath(edgePath);
+    const len = measured.total;
     if (!len || !Number.isFinite(len)) return null;
     // Parallel cables out of one handle share their first stretch of path, so
     // a fixed distance stacks their chips exactly — which is how "Gi1/0/12"
@@ -163,8 +112,8 @@ function portAnchors(
     // by id (`rankAtStart`), and each rank slides one chip-length further
     // along the trunk. The chip then sits beside the line, past the
     // device's own name when the link leaves down through it.
-    const at = (l: number) => p.getPointAtLength(Math.min(len, Math.max(0, l)));
-    const unit = (a: DOMPoint, b: DOMPoint) => {
+    const at = (l: number) => pointAtLength(measured, l)!;
+    const unit = (a: { x: number; y: number }, b: { x: number; y: number }) => {
       const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
       return { x: (b.x - a.x) / d, y: (b.y - a.y) / d };
     };
@@ -180,12 +129,21 @@ function portAnchors(
       // The direction of travel away from this end, and the chip to its left
       // — which puts the two ends' chips on opposite sides of the line.
       const u = end === 'source' ? chord : { x: -chord.x, y: -chord.y };
-      return { x: pt.x + -u.y * off, y: pt.y + u.x * off, ux: u.x, uy: u.y };
+      // Beside the run the chip is actually on. The chord says which
+      // side — it is what keeps the two ends on opposite sides — but the
+      // offset is square to the line under the chip: on a link that drops
+      // out of a device and then runs a long way across, square to the
+      // chord is mostly *up*, and put the chip back on the device's name.
+      const here = end === 'source' ? unit(at(l - 6), at(l + 6)) : unit(at(l + 6), at(l - 6));
+      let nx = -here.y;
+      let ny = here.x;
+      if (nx * -u.y + ny * u.x < 0) {
+        nx = -nx;
+        ny = -ny;
+      }
+      return { x: pt.x + nx * off, y: pt.y + ny * off, ux: here.x, uy: here.y };
     };
     return { s: place('source'), t: place('target') };
-  } catch {
-    // jsdom has no SVG geometry; the chord fallback below still renders.
-    return null;
   }
 }
 
@@ -242,8 +200,8 @@ function pathFor(
         sourceY: p.sourceY,
         targetX: p.targetX,
         targetY: p.targetY,
-        sourcePosition: p.sourcePosition as Side | undefined,
-        targetPosition: p.targetPosition as Side | undefined,
+        sourcePosition: p.sourcePosition as BezierSide | undefined,
+        targetPosition: p.targetPosition as BezierSide | undefined,
         curvature,
       });
   }
@@ -271,97 +229,44 @@ function LiveEdgeInner(props: EdgeProps) {
   // so every link re-rendered — and searched the page for its two ends — on
   // every frame of any device being dragged anywhere.
   const probes = useStore((s) => s.doc.probes);
-  const runtime = useStore((s) => s.runtime);
   const reduceMotion = useStore((s) => s.settings.reduceMotion);
 
-  // Where each end actually meets its device. Three answers, in order:
-  //
-  //   1. a hand-placed anchor, if this link has one — someone said
-  //      exactly where they wanted it and nothing should argue;
-  //   2. the fixed handle React Flow measured, if the link is pinned — that
-  //      is what `pinnedSides` has always meant, an explicit "stop moving";
-  //   3. otherwise the bearing to the device at the other end, so a
-  //      link leaves pointing at where it is going, at any angle round the
-  //      shape, and keeps doing so as either end moves.
-  //
-  // (3) is the default because four fixed handles was the complaint: a device
-  // below and to the left was met sideways out of the left handle and then
-  // turned a corner. Shadowing the plain `sourceX`/`sourceY` names below,
-  // rather than threading differently-named points through the rest of the
-  // component, is what keeps every line after this — path, port labels, the
-  // corner drag — unaware of where the numbers came from.
+  // Where each end meets its device is the page's decision, not this link's:
+  // which point of a device's ring a link takes depends on the other links at
+  // that device, and which track its middle run takes on the other links in
+  // the same channel. The canvas lays the page out once (`layoutLinks`) and
+  // this link reads its own entry — its two ends and, when it is orthogonal,
+  // its corners. Shadowing the plain `sourceX`/`sourceY` names below, rather
+  // than threading differently-named points through the rest of the component,
+  // is what keeps every line after this — path, port labels, the corner drag
+  // — unaware of where the numbers came from.
   const nodeStyle = useStore((s) => activePage(s.doc).canvas.nodeStyle ?? 'glyph');
-  const boxOf = (n: TopoNode) => ({
-    x: n.position.x,
-    y: n.position.y,
-    w: n.width ?? n.measured?.width ?? 176,
-    h: n.height ?? n.measured?.height ?? 96,
-  });
-  // A glyph device is drawn as a round icon — its own selection ring is a
-  // circle — so a diagonal link measured against the box would attach out at
-  // a corner, visibly off the artwork. A card, a note or a drawn rectangle is
-  // a box and wants the box.
-  const isRound = (n: TopoNode) =>
-    nodeStyle === 'glyph' &&
-    n.type === 'device' &&
-    !SHAPE_DEVICE_TYPES.has((n.data as DeviceNodeData).deviceType);
-
-  // An end being dragged is read from the drag overlay, so the link
-  // follows it before the document learns where it went.
-  const sourceStored = useStore((s) => pageNodeById(activePage(s.doc), source));
-  const targetStored = useStore((s) => pageNodeById(activePage(s.doc), target));
-  const sourceNode = useDragOverlay((s) => s.moved?.get(source)) ?? sourceStored;
-  const targetNode = useDragOverlay((s) => s.moved?.get(target)) ?? targetStored;
-
-  const endOf = (
-    self: TopoNode | undefined,
-    other: TopoNode | undefined,
-    a: LinkData['sourceAnchor'],
-    fx: number,
-    fy: number,
-    fPos: Position | undefined,
-  ) => {
-    if (!self) return { x: fx, y: fy, position: fPos };
-    const box = boxOf(self);
-    const glyphDevice = isRound(self) && !(self.data as DeviceNodeData).imageDataUrl;
-    if (a) {
-      const p = anchorPoint(box, a);
-      // On a glyph the side is the drawing's edge the anchor sits on.
-      const side = glyphDevice ? anchorSide(box, portedOf(self.data as DeviceNodeData), a) : nearestSide(a);
-      return { x: p.x, y: p.y, position: SIDE_TO_POSITION[side] };
-    }
-    if (data.pinnedSides || !other) return { x: fx, y: fy, position: fPos };
-    const d = self.data as DeviceNodeData;
-    const otherCentre = centreOf(boxOf(other));
-    // A link whose port label names a port the device has lands on
-    // that port, along the drawing's edge that faces the other end.
-    if (isRound(self) && !d.imageDataUrl) {
-      const atPort = labelledPortAnchor(box, portedOf(d), self === sourceNode ? data.sourcePortLabel : data.targetPortLabel, otherCentre);
-      if (atPort) {
-        const p = anchorPoint(box, atPort);
-        return { x: p.x, y: p.y, position: SIDE_TO_POSITION[anchorSide(box, portedOf(d), atPort)] };
-      }
-    }
-    // A glyph device is met on its drawing's own outline, measured
-    // per glyph; anything else on its box, or the ellipse inside it.
-    const bearing = isRound(self) && !d.imageDataUrl
-      ? glyphOutlineAnchor(box, d.deviceType, otherCentre)
-      : bearingAnchor(box, otherCentre, isRound(self));
-    const p = anchorPoint(box, bearing);
-    return { x: p.x, y: p.y, position: SIDE_TO_POSITION[nearestSide(bearing)] };
+  const shapeOf = canvasShapeOf(nodeStyle);
+  const boxOf = (n: TopoNode) => {
+    const b = shapeOf(n);
+    return { x: b.x, y: b.y, w: b.w, h: b.h };
   };
+  // A glyph device is drawn as a round icon with a ring round it; a card, a
+  // note or a drawn rectangle is a box.
+  const isRound = (n: TopoNode) => shapeOf(n).round;
 
-  const sourceEnd = endOf(sourceNode, targetNode, data.sourceAnchor, rawSourceX, rawSourceY, rawSourcePosition);
-  const targetEnd = endOf(targetNode, sourceNode, data.targetAnchor, rawTargetX, rawTargetY, rawTargetPosition);
+  // The two devices as the document has them — for what they are, what they
+  // are called and whether they are selected. Where they *are* comes from the
+  // layout, which follows a device mid-drag; reading the drag here as well
+  // re-rendered a moving link twice a frame.
+  const sourceNode = useStore((s) => pageNodeById(activePage(s.doc), source));
+  const targetNode = useStore((s) => pageNodeById(activePage(s.doc), target));
+
+  const laid = useLinkLayout(id);
   // While an end is actively being dragged (see dragAnchorEnd below), it
-  // follows the cursor exactly rather than jumping to its nearest perimeter
-  // point on every frame — that snap happens once, on release, which is what
-  // makes the drag itself feel like it is going somewhere rather than
-  // fighting the shape it is leaving.
+  // follows the cursor — sliding round the ring of the device it is over —
+  // and the document learns where it landed once, on release.
   const [anchorDrag, setAnchorDrag] = useState<{
     which: 'source' | 'target';
     x: number;
     y: number;
+    /** The side of the device the end is on, when it is on one. */
+    side?: Side;
     /** The device and connection point the end has snapped to. */
     snapTo?: string;
     anchor?: { x: number; y: number };
@@ -371,48 +276,38 @@ function LiveEdgeInner(props: EdgeProps) {
   } | null>(
     null,
   );
-  const sourceX = anchorDrag?.which === 'source' ? anchorDrag.x : sourceEnd.x;
-  const sourceY = anchorDrag?.which === 'source' ? anchorDrag.y : sourceEnd.y;
-  const targetX = anchorDrag?.which === 'target' ? anchorDrag.x : targetEnd.x;
-  const targetY = anchorDrag?.which === 'target' ? anchorDrag.y : targetEnd.y;
-  const sourcePosition = sourceEnd.position;
-  const targetPosition = targetEnd.position;
+  const lay = useMemo<LinkLayout | null>(() => {
+    if (!laid) return null;
+    if (!anchorDrag) return laid;
+    const was = anchorDrag.which === 'source' ? laid.s : laid.t;
+    const end = { x: anchorDrag.x, y: anchorDrag.y, side: anchorDrag.side ?? was.side };
+    const s = anchorDrag.which === 'source' ? end : laid.s;
+    const t = anchorDrag.which === 'target' ? end : laid.t;
+    return { ...laid, s, t, points: laid.points ? orthoPoints(s, t) : null };
+  }, [laid, anchorDrag]);
+  // A link React Flow is drawing before the page has been laid out — or one
+  // whose device is missing — falls back to the handles React Flow measured.
+  const sourceX = lay ? lay.s.x : rawSourceX;
+  const sourceY = lay ? lay.s.y : rawSourceY;
+  const targetX = lay ? lay.t.x : rawTargetX;
+  const targetY = lay ? lay.t.y : rawTargetY;
+  const sourcePosition = lay ? SIDE_TO_POSITION[lay.s.side] : rawSourcePosition;
+  const targetPosition = lay ? SIDE_TO_POSITION[lay.t.side] : rawTargetPosition;
 
   // Through the store rather than calling the evaluator here, so the diagram
   // export resolves link status the same way the canvas does.
   const status = useStore((s) => s.linkStatus(id));
 
   const wps = useMemo(() => data.waypoints ?? [], [data.waypoints]);
-  // A link routed round devices needs to know where they are. Only such
-  // a link subscribes to the page's devices; every other link reads nothing.
-  const avoiding = data.pathType === 'avoid' || data.pathType === 'auto';
-  const obstacleNodes = useStore((s) => (avoiding ? activePage(s.doc).nodes : null));
-  // The lane among the links joining the same two devices.
-  const pageEdges = useStore((s) => (avoiding ? activePage(s.doc).edges : null));
-  const lane = useMemo(() => (pageEdges ? laneShift(laneAmong(pageEdges, id)) : 0), [pageEdges, id]);
   const [edgePath, labelX, labelY] = useMemo(() => {
-    if (wps.length > 0) {
-      const { path, labelAt } = waypointRoute({ x: sourceX, y: sourceY }, wps, { x: targetX, y: targetY });
-      return [path, labelAt.x, labelAt.y] as [string, number, number];
+    if (lay) {
+      const drawn = linkPath(data.pathType, lay, wps, curveDrag ?? data.curvature);
+      return [drawn.path, drawn.labelX, drawn.labelY] as [string, number, number];
     }
-    if (avoiding && obstacleNodes) {
-      const route = routeAround(
-        { x: sourceX, y: sourceY },
-        (sourcePosition ?? 'right') as RouteSide,
-        { x: targetX, y: targetY },
-        (targetPosition ?? 'left') as RouteSide,
-        obstaclesFor(obstacleNodes),
-      );
-      if (route) {
-        const { path, labelAt } = routePath(laneOffset(route, lane));
-        return [path, labelAt.x, labelAt.y] as [string, number, number];
-      }
-    }
-    // A route that cannot be found falls back to a step path.
-    return pathFor(avoiding ? 'smoothstep' : (data.pathType ?? 'smoothstep'), {
+    return pathFor(data.pathType === 'auto' || data.pathType === 'avoid' ? 'smoothstep' : (data.pathType ?? 'smoothstep'), {
       sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
     }, data.lane ?? 0, curveDrag ?? data.curvature);
-  }, [data.pathType, data.lane, data.curvature, curveDrag, wps, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, avoiding, obstacleNodes, lane]);
+  }, [data.pathType, data.lane, data.curvature, curveDrag, wps, lay, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition]);
 
   const ground = useStore((s) => s.settings.ground);
   // A leader points a note at what it is about. It is an annotation, not a
@@ -457,7 +352,6 @@ function LiveEdgeInner(props: EdgeProps) {
   // Register the plain path and read the others', so a crossing can be found.
   // What is registered is never the hopped path, or an edge redrawing itself
   // with hops would set every other edge recomputing.
-  const version = useSyncExternalStore(subscribePaths, pathVersion, pathVersion);
   useEffect(() => {
     registerPath(id, edgePath);
   }, [id, edgePath]);
@@ -472,13 +366,13 @@ function LiveEdgeInner(props: EdgeProps) {
   // its parallel neighbour appears. Only for a link with port chips to
   // place, and recomputed only when its own path or rank changes.
   const wantsPortChips = Boolean(data.sourcePortLabel || data.targetPortLabel);
-  void version;
-  const rank = wantsPortChips ? rankAtStart(id, edgePath) : 0;
+  const rank = useSyncExternalStore(wantsPortChips ? subscribePaths : noSubscribe, () => (wantsPortChips ? rankOf(id) : 0));
   // What each end's chip has to clear — the glyph's name block,
   // which hangs under its box — and how wide the chips and the centre label are.
-  const nameBottomOf = (n: TopoNode | undefined) => (n && isRound(n) ? n.position.y + boxOf(n).h + nameBlockHeight(n.data as DeviceNodeData) : null);
-  const sourceNameBottom = nameBottomOf(sourceNode);
-  const targetNameBottom = nameBottomOf(targetNode);
+  const nameBottomOf = (n: TopoNode | undefined, bottom: number | undefined) =>
+    n && isRound(n) ? (bottom ?? n.position.y + boxOf(n).h) + nameBlockHeight(n.data as DeviceNodeData) : null;
+  const sourceNameBottom = nameBottomOf(sourceNode, laid?.sBottom);
+  const targetNameBottom = nameBottomOf(targetNode, laid?.tBottom);
   const centreText = centreLabel(data);
   const centreW = centreText ? centreText.length * 6.2 + 28 : 0;
   const anchors = useMemo(
@@ -494,8 +388,11 @@ function LiveEdgeInner(props: EdgeProps) {
   // Each chip is registered where it would rest, and pushed clear of every
   // other link's chips in one pass. A chip dragged into place is registered
   // as fixed: it stays, and the others move round it.
-  const pushVersion = useSyncExternalStore(wantsPortChips ? subscribeChips : noSubscribe, chipVersion, chipVersion);
-  void pushVersion;
+  // Listening for this link's own two offsets, not for the register's
+  // version: every link with a port label used to re-render each time any
+  // chip anywhere settled.
+  const pushKey = useSyncExternalStore(wantsPortChips ? subscribeChips : noSubscribe, () => (wantsPortChips ? chipPushKey(id) : ''));
+  void pushKey;
   const chipBox = (end: 's' | 't', label: string | undefined, at: number | undefined) => {
     if (!label || !anchors) return null;
     const a = anchors[end];
@@ -637,8 +534,11 @@ function LiveEdgeInner(props: EdgeProps) {
       const nodes = activePage(useStore.getState().doc).nodes;
       const ownId = which === 'source' ? source : target;
       const tolerance = 10 / Math.max(0.1, rf.getZoom());
+      // A ring is drawn outside its device's box, so the reach is the box's
+      // plus the ring's.
+      const reach = tolerance + RING_GAP;
       const inside = (b: { x: number; y: number; w: number; h: number }) =>
-        f.x >= b.x - tolerance && f.x <= b.x + b.w + tolerance && f.y >= b.y - tolerance && f.y <= b.y + b.h + tolerance;
+        f.x >= b.x - reach && f.x <= b.x + b.w + reach && f.y >= b.y - reach && f.y <= b.y + b.h + reach;
       const candidates = nodes.filter((n) => n.id !== ownId && inside(boxOf(n)));
       const own = nodes.find((n) => n.id === ownId);
       const ordered = own ? [...candidates, own] : candidates;
@@ -648,12 +548,31 @@ function LiveEdgeInner(props: EdgeProps) {
         if (!isRound(n)) continue;
         const box = boxOf(n);
         const p = nearestPort(box, portedOf(n.data as DeviceNodeData), f, tolerance * 1.4);
-        if (p) return { nodeId: n.id, anchor: p.anchor, at: p.at, port: { k: p.k, name: p.name } };
+        if (p) {
+          const shape = shapeOf(n);
+          const at = projectToOutline(shape, p.at);
+          return { nodeId: n.id, anchor: p.anchor, at, side: sideAt(shape, at), port: { k: p.k, name: p.name } };
+        }
       }
       for (const n of ordered) {
-        const box = boxOf(n);
-        const a = snapToConnection(box, f, tolerance);
-        if (a) return { nodeId: n.id, anchor: a, at: anchorPoint(box, a) };
+        const shape = shapeOf(n);
+        if (shape.round) {
+          // On a glyph the whole ring is the connection point: the end slides
+          // round it under the pointer. The end's own device answers from a
+          // little further off, so it can be slid without staying exactly on
+          // the line; another device only once the pointer is over it.
+          const c = { x: shape.x + shape.w / 2, y: shape.y + shape.h / 2 };
+          const r = Math.max(shape.w, shape.h) / 2 + RING_GAP;
+          const far = n.id === ownId ? r + 60 / Math.max(0.1, rf.getZoom()) : r + tolerance;
+          if (Math.hypot(f.x - c.x, f.y - c.y) > far) continue;
+          const at = ringSnap(shape, f);
+          return { nodeId: n.id, anchor: outlineAnchor(shape, at), at, side: sideAt(shape, at) };
+        }
+        const a = snapToConnection(shape, f, tolerance);
+        if (a) {
+          const at = anchorPoint(shape, a);
+          return { nodeId: n.id, anchor: a, at, side: sideAt(shape, at) };
+        }
       }
       return null;
     };
@@ -672,7 +591,7 @@ function LiveEdgeInner(props: EdgeProps) {
       const snap = connectionUnder(f);
       const near = portedUnder(f);
       setAnchorDrag(
-        snap ? { which, x: snap.at.x, y: snap.at.y, snapTo: snap.nodeId, anchor: snap.anchor, port: snap.port, near } : { which, x: f.x, y: f.y, near },
+        snap ? { which, x: snap.at.x, y: snap.at.y, side: snap.side, snapTo: snap.nodeId, anchor: snap.anchor, port: snap.port, near } : { which, x: f.x, y: f.y, near },
       );
     };
     const up = () => {
@@ -688,8 +607,11 @@ function LiveEdgeInner(props: EdgeProps) {
       // Anywhere else it slides round its own device, always did.
       // Read at release, not subscribed to: only this moment needs the page.
       const pageNodes = activePage(useStore.getState().doc).nodes;
+      // An end snapped to a device's ring is on that device, though the ring
+      // is outside the device's box.
       const over = pageNodes.find((node) => {
         if (node.id === nodeId) return false;
+        if (final.snapTo === node.id) return true;
         const b = boxOf(node);
         return final.x >= b.x && final.x <= b.x + b.w && final.y >= b.y && final.y <= b.y + b.h;
       });
@@ -706,13 +628,15 @@ function LiveEdgeInner(props: EdgeProps) {
       }
       const n = pageNodes.find((node) => node.id === nodeId);
       if (!n) return;
-      const box = {
-        x: n.position.x,
-        y: n.position.y,
-        w: n.width ?? n.measured?.width ?? 176,
-        h: n.height ?? n.measured?.height ?? 96,
-      };
-      const a = final.snapTo === nodeId && final.anchor ? final.anchor : nearestAnchorOnBox(box, { x: final.x, y: final.y });
+      const shape = shapeOf(n);
+      // Released away from the device, the end goes to the point of its ring
+      // (or its box's edge) nearest where it was let go.
+      const a =
+        final.snapTo === nodeId && final.anchor
+          ? final.anchor
+          : shape.round
+            ? outlineAnchor(shape, { x: final.x, y: final.y })
+            : nearestAnchorOnBox(shape, { x: final.x, y: final.y });
       const store = useStore.getState();
       store.commit();
       // Slid onto one of its own ports, the end takes that name too.
@@ -848,68 +772,54 @@ function LiveEdgeInner(props: EdgeProps) {
   const targetPortAnchorX = anchors ? anchors.t.x + targetPush.dx : targetX + (sourceX - targetX) * PORT_LABEL_AT;
   const targetPortAnchorY = anchors ? anchors.t.y + targetPush.dy : targetY + (sourceY - targetY) * PORT_LABEL_AT;
   const livePath = wpDrag
-    ? waypointRoute({ x: sourceX, y: sourceY }, wpDrag.points, { x: targetX, y: targetY }).path
+    ? lay
+      ? linkPath(data.pathType, lay, wpDrag.points).path
+      : waypointRoute({ x: sourceX, y: sourceY }, wpDrag.points, { x: targetX, y: targetY }).path
     : edgePath;
+  // A leader is an annotation. Hopping it over the cables it crosses would
+  // say it is one of them. A route bent by hand is drawn as it was bent.
+  const hopping = jumpsEnabled && !isLeader && wps.length === 0;
+  // Sized to the line. A 5px hop on a 6px cable is a wobble; the arc has
+  // to clear the line it is hopping to read as a hop at all.
+  const hopRadius = Math.max(5, (data.width ?? 2) * 2.6);
+  // This link's own crossings, as of the settled register: it re-renders when
+  // they change, not whenever some other link's path does.
+  const hops = useSyncExternalStore(hopping ? subscribePaths : noSubscribe, () => (hopping ? jumpPointsOf(id, hopRadius * 2) : NO_HOPS));
   const drawnPath = useMemo(() => {
     if (wps.length > 0 || wpDrag) return livePath;
-    // A leader is an annotation. Hopping it over the cables it crosses would
-    // say it is one of them.
-    if (!jumpsEnabled || isLeader) return edgePath;
-    const others = allPaths();
-    if (others.size > MAX_EDGES_FOR_JUMPS) return edgePath;
-    void version;
-    // Sized to the line. A 5px hop on a 6px cable is a wobble; the arc has
-    // to clear the line it is hopping to read as a hop at all.
-    const radius = Math.max(5, (data.width ?? 2) * 2.6);
-    return withJumps(edgePath, jumpsFor(id, edgePath, others, radius * 2), radius);
-  }, [id, edgePath, livePath, wps.length, wpDrag, jumpsEnabled, isLeader, version, data.width]);
+    if (hops.length === 0) return edgePath;
+    // A hop no longer on the path — the link has moved since the register
+    // settled — is not drawn; `withJumps` only cuts hops into its own runs.
+    return withJumps(edgePath, hops as { x: number; y: number }[], hopRadius);
+  }, [edgePath, livePath, wps.length, wpDrag, hops, hopRadius]);
 
   const dash = isLeader ? (data.lineStyle === 'solid' ? undefined : '4 4') : stroke.dash;
   const caps = isLeader
     ? { start: data.startCap ?? 'none', end: data.endCap ?? 'none' }
     : capsFor(data, along);
 
-  const dotCount = 3;
-  /** Each dot gets one trailing companion: smaller, dimmer and slightly behind.
-   *  Reads as a comet without the cost of a real particle system. */
-  const TRAIL = [
-    { r: 3.2, opacity: 0.95, lag: 0 },
-    { r: 2.0, opacity: 0.4, lag: 0.1 },
-  ];
-  const dots: Array<{ key: string; begin: string; reverse: boolean; r: number; opacity: number }> =
-    [];
-  if (animate) {
-    const forward = direction === 'forward' || direction === 'both' || direction === 'none';
-    const reverse = direction === 'reverse' || direction === 'both';
-    for (let i = 0; i < dotCount; i += 1) {
-      const base = (i * duration) / dotCount;
-      for (const t of TRAIL) {
-        // A negative begin starts the animation mid-cycle, which places the
-        // trailing dot behind the leader without a second path.
-        const begin = `${(base - t.lag * duration).toFixed(2)}s`;
-        // The reverse stream is deliberately thinner and dimmer so a
-        // bidirectional link reads as two distinguishable streams rather than
-        // one crowded one.
-        if (forward) dots.push({ key: `f${i}-${t.r}`, begin, reverse: false, r: t.r, opacity: t.opacity });
-        if (reverse)
-          dots.push({
-            key: `r${i}-${t.r}`,
-            begin,
-            reverse: true,
-            r: t.r * 0.72,
-            opacity: t.opacity * 0.75,
-          });
-      }
-    }
-  }
+  // The dots that travel a live link are not drawn here: the link says what
+  // its stream is, and one canvas draws every stream on the page in a single
+  // pass (see linkDots.ts for why). Six a link — three, each with a trailing
+  // companion — and as many again, thinner, coming back on a two-way link.
+  const flowsForward = direction === 'forward' || direction === 'both' || direction === 'none';
+  const flowsBack = direction === 'reverse' || direction === 'both';
+  useEffect(() => {
+    setDots(id, animate ? { path: edgePath, color, duration, forward: flowsForward, reverse: flowsBack } : null);
+  }, [id, animate, edgePath, color, duration, flowsForward, flowsBack]);
+  useEffect(() => () => setDots(id, null), [id]);
+  const dotCount = animate ? (Number(flowsForward) + Number(flowsBack)) * 6 : 0;
 
-  const probesForLink = probes.filter((p) => p.objectId === id);
+  const probesForLink = probesOf(probes, id);
   const ruleText = describeRule(data.healthRule ?? { type: 'manual' }, [
     ...probesForLink,
     ...probes,
   ]);
   const liveProbe = probesForLink.find((p) => p.enabled);
-  const live = liveProbe ? runtime.get(liveProbe.id) : undefined;
+  // This link's own probe result, and nothing else's: listening to
+  // all of them re-rendered every link each time any probe answered.
+  const liveProbeId = liveProbe?.id;
+  const live = useStore((s) => (liveProbeId ? s.runtime.get(liveProbeId) : undefined));
 
   // The physical ports at each end, which is the first thing a
   // network engineer wants off a link — what plugs into what. A port-channel
@@ -984,7 +894,7 @@ function LiveEdgeInner(props: EdgeProps) {
           only one of them has to be readable at a time. Only the drawn line
           fades; the labels live outside this group and are left alone, so the
           diagram never stops being legible while the pointer is near it. */}
-      <g className="cv-link-body" data-edge={id}>
+      <g className="cv-link-body" data-edge={id} data-dots={dotCount || undefined}>
       {/* Halo. A wider, translucent copy of the line reads as a glow without an
           SVG filter — a per-edge drop-shadow is the expensive way to do this. */}
       {animate && (
@@ -999,11 +909,12 @@ function LiveEdgeInner(props: EdgeProps) {
         />
       )}
 
-      {/* A flowing dash crawl under the dots was tried here and cut: it cost
-          ~2.5 fps of the 60 fps budget at 30 animated edges, because SMIL on
-          stroke-dashoffset animates an attribute on the main thread, unlike
-          animateMotion which the compositor handles. The dots already carry
-          direction, so it bought very little. */}
+      {/* A flowing dash crawl under the dots was tried here and cut: SMIL on
+          stroke-dashoffset animates an attribute on the main thread, and cost
+          ~2.5 fps of the 60 fps budget at 30 animated edges. The dots turned
+          out to be the same kind of cost at scale, which is why they are on
+          a canvas now; they already carry direction, so the crawl bought
+          very little. */}
 
       {/* A bundle is two thin lines with the ground between them: the line
           drawn wide, and its middle cut out by a mask, so whatever is under
@@ -1041,20 +952,6 @@ function LiveEdgeInner(props: EdgeProps) {
       <path d={drawnPath} fill="none" stroke="transparent" strokeWidth={18}>
         <title>{tooltip}</title>
       </path>
-
-      {dots.map((d) => (
-        <circle key={d.key} r={d.r} fill={color} opacity={d.opacity}>
-          <animateMotion
-            dur={`${duration}s`}
-            begin={d.begin}
-            repeatCount="indefinite"
-            path={edgePath}
-            keyPoints={d.reverse ? '1;0' : '0;1'}
-            keyTimes="0;1"
-            calcMode="linear"
-          />
-        </circle>
-      ))}
 
       {status === 'down' && (
         <circle cx={labelX} cy={labelY} r={4} fill={STATUS_COLOR.down} opacity={0.9} />

@@ -17,11 +17,15 @@
 
 /** Above this, hops are not drawn at all.
  *
- *  Crossing detection is every straight run against every other, which is
- *  quadratic. On a diagram of this size the hops have also stopped helping:
- *  the picture is dense enough that the reader is using the highlight-on-hover
+ *  Crossing detection is every link against every other, which is quadratic
+ *  — cheaply so, now that a path is read once and two links whose rectangles
+ *  do not meet are told apart at a glance, which is what let this rise from
+ *  160. On a diagram past this size the hops have also stopped helping: the
+ *  picture is dense enough that the reader is using the highlight-on-hover
  *  instead. */
-export const MAX_EDGES_FOR_JUMPS = 160;
+export const MAX_EDGES_FOR_JUMPS = 1200;
+
+import { type Point, jumpsFor } from '../../lib/lineJumps';
 
 const paths = new Map<string, string>();
 const listeners = new Set<() => void>();
@@ -104,6 +108,49 @@ export function rankAtStart(id: string, d: string): number {
   return lo;
 }
 
+/** A link's rank among those leaving from where it does, from the path it
+ *  last registered. A number, so a link subscribed to it re-renders when its
+ *  rank changes and not whenever any path anywhere does. */
+export function rankOf(id: string): number {
+  const d = paths.get(id);
+  return d === undefined ? 0 : rankAtStart(id, d);
+}
+
+const NO_JUMPS: readonly Point[] = [];
+let jumpsAt = -1;
+let jumps = new Map<string, readonly Point[]>();
+let jumpsBefore = new Map<string, readonly Point[]>();
+
+/**
+ * Where a link hops over the links it crosses, as of the settled register.
+ *
+ * Worked out once per settled version for whichever link asks, and the array
+ * a link was given last time is handed back when its hops have not moved — so
+ * a link subscribed to this re-renders when its own crossings change, where
+ * every link used to re-render every time any path settled.
+ */
+export function jumpPointsOf(id: string, minGap: number): readonly Point[] {
+  if (jumpsAt !== version) {
+    jumpsBefore = jumps;
+    jumps = new Map();
+    jumpsAt = version;
+  }
+  const hit = jumps.get(id);
+  if (hit) return hit;
+  const d = paths.get(id);
+  let found: readonly Point[] = NO_JUMPS;
+  if (d !== undefined && paths.size <= MAX_EDGES_FOR_JUMPS) {
+    const points = jumpsFor(id, d, paths, minGap);
+    if (points.length > 0) {
+      const was = jumpsBefore.get(id);
+      const same = was && was.length === points.length && was.every((p, i) => p.x === points[i]!.x && p.y === points[i]!.y);
+      found = same ? was : points;
+    }
+  }
+  jumps.set(id, found);
+  return found;
+}
+
 export function subscribePaths(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -118,4 +165,7 @@ export function resetPaths(): void {
   if (timer) clearTimeout(timer);
   timer = null;
   version = 0;
+  jumpsAt = -1;
+  jumps = new Map();
+  jumpsBefore = new Map();
 }

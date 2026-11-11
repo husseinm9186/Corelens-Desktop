@@ -8,7 +8,7 @@ import { cssOf } from '../../lib/textStyle';
 import { BOUNDARIES, boundaryChip, boundaryIdProblem, isBoundaryKind } from '../../lib/boundaries';
 import { canvasPalette, deviceColor, statusColors, statusMark } from '../../theme';
 import { colourForKey, keyForData } from '../../lib/tinting';
-import { useStore } from '../../state/store';
+import { probesOf, useStore } from '../../state/store';
 import { openThreads } from '../../lib/comments';
 import { timeAgo } from '../../lib/timeAgo';
 import { ipc } from '../../lib/ipc';
@@ -208,12 +208,9 @@ function DeviceNodeInner({ id, data, selected }: NodeProps) {
   // s.doc.probes is a stable reference; filtering *inside* the selector would
   // return a fresh array on every store read, and useSyncExternalStore compares
   // with Object.is — that is an infinite render loop.
-  const allProbes = useStore((s) => s.doc.probes);
-  const probes = useMemo(
-    () => allProbes.filter((p) => p.objectId === id),
-    [allProbes, id],
-  );
-  const runtime = useStore((s) => s.runtime);
+  // This device's own probes, from the store's index: the same array until
+  // the project's probes change, so the selector is safe to return it.
+  const probes = useStore((s) => probesOf(s.doc.probes, id));
   const running = useStore((s) => s.session.state === 'running');
   const nodeStyle = useStore((s) => activePage(s.doc).canvas.nodeStyle ?? 'glyph');
   const pageGlyphVariant = useStore((s) => activePage(s.doc).canvas.glyphVariant ?? 'outline');
@@ -271,7 +268,11 @@ function DeviceNodeInner({ id, data, selected }: NodeProps) {
   const statusInk = mark ?? 'var(--text-faint)';
   const amber = statusColors(ground).warning;
   const primary = probes.find((p) => p.isPrimary && p.enabled) ?? probes.find((p) => p.enabled);
-  const live = primary ? runtime.get(primary.id) : undefined;
+  // Only this device's own result. Every device used to listen to
+  // every probe's results, so each answer from anywhere re-rendered the whole
+  // page; now an answer re-renders the one device it is about.
+  const primaryId = primary?.id;
+  const live = useStore((s) => (primaryId ? s.runtime.get(primaryId) : undefined));
   const card =
     running && live && hover ? (
       <LiveCard label={d.label} status={status} ink={statusInk} live={live} />

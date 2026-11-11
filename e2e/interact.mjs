@@ -200,11 +200,18 @@ const pointOnEdge = async () => {
   });
   const box = await page.locator(".react-flow__pane").boundingBox();
   // Several points along the line, taking the first that is really the
-  // line and not something drawn over it.
+  // line and not something drawn over it. The middle of each run before its
+  // far end: a link straight down between two devices is one run, and its
+  // far end is the very tip of the line, on the device's ring — where the
+  // clickable band has already stopped.
+  const pairs = [];
   for (let i = 2; i + 1 < nums.length; i += 2) {
+    pairs.push([(nums[i - 2] + nums[i]) / 2, (nums[i - 1] + nums[i + 1]) / 2], [nums[i], nums[i + 1]]);
+  }
+  for (const [px, py] of pairs) {
     const at = {
-      x: box.x + nums[i] * t.a + t.e,
-      y: box.y + nums[i + 1] * t.a + t.f,
+      x: box.x + px * t.a + t.e,
+      y: box.y + py * t.a + t.f,
     };
     const tag = await page.evaluate(
       ({ x, y }) => document.elementFromPoint(x, y)?.tagName ?? "",
@@ -269,16 +276,25 @@ const dragNode = async (selector, dx, dy, witnessSelector) => {
 // ------------------------------------------------------------- cases 8, 9
 // A still capture cannot show whether anything is moving, which is why these
 // sat as PARTIAL. The rule is that a healthy link carries travelling dots and
-// a failed one does not; in the DOM that is an <animateMotion> per dot.
+// a failed one does not. The dots are drawn on one canvas for the whole page
+// (linkDots.ts), so the DOM says how many a link carries in `data-dots` on its
+// body, and the canvas is checked for having actually painted something.
 {
-  const healthy = await page.evaluate(() =>
-    document.querySelectorAll('g[data-id="e-healthy"] animateMotion').length,
-  );
-  const down = await page.evaluate(() =>
-    document.querySelectorAll('g[data-id="e-down"] animateMotion').length,
-  );
-  check("a healthy link carries travelling dots", healthy > 0, `${healthy} animateMotion`);
-  check("a failed link carries none", down === 0, `${down} animateMotion`);
+  const dotsOf = (id) => page.evaluate((id) =>
+    Number(document.querySelector(`g[data-id="${id}"] .cv-link-body`)?.getAttribute("data-dots") ?? 0), id);
+  const healthy = await dotsOf("e-healthy");
+  const down = await dotsOf("e-down");
+  check("a healthy link carries travelling dots", healthy > 0, `${healthy} dots`);
+  check("a failed link carries none", down === 0, `${down} dots`);
+  const painted = await page.evaluate(() => {
+    const c = document.querySelector("canvas.cv-link-dots");
+    if (!c) return -1;
+    const px = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let lit = 0;
+    for (let i = 3; i < px.length; i += 4) if (px[i] > 0) lit++;
+    return lit;
+  });
+  check("the dots are painted on the canvas", painted > 0, `${painted} lit pixels`);
 
   const stroke = await page.evaluate(() => {
     const at = (id) => {
@@ -2768,15 +2784,41 @@ await dismissRecovery();
   await page.mouse.up();
   await page.waitForTimeout(400);
   const off = await label.boundingBox();
-  check("dragged away it does not leave the link's area",
-    Math.abs(off.y - mid.y) < 120, `y ${mid.y.toFixed(0)} -> ${off.y.toFixed(0)}`);
+  // Whatever shape the link takes between the two devices, a point of the
+  // screen a fraction of the way along it — and how far a point is from it.
+  const onLink = (fraction) => page.evaluate((fraction) => {
+    const path = document.querySelector('.react-flow__edge[data-id="lx-e"] .react-flow__edge-path');
+    const p = path.getPointAtLength(path.getTotalLength() * fraction);
+    const m = path.getScreenCTM();
+    return { x: p.x * m.a + m.e, y: p.y * m.d + m.f };
+  }, fraction);
+  const fromLink = (pt) => page.evaluate((pt) => {
+    const path = document.querySelector('.react-flow__edge[data-id="lx-e"] .react-flow__edge-path');
+    const m = path.getScreenCTM();
+    const len = path.getTotalLength();
+    let best = Infinity;
+    for (let i = 0; i <= 400; i++) {
+      const p = path.getPointAtLength((len * i) / 400);
+      best = Math.min(best, Math.hypot(p.x * m.a + m.e - pt.x, p.y * m.d + m.f - pt.y));
+    }
+    return best;
+  }, pt);
+  const gap = await fromLink({ x: off.x + off.width / 2, y: off.y + off.height / 2 });
+  check("dragged away it does not leave the link",
+    gap < 6, `${gap.toFixed(1)} px from the line; y ${mid.y.toFixed(0)} -> ${off.y.toFixed(0)}`);
 
-  // Double-click a spot on the link and write straight onto it.
-  const path = page.locator('.react-flow__edge[data-id="lx-e"] path').first();
-  const pb = await path.boundingBox();
-  // At the corner of the smoothstep, not a segment midpoint where a routing
-  // handle sits — double-click adds text on the bare line.
-  await page.mouse.dblclick(pb.x + pb.width * 0.5, pb.y + pb.height * 0.85);
+  // Double-click a spot on the link and write straight onto it. Most of the
+  // way along and short of the end: not a run's midpoint, where a routing
+  // handle sits, and not under the centre label — on the bare line.
+  // …and not under the overview box either, which sits over that corner.
+  let spot = null;
+  for (const f of [0.86, 0.72, 0.28, 0.14, 0.64, 0.36]) {
+    const at = await onLink(f);
+    const tag = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName ?? "", at);
+    if (tag === "path") { spot = at; break; }
+  }
+  check("there is bare line to double-click", spot !== null);
+  await page.mouse.dblclick(spot.x, spot.y);
   await page.waitForTimeout(400);
   const editor = page.locator(".cv-edge-flat input");
   check("double-clicking a link opens a caret there", (await editor.count()) === 1);

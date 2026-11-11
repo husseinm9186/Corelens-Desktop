@@ -93,16 +93,32 @@ export function routeAround(
   };
   const overlaps = (r: Rect) => r.x < span.x + span.w && r.x + r.w > span.x && r.y < span.y + span.h && r.y + r.h > span.y;
   const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-  const blocks = obstacles
+  const near = obstacles
     .filter(overlaps)
-    .map((r) => inflate(r, MARGIN - 1))
     .sort((p, q) => Math.hypot(p.x + p.w / 2 - mid.x, p.y + p.h / 2 - mid.y) - Math.hypot(q.x + q.w / 2 - mid.x, q.y + q.h / 2 - mid.y))
     .slice(0, MAX_OBSTACLES);
 
   // A device lying over an end cannot be gone round — the link starts inside
-  // it — so it is not an obstacle; everything else still is.
-  for (let i = blocks.length - 1; i >= 0; i--) {
-    if (inside(a, blocks[i]!) || inside(b, blocks[i]!)) blocks.splice(i, 1);
+  // it — so it is not an obstacle; everything else still is. One that only
+  // comes *close* to an end — its clearance reaches the end, the device
+  // itself does not — is still gone round, hugged rather than given its full
+  // margin: dropping it sent the link straight through a note sitting a
+  // finger's width above the device it was heading for.
+  const blocks: Rect[] = [];
+  for (const r of near) {
+    const roomy = inflate(r, MARGIN - 1);
+    if (!inside(a, roomy) && !inside(b, roomy)) {
+      blocks.push(roomy);
+      continue;
+    }
+    // As much clearance as leaves both ends outside it.
+    let room = MARGIN - 1;
+    for (const p of [a, b]) {
+      if (!inside(p, roomy)) continue;
+      const out = Math.max(r.x - p.x, p.x - (r.x + r.w), r.y - p.y, p.y - (r.y + r.h));
+      room = Math.min(room, out - 1);
+    }
+    if (room >= 0) blocks.push(inflate(r, room));
   }
 
   const xs = new Set<number>([a.x, b.x]);
@@ -238,6 +254,11 @@ export function routePath(points: readonly Pt[], radius = CORNER_RADIUS): { path
     const a = points[i - 1]!;
     const b = points[i + 1]!;
     const r = Math.min(radius, Math.hypot(p.x - a.x, p.y - a.y) / 2, Math.hypot(b.x - p.x, b.y - p.y) / 2);
+    // A square corner, or one too tight to round, is just a corner.
+    if (r < 0.5) {
+      d += `L${p.x},${p.y}`;
+      continue;
+    }
     const inX = p.x + Math.sign(a.x - p.x) * r;
     const inY = p.y + Math.sign(a.y - p.y) * r;
     const outX = p.x + Math.sign(b.x - p.x) * r;

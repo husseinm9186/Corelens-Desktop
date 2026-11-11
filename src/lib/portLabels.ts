@@ -56,7 +56,11 @@ export function chipWidthOf(text: string): number {
 export function placePortChip(c: ChipInput): ChipPlace {
   // A chip-length per rank, or neighbouring chips still overlap; capped so a
   // short link's chip stays on its own half.
-  let along = Math.min(46 + c.rank * 66, c.len * (0.4 - 0.08 * Math.min(c.rank, 3)));
+  // A link ends on its device's ring now, already clear of the drawing, so
+  // the first chip sits closer to the end than it did when links ran on to
+  // the artwork (it was 46) — or on a link between two tiers both chips and
+  // the centre label were left fighting over the middle.
+  let along = Math.min(32 + c.rank * 66, c.len * (0.4 - 0.08 * Math.min(c.rank, 3)));
   // Leaving downward through the name: past it, with a little air, but never
   // beyond the middle, where it would be the other end's.
   if (c.nameBottom !== null && c.dirY > 0.5) {
@@ -65,7 +69,8 @@ export function placePortChip(c: ChipInput): ChipPlace {
   }
   let off = c.chipW / 2 + 6;
   // Level with the centre label, step outside it rather than under it.
-  if (c.centreW > 0 && Math.abs(along - c.len / 2) < 14) off = c.centreW / 2 + c.chipW / 2 + 6;
+  // (18: half a chip and half a label, with a hair between them.)
+  if (c.centreW > 0 && Math.abs(along - c.len / 2) < 18) off = c.centreW / 2 + c.chipW / 2 + 6;
   return { along, off };
 }
 

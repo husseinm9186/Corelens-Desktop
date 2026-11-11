@@ -11,7 +11,7 @@ import { useMemo, useState } from 'react';
 
 import { uid } from '../../lib/id';
 import { ipc } from '../../lib/ipc';
-import { useStore } from '../../state/store';
+import { useRuntimeSlowly, useStore } from '../../state/store';
 import type { DeviceNodeData, LinkData } from '../../types/domain';
 import { t } from '../../i18n';
 
@@ -21,7 +21,7 @@ export function NeighboursSection({ nodeId }: { nodeId: string }) {
   const activePageId = useStore((s) => s.doc.activePageId);
   const linkStatus = useStore((s) => s.linkStatus);
   const select = useStore((s) => s.select);
-  useStore((s) => s.runtime);
+  useRuntimeSlowly();
   const rows = useMemo(() => {
     const out: { edgeId: string; pageId: string; other: string; here: string; there: string; layer3: boolean }[] = [];
     for (const page of pages) {

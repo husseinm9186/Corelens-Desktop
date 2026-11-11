@@ -2315,10 +2315,18 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   pointer-events: auto;
 }
 
-.cv-glyph-node .react-flow__handle-top { top: 0; left: 50%; }
-.cv-glyph-node .react-flow__handle-bottom { top: 100%; bottom: auto; left: 50%; }
-.cv-glyph-node .react-flow__handle-left { top: 50%; left: 0; }
-.cv-glyph-node .react-flow__handle-right { top: 50%; left: 100%; right: auto; }
+/* On the ring, not the box: the ring is where a link meets a glyph (see
+   lib/linkLayout.ts, RING_GAP), so the dots a new link is drawn from sit
+   exactly where a link's end sits once it is drawn. */
+/* Each dot is centred on its point of the ring by the same transform. React
+   Flow's own differ by side — centred on the edge for the top and left, hung
+   wholly outside it for the bottom and right — which had the four dots at
+   two different distances from the device. */
+.cv-glyph-node .react-flow__handle { transform: translate(-50%, -50%); }
+.cv-glyph-node .react-flow__handle-top { top: -6px; left: 50%; }
+.cv-glyph-node .react-flow__handle-bottom { top: calc(100% + 6px); bottom: auto; left: 50%; }
+.cv-glyph-node .react-flow__handle-left { top: 50%; left: -6px; }
+.cv-glyph-node .react-flow__handle-right { top: 50%; left: calc(100% + 6px); right: auto; }
 
 /* A halo behind node text, so a link crossing it stays readable.
    
@@ -3680,3 +3688,13 @@ details[open] > .cv-palette-lib::before { content: '▾'; }
 .cv-collect .is-inferred td { font-style: italic; }
 .cv-collect .cv-confidence-07 td:nth-child(4),
 .cv-collect .cv-confidence-06 td:nth-child(4) { color: var(--warning); }
+
+/* --- every live link's travelling dots, drawn on one canvas over the pane.
+   It takes no pointer events — it is a picture, and everything under it is
+   still there to be clicked. Above the links and devices (the renderer is
+   z-index 4) and under the panels and the minimap (5). --- */
+.cv-link-dots {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 4;
+}
+@media print { .cv-link-dots { display: none; } }

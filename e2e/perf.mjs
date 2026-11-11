@@ -95,7 +95,7 @@ if (process.env.PERF_DEBUG) {
 const census = await page.evaluate(() => ({
   edges: document.querySelectorAll(".react-flow__edge").length,
   nodes: document.querySelectorAll(".react-flow__node").length,
-  motion: document.querySelectorAll("animateMotion").length,
+  motion: [...document.querySelectorAll(".cv-link-body[data-dots]")].reduce((n, g) => n + Number(g.getAttribute("data-dots")), 0),
   circles: document.querySelectorAll(".react-flow svg circle").length,
 }));
 

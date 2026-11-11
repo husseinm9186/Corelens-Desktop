@@ -74,6 +74,15 @@ export function chipPush(key: string): { dx: number; dy: number } {
 
 const NONE = { dx: 0, dy: 0 };
 
+/** Both of a link's chip offsets as one string — something a link can
+ *  subscribe to and hear about only when its own chips are pushed somewhere
+ *  new. */
+export function chipPushKey(edgeId: string): string {
+  const s = chipPush(`${edgeId}:s`);
+  const t = chipPush(`${edgeId}:t`);
+  return s === NONE && t === NONE ? '' : `${s.dx},${s.dy};${t.dx},${t.dy}`;
+}
+
 /** Test seam: the register is module state. */
 export function resetChips(): void {
   chips.clear();

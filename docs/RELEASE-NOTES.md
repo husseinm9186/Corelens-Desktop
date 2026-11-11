@@ -2,6 +2,50 @@
 
 Newest first.
 
+## Unreleased
+
+**Links meet a device on its ring**
+- A link ends on the ring round a device — the circle that marks it selected
+  — and the four connection dots sit on the same ring. It used to end inside
+  the ring, on the drawing, where its end handle was under the device and
+  could not be picked up.
+- Several links on one side of a device share the side out instead of all
+  leaving from one point: side by side, in the order of where they go, so
+  two links between the same pair run parallel and a fan does not cross
+  itself on the way out.
+- Dragging a link's end slides it round the ring, easing onto the top, the
+  sides and the diagonals; it stays where it is let go. Dropped on another
+  device, it lands on that device's ring. An end placed on an older version
+  is shown on the ring, on the same bearing.
+- A new link can be let go anywhere on a device, not only on a dot.
+
+**Orthogonal links are drawn square, on tracks of their own**
+- Step, smooth-step and auto links run in right angles only. The slanted
+  runs are gone: they came from parallel links being shifted into lanes, and
+  from a hand-bent route whose devices had since moved.
+- Links whose middle runs would lie on the same line between two tiers each
+  take a parallel track, ordered so a link does not cross a neighbour it has
+  no need to.
+- Devices on different tiers are joined top to bottom, however far across
+  they are; a link no longer leaves by the side and runs through the other
+  devices on its own tier.
+- An auto link goes round a note or device that sits close to one of its
+  ends, instead of straight through it.
+- The export draws links from the same layout as the canvas, including a
+  route bent by hand, which it used to ignore.
+
+**Faster, most of all while monitoring**
+- Probe results are applied in batches, and a device or link listens only to
+  its own probe. Each result used to re-render every device, every link and
+  the panels. On a 154-device, 231-link diagram with every probe answering:
+  idle went from 109 ms a frame to 16.7, panning from 133 to 11, dragging a
+  device from 135 to 7.
+- The dots travelling along live links are drawn on one canvas instead of as
+  six animated SVG elements a link.
+- Dragging a device re-renders the links at it once a frame, not four times,
+  and no longer re-renders every link with a port label when it is let go.
+- Line hops are worked out for diagrams of up to 1,200 links (it was 160).
+
 ## 2.13.0 — 2026-10-22
 
 **Projects shared through a company folder**

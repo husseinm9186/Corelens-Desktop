@@ -179,33 +179,43 @@ describe('renderDiagramSvg', () => {
     expect(svg).not.toContain('400,48');
   });
 
-  it('leaves a shape on the bearing to the other device, not a fixed side', () => {
-    // n1 is 176x96 at the origin, so its centre is (88,48); n2 is down and to
-    // the right. The old fixed right-hand handle was (176,48) — a link that
-    // left sideways and then turned a corner. The bearing crosses the box's
-    // bottom edge at (136,96) instead.
+  it('leaves a shape from the side that faces the other device, not a fixed side', () => {
+    // n1 is 176x96 at the origin; n2 is down and to the right, no further
+    // across than down, so n1's bottom faces it. The old fixed right-hand
+    // handle was (176,48) — a link that left sideways and then turned a
+    // corner. A link on its own leaves the middle of the facing side.
     const diagonal: TopoEdge = { ...link, data: { ...link.data, pathType: 'straight' } } as TopoEdge;
     const svg = render([device('n1', 0, 0), device('n2', 400, 400)], [diagonal]);
-    expect(svg).toContain('136,96');
+    expect(svg).toContain('M88,96L488,400');
     expect(svg).not.toContain('176,48');
   });
 
-  it('meets a round glyph on its circle rather than out at the box corner', () => {
-    // Same two devices, drawn as glyphs: the outline is the circle the icon
-    // actually is, so the link lands nearer the centre than the box edge.
+  it('meets a glyph on the ring round it rather than on its box', () => {
+    // Same two devices, drawn as glyphs: the icon is 46 wide at (65,4), and
+    // the ring is 6 outside it — so its lowest point is (88, 4 + 46 + 6).
     const diagonal: TopoEdge = { ...link, data: { ...link.data, pathType: 'straight' } } as TopoEdge;
     const nodes = [device('n1', 0, 0), device('n2', 400, 400)];
     const asCard = render(nodes, [diagonal], 'healthy', 'card');
     const asGlyph = render(nodes, [diagonal], 'healthy', 'glyph');
-    expect(asCard).toContain('136,96');
-    expect(asGlyph).not.toContain('136,96');
+    expect(asCard).toContain('M88,96');
+    expect(asGlyph).toContain('M88,56');
   });
 
-  it('lands a link labelled with a port on that port of the glyph, on the edge facing the other end', () => {
+  it('gives two links between the same pair their own points and keeps them apart', () => {
+    const twin = (id: string): TopoEdge => ({ ...link, id, data: { ...link.data, pathType: 'straight' } }) as TopoEdge;
+    const svg = render([device('n1', 0, 0), device('n2', 0, 400)], [twin('a'), twin('b')]);
+    // Side by side on the facing sides, six either way of the middle — and
+    // parallel, so they never touch.
+    expect(svg).toContain('M82,96L82,400');
+    expect(svg).toContain('M94,96L94,400');
+  });
+
+  it('lands a link labelled with a port on the ring, on the bearing of that port of the glyph', () => {
     // n1 is drawn as a 46-px icon at (65, 4) in its 176 × 96 box; an access
     // switch's tile spans 1.2..22.8 across and 7.2..16.8 down its 24-grid.
-    // Port 3 of 4 on the bottom edge: x = 65 + 46 * (1.2 + 21.6 * 2.5 / 4) / 24,
-    // y = 4 + 46 * 16.8 / 24.
+    // Port 3 of 4 on the bottom edge is at x = 65 + 46 * (1.2 + 21.6 * 2.5 / 4) / 24,
+    // y = 4 + 46 * 16.8 / 24; the link meets the ring (radius 29 about the
+    // icon's centre, (88, 27)) on the ray through that port.
     const straight: TopoEdge = { ...link, data: { ...link.data, pathType: 'straight', sourcePortLabel: 'Gi1/0/3' } } as TopoEdge;
     const nodes = [device('n1', 0, 0, { portCount: 4, portNaming: 'Gi1/0/{n}' }), device('n2', 0, 400)];
     const svg = render(nodes, [straight], 'healthy', 'glyph');
@@ -213,9 +223,12 @@ describe('renderDiagramSvg', () => {
     const linkStart = (out: string) => /<path d="M ?(-?[\d.]+),(-?[\d.]+)[^"]*" fill="none" stroke="#[0-9a-f]{6}" stroke-width="2"/i.exec(out);
     const m = linkStart(svg);
     expect(m).not.toBeNull();
-    expect(Number(m![1])).toBeCloseTo(65 + 46 * (1.2 + 21.6 * 2.5 / 4) / 24, 0);
-    expect(Number(m![2])).toBeCloseTo(4 + 46 * 16.8 / 24, 0);
-    // A label naming no port it has falls back to the outline.
+    const port = { x: 65 + 46 * (1.2 + 21.6 * 2.5 / 4) / 24, y: 4 + 46 * 16.8 / 24 };
+    const reach = 29 / Math.hypot(port.x - 88, port.y - 27);
+    expect(Number(m![1])).toBeCloseTo(88 + (port.x - 88) * reach, 0);
+    expect(Number(m![2])).toBeCloseTo(27 + (port.y - 27) * reach, 0);
+    expect(Math.hypot(Number(m![1]) - 88, Number(m![2]) - 27)).toBeCloseTo(29, 0);
+    // A label naming no port it has falls back to the middle of the facing side.
     const plain: TopoEdge = { ...link, data: { ...link.data, pathType: 'straight', sourcePortLabel: 'Po1' } } as TopoEdge;
     const back = render(nodes, [plain], 'healthy', 'glyph');
     const b = linkStart(back);

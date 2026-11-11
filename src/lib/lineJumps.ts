@@ -168,6 +168,29 @@ function endsOf(d: string): Point[] {
   ];
 }
 
+/**
+ * A path's runs, the rectangle they sit in and its two ends, read once.
+ *
+ * Every link asks about every other link's path, so each path used to be
+ * taken apart once per link asking — the square of the number of links, in
+ * regular expressions. A path is now read the first time anyone asks and
+ * remembered by its text, which is all that identifies it.
+ */
+const PARSED_LIMIT = 20_000;
+const parsedPaths = new Map<string, { runs: Segment[]; box: ReturnType<typeof boxOf>; ends: Point[] }>();
+function parsed(d: string) {
+  let hit = parsedPaths.get(d);
+  if (!hit) {
+    const runs = straightRuns(d);
+    hit = { runs, box: boxOf(runs), ends: endsOf(d) };
+    // Paths come and go as devices are dragged; nothing here is worth keeping
+    // once there is this much of it.
+    if (parsedPaths.size >= PARSED_LIMIT) parsedPaths.clear();
+    parsedPaths.set(d, hit);
+  }
+  return hit;
+}
+
 /** How close to a link's own end a crossing is taken to be two links meeting
  *  at a device rather than crossing (for curves; straight runs keep
  *  their own margin). */
@@ -200,19 +223,15 @@ export function jumpsFor(
   others: Iterable<[string, string]>,
   minGap = 10,
 ): Point[] {
-  const mine = straightRuns(d);
+  const { runs: mine, box: myBox, ends: myEnds } = parsed(d);
   if (mine.length === 0) return [];
-  const myBox = boxOf(mine);
-  const myEnds = endsOf(d);
   const points: Point[] = [];
   for (const [otherId, otherD] of others) {
     if (otherId === id) continue;
-    const theirRuns = straightRuns(otherD);
+    const { runs: theirRuns, box, ends: theirEnds } = parsed(otherD);
     // A curve is 32 pieces, so links that cannot meet are dropped
     // before any piece is compared with any other.
-    const box = boxOf(theirRuns);
     if (box.x1 > myBox.x2 || box.x2 < myBox.x1 || box.y1 > myBox.y2 || box.y2 < myBox.y1) continue;
-    const theirEnds = endsOf(otherD);
     for (const theirs of theirRuns) {
       for (const run of mine) {
         const at = crossing(run, theirs);

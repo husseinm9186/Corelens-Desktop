@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { EMPTY_TREE, type FolderTree } from '../lib/projectFolders';
 import { mapProjectName } from '../lib/startScreen';
 import { create } from 'zustand';
@@ -1364,6 +1365,53 @@ function hangsOffLinks(
   return out;
 }
 
+/** A project's probes by the device or link they watch, and by their own
+ *  id. Asked for by every device and every link on every store update, and a
+ *  scan of the whole list each time was most of what a store update cost.
+ *  Indexed once per list instead; the list is replaced, never edited in place. */
+const probeIndexes = new WeakMap<readonly Probe[], { byObject: Map<string, Probe[]>; byId: Map<string, Probe> }>();
+const NO_PROBES: Probe[] = [];
+function probeIndex(probes: readonly Probe[]) {
+  let index = probeIndexes.get(probes);
+  if (!index) {
+    index = { byObject: new Map(), byId: new Map() };
+    for (const p of probes) {
+      const list = index.byObject.get(p.objectId);
+      if (list) list.push(p);
+      else index.byObject.set(p.objectId, [p]);
+      if (!index.byId.has(p.id)) index.byId.set(p.id, p);
+    }
+    probeIndexes.set(probes, index);
+  }
+  return index;
+}
+/** The probes watching one device or link. The same array for the same
+ *  list of probes, so a selector returning it does not re-render its reader. */
+export function probesOf(probes: readonly Probe[], objectId: string): Probe[] {
+  return probeIndex(probes).byObject.get(objectId) ?? NO_PROBES;
+}
+function probeById(probes: readonly Probe[]): Map<string, Probe> {
+  return probeIndex(probes).byId;
+}
+
+/** Probe results waiting to be applied together — see `applyEngineEvent`. */
+interface PendingSample {
+  result: { probeId: string; rttMs: number | null; summary: string; timestampMs: number; outcome: string };
+  status: HealthStatus;
+}
+const SAMPLE_BATCH_MS = 120;
+let pendingSamples: PendingSample[] = [];
+let sampleTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSampleFlush = 0;
+/** Forgets results that have arrived but not yet been applied. Called
+ *  wherever the live results are reset — a run stopping or starting, a
+ *  project opening — so a result from before never lands after. */
+function dropPendingSamples(): void {
+  pendingSamples = [];
+  if (sampleTimer) clearTimeout(sampleTimer);
+  sampleTimer = null;
+}
+
 export const useStore = create<Store>((set, get) => ({
   projects: [],
   folderTree: EMPTY_TREE,
@@ -1583,6 +1631,7 @@ export const useStore = create<Store>((set, get) => ({
     // and corners hug them. Marks the doc dirty only when it actually
     // changed something, so opening a current project is read-only.
     const { doc, changed } = migrateDocument(pkg.document);
+    dropPendingSamples();
     set({
       meta: pkg.meta,
       doc,
@@ -1690,6 +1739,7 @@ export const useStore = create<Store>((set, get) => ({
     // And every shell. Leaving a project must not leave a login open
     // on somebody's core switch.
     if (get().sshSessions.length) await ipc.sshCloseAll().catch(() => 0);
+    dropPendingSamples();
     set({
       meta: null,
       doc: emptyDocument(),
@@ -3972,7 +4022,7 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   probesFor(objectId) {
-    return get().doc.probes.filter((p) => p.objectId === objectId);
+    return probesOf(get().doc.probes, objectId);
   },
 
   nodeStatus(nodeId) {
@@ -4004,7 +4054,7 @@ export const useStore = create<Store>((set, get) => ({
       },
       sourceStatus: get().nodeStatus(edge.source),
       targetStatus: get().nodeStatus(edge.target),
-      linkProbes: doc.probes.filter((p) => p.objectId === edgeId),
+      linkProbes: probesOf(doc.probes, edgeId),
       allProbes: doc.probes,
       runtime,
       sessionRunning: session.state === 'running',
@@ -4059,6 +4109,7 @@ export const useStore = create<Store>((set, get) => ({
         return;
       }
       const info = await ipc.startValidation(meta.id, meta.engineer || 'operator', probes);
+      dropPendingSamples();
       set({
         session: { id: info.sessionId, state: 'running', startedAt: Date.now() },
         runtime: new Map(),
@@ -4083,6 +4134,7 @@ export const useStore = create<Store>((set, get) => ({
       // way, so it is said, not thrown at whoever pressed Stop or Close.
       set({ statusMessage: `Validation stopped, but: ${err instanceof Error ? err.message : String(err)}` });
     } finally {
+      dropPendingSamples();
       set({
         session: { id: null, state: 'stopped', startedAt: null },
         runtime: new Map(),
@@ -4127,28 +4179,54 @@ export const useStore = create<Store>((set, get) => ({
     if (p.kind === 'sessionState' && (current.state === 'stopped' || current.id === null || from !== current.id)) return;
 
     if (p.kind === 'sample' && p.result) {
-      const r = p.result;
-      set((s) => {
-        const runtime = new Map(s.runtime);
-        const prev = runtime.get(r.probeId);
-        const cfg = s.doc.probes.find((x) => x.id === r.probeId);
-        runtime.set(r.probeId, {
-          probeId: r.probeId,
-          status: p.status ?? 'unknown',
-          lastRttMs: r.rttMs,
-          lastSuccessMs: r.outcome === 'success' ? r.timestampMs : (prev?.lastSuccessMs ?? null),
-          lastFailureMs: r.outcome !== 'success' ? r.timestampMs : (prev?.lastFailureMs ?? null),
-          lastSummary: r.summary,
-          consecutiveFailures:
-            r.outcome === 'success' ? 0 : (prev?.consecutiveFailures ?? 0) + 1,
-          failureThreshold: cfg?.failureThreshold ?? 3,
+      // Results are applied in batches. Each one used to be its own
+      // store update, and every update re-ran every selector on the page and
+      // re-rendered everything listening to the results — with a few hundred
+      // probes answering, that was the canvas redrawn dozens of times a second
+      // and the app at two or three frames a second for as long as monitoring
+      // ran. The first result after a quiet spell still lands at once; the
+      // ones on its heels land together, a moment later.
+      const sample: PendingSample = { result: p.result, status: p.status ?? 'unknown' };
+      const flush = () => {
+        sampleTimer = null;
+        lastSampleFlush = Date.now();
+        const batch = pendingSamples;
+        pendingSamples = [];
+        // Each was checked against the run in progress as it arrived. A run
+        // that is stopped, started or closed throws away whatever is still
+        // waiting (`dropPendingSamples`), so nothing here is a late sample.
+        const ours = batch;
+        if (ours.length === 0) return;
+        set((s) => {
+          const runtime = new Map(s.runtime);
+          const recentSamples = new Map(s.recentSamples);
+          const thresholds = probeById(s.doc.probes);
+          for (const { result: r, status } of ours) {
+            const prev = runtime.get(r.probeId);
+            runtime.set(r.probeId, {
+              probeId: r.probeId,
+              status,
+              lastRttMs: r.rttMs,
+              lastSuccessMs: r.outcome === 'success' ? r.timestampMs : (prev?.lastSuccessMs ?? null),
+              lastFailureMs: r.outcome !== 'success' ? r.timestampMs : (prev?.lastFailureMs ?? null),
+              lastSummary: r.summary,
+              consecutiveFailures:
+                r.outcome === 'success' ? 0 : (prev?.consecutiveFailures ?? 0) + 1,
+              failureThreshold: thresholds.get(r.probeId)?.failureThreshold ?? 3,
+            });
+            // The live sparkline's window.
+            const list = [...(recentSamples.get(r.probeId) ?? []), { timestampMs: r.timestampMs, status, rttMs: r.rttMs }];
+            recentSamples.set(r.probeId, list.slice(-RECENT_SAMPLES));
+          }
+          return { runtime, recentSamples };
         });
-        // The live sparkline's window.
-        const recentSamples = new Map(s.recentSamples);
-        const list = [...(recentSamples.get(r.probeId) ?? []), { timestampMs: r.timestampMs, status: p.status ?? 'unknown', rttMs: r.rttMs }];
-        recentSamples.set(r.probeId, list.slice(-RECENT_SAMPLES));
-        return { runtime, recentSamples };
-      });
+      };
+      pendingSamples.push(sample);
+      if (sampleTimer === null) {
+        const wait = SAMPLE_BATCH_MS - (Date.now() - lastSampleFlush);
+        if (wait <= 0) flush();
+        else sampleTimer = setTimeout(flush, wait);
+      }
     }
 
     if (p.kind === 'transition' && p.transition) {
@@ -4598,4 +4676,45 @@ useStore.subscribe((s) => {
 // harness stages session state directly. Never present in a build.
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   (window as unknown as { __cvStore: typeof useStore }).__cvStore = useStore;
+}
+
+/**
+ * The live probe results, for a panel: the same map the canvas reads, but
+ * handed over at most once every `everyMs`.
+ *
+ * A device on the canvas listens to its own probe and re-renders when that
+ * one answers. A panel — the monitored-objects table, the inspector's
+ * summary — shows many at once, and listening to the map itself re-rendered
+ * the whole panel on every batch of answers, several times a second, for
+ * numbers nobody reads that fast. Stopping (the map emptied) is passed on at
+ * once, so a stopped run never lingers on screen.
+ */
+export function useRuntimeSlowly(everyMs = 1000): Map<string, ProbeRuntime> {
+  const [value, setValue] = useState(() => useStore.getState().runtime);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let last = Date.now();
+    const deliver = () => {
+      timer = null;
+      last = Date.now();
+      setValue(useStore.getState().runtime);
+    };
+    // The run may have moved on between the first render and this effect.
+    setValue(useStore.getState().runtime);
+    const unsubscribe = useStore.subscribe((s, prev) => {
+      if (s.runtime === prev.runtime) return;
+      const wait = everyMs - (Date.now() - last);
+      if (s.runtime.size === 0 || wait <= 0) {
+        if (timer) clearTimeout(timer);
+        deliver();
+      } else if (!timer) {
+        timer = setTimeout(deliver, wait);
+      }
+    });
+    return () => {
+      unsubscribe();
+      if (timer) clearTimeout(timer);
+    };
+  }, [everyMs]);
+  return value;
 }

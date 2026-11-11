@@ -65,7 +65,7 @@ const counts = await page.evaluate(() => ({
   nodes: document.querySelectorAll(".react-flow__node").length,
   edges: document.querySelectorAll(".react-flow__edge").length,
   svgPaths: document.querySelectorAll("svg path").length,
-  animateMotion: document.querySelectorAll("animateMotion").length,
+  animateMotion: [...document.querySelectorAll(".cv-link-body[data-dots]")].reduce((n, g) => n + Number(g.getAttribute("data-dots")), 0),
   circles: document.querySelectorAll("svg circle").length,
 }));
 console.log("== DOM census ==");

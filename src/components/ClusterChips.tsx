@@ -13,7 +13,7 @@ import { useViewport } from '@xyflow/react';
 import { t } from '../i18n';
 import { chipSummary } from '../lib/clusters';
 import { useDragOverlay } from '../state/dragOverlay';
-import { useStore, type TopoNode } from '../state/store';
+import { useRuntimeSlowly, useStore, type TopoNode } from '../state/store';
 import type { HealthStatus } from '../types/domain';
 
 export interface ChipSpec {
@@ -31,7 +31,7 @@ export interface ChipSpec {
 export function ClusterChips({ chips, onOpen }: { chips: ChipSpec[]; onOpen: (chip: ChipSpec) => void }) {
   const { x: vx, y: vy, zoom } = useViewport();
   // A chip's health is its devices' health, which the runtime changes.
-  useStore((s) => s.runtime);
+  useRuntimeSlowly();
   useStore((s) => s.session.state);
   const moved = useDragOverlay((s) => s.moved);
   const statusOf = (id: string): HealthStatus => useStore.getState().nodeStatus(id);

@@ -53,7 +53,8 @@ identifier that cannot be right — VLAN 5000, a prefix without its length — i
 underlined and the inspector says why.
 
 - **Resize** — select an object and drag a corner handle.
-- **Connect** — hover a node, drag from one of the four dots to another node.
+- **Connect** — hover a node, drag from one of the four dots on its ring to
+  another node, and let go anywhere on it.
 - **Multi-select** — drag on empty canvas, or Shift-click.
 - **Lasso** — hold `Alt` and drag a freehand outline on empty canvas; what it goes
   round (by its middle) is selected. `Alt+Shift` adds to the selection.
@@ -467,15 +468,23 @@ Select a link. The inspector gives you three separate fields:
 
 A port label sits beside the line near its own end, past the device's
 name when the link leaves down through it, and the two ends take opposite
-sides; a short link's centre label slides below the name above it. A link
-ends on the device's drawing itself — a switch's tile, a router's circle,
-a firewall's wall — not on the square around it, and the device is grabbed
-by that drawing. Drag any label along its link to put it where you want it.
+sides; a short link's centre label slides below the name above it. Drag any
+label along its link to put it where you want it.
+
+A link meets a device on the **ring** round it — the circle you see when the
+device is selected, where its four connection dots sit. A link on its own
+takes the middle of the side facing the device at its other end; several
+links on one side share it out, side by side, in the order of where they are
+going, so no two start from the same point and none cross on the way out.
+Links between devices on different tiers leave by the top and bottom; devices
+in a row are joined by their sides. The device itself is still grabbed by its
+drawing.
 
 Give a device a port count and a naming pattern (**Ports** and **Port
 naming** in the inspector, or a device template) and its ports become
-connection points: a link whose port label names one of them ends on that
-port, along the edge facing the other device. Drag a link's end near such a
+connection points: a link whose port label names one of them meets the ring
+on the bearing of that port, along the edge facing the other device. Drag a
+link's end near such a
 device and its ports appear as ticks on the side you are on; the end snaps
 to the nearest, the ring names it, and letting go there anchors the link on
 that port and writes its name into the port label.
@@ -486,7 +495,10 @@ go round any device in the way, with rounded corners, on the canvas and in
 exports; if an end is walled in with no way through, it falls back to a step.
 **Auto — round everything, in lanes** does the same and also goes round notes,
 and when several links join the same two devices each takes its own lane, so
-a bundle of cables reads as one. Make it the page's default with **Use as
+a bundle of cables reads as one. Every step-style link runs in right angles
+only, and where several would run along the same line between two tiers each
+takes a track of its own. A step link you have bent by hand keeps its end runs
+square when its devices move. Make it the page's default with **Use as
 default** on any link, and **Re-route all links** on the page's right-click
 menu puts every link back on that default with no hand-drawn route, pinned
 end or moved label — one undo step.
@@ -500,11 +512,14 @@ Where two links cross, one hops over the other so you can tell which cable goes
 where — whatever path type either uses (smooth step, step, straight or bezier),
 on the canvas and in exports alike.
 
-Every shape has **connection points** — a quarter, halfway and three quarters
-along each side, and its centre. Drag a selected link's end near one and a ring
-shows where it will land; let go and the end is fixed there, on the same device
-or a different one. Away from the points, the end slides freely round the
-outline.
+Select a link and a handle appears at each end, on the ring. Drag one and the
+end slides round the ring under the pointer — easing onto the top, the sides
+and the diagonals when it is within a few degrees of one — and stays where
+you let go; double-click the handle to put that end back on automatic. Drag it
+onto a different device and it lands on that device's ring. A drawn shape or
+a card has **connection points** instead — a quarter, halfway and three
+quarters along each side, and its centre — and an end dragged near one snaps
+to it; away from the points, it slides freely along the edge.
 
 To move a link to a different device, select it and drag either end handle onto
 that device. The moved end's port label is cleared, because it named a port on

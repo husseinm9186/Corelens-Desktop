@@ -93,25 +93,31 @@ const pathEnds = async (edgeId) => {
 
 {
   const e1 = await pathEnds("e1");
-  // The core switch's tile occupies 4.2..19.8 of its 24-grid: the link leaves
-  // at 76 * 19.8 / 24 = 62.7 below the node's top, not at 76.
+  // A link meets a glyph on the ring round it: the circle 6 outside its
+  // 76-square box, so 44 from the centre — (338, 138) for the core switch.
+  const onRing = (p, cx, cy) => Math.abs(Math.hypot(p.x - cx, p.y - cy) - 44) < 1.5;
   // The core switch has 48 ports named Gi1/0/{n}, so a link labelled
-  // Gi1/0/24 leaves from port 24 along the tile's bottom edge
-  // (tile x 1.2..22.8 of 24 → 76 * (1.2 + 21.6 * 23.5 / 48) / 24 = 37.3).
-  check("a link leaving the bottom of a switch starts on the tile's lower edge, not the square's, at its port",
-    Math.abs(e1.start.y - (100 + 62.7)) < 2 && Math.abs(e1.start.x - (300 + 37.3)) < 2, JSON.stringify(e1.start));
-  // The access switch's tile starts 7.2 down its 24-grid: 76 * 7.2 / 24 = 22.8.
-  check("and arrives on the access switch's tile, not its square",
-    Math.abs(e1.end.y - (320 + 22.8)) < 2, JSON.stringify(e1.end));
+  // Gi1/0/24 leaves on the bearing of port 24 along the tile's bottom edge
+  // (tile x 1.2..22.8 of 24 → 76 * (1.2 + 21.6 * 23.5 / 48) / 24 = 37.3:
+  // a hair left of the middle), which is the bottom of the ring.
+  check("a link leaving the bottom of a switch starts on its ring, on the bearing of its port",
+    onRing(e1.start, 338, 138) && Math.abs(e1.start.y - (138 + 44)) < 2 && e1.start.x < 338 && e1.start.x > 333, JSON.stringify(e1.start));
+  // The access switch is straight below: the top of its ring, 6 above its box.
+  check("and arrives on the top of the access switch's ring",
+    Math.abs(e1.end.x - 338) < 1 && Math.abs(e1.end.y - (320 - 6)) < 1, JSON.stringify(e1.end));
   const e2 = await pathEnds("e2");
   // The router's 4 ports face the core switch on its left side; Gi0/0/0 names
-  // no port it has (ports are 1–4), so the link meets the circle on the bearing.
-  check("a link to a router meets its circle on the bearing",
-    Math.abs(e2.end.x - (700 + 76 * 2.2 / 24)) < 2 && Math.abs(e2.end.y - 138) < 2, JSON.stringify(e2.end));
+  // no port it has (ports are 1–4), so the link meets the ring in the middle
+  // of the side facing the core switch.
+  check("a link to a router meets its ring on the side facing the other device",
+    Math.abs(e2.end.x - (700 - 6)) < 2 && Math.abs(e2.end.y - 138) < 2, JSON.stringify(e2.end));
   // Gi1/0/48 is port 48 of the core switch: the link from the firewall above lands on it, at the
   // right-hand end of the top edge (76 * (1.2 + 21.6 * 47.5 / 48) / 24 = 71.5), and still arrives from above.
   const e3 = await pathEnds("e3");
-  check("a link labelled with a port the device has lands on that port", Math.abs(e3.end.x - (300 + 71.5)) < 2 && Math.abs(e3.end.y - (100 + 76 * 4.2 / 24)) < 2, JSON.stringify(e3.end));
+  const port48 = { x: 300 + 71.5, y: 100 + 76 * 4.2 / 24 };
+  const reach = 44 / Math.hypot(port48.x - 338, port48.y - 138);
+  check("a link labelled with a port the device has lands on the ring, on the bearing of that port",
+    Math.abs(e3.end.x - (338 + (port48.x - 338) * reach)) < 2 && Math.abs(e3.end.y - (138 + (port48.y - 138) * reach)) < 2, JSON.stringify(e3.end));
   const nums = e3.d.match(/-?\d+(\.\d+)?/g).map(Number);
   check("and arrives on it from above, the side the port is on", nums[nums.length - 3] < e3.end.y - 5 && Math.abs(nums[nums.length - 4] - e3.end.x) < 1, e3.d);
 }
@@ -133,7 +139,7 @@ const pathEnds = async (edgeId) => {
   const allChips = await page.locator(".cv-edge-port").evaluateAll((els) => els.map((e) => [e.textContent, e.style.transform]));
   check("the two ends' chips take opposite sides", (cx - lineX) * (tchip.x + tchip.width / 2 - lineX) < 0, JSON.stringify({ cx, t: tchip.x + tchip.width / 2, lineX, d: e1.d, allChips }));
   // The link arrives from above, so its chip sits a chip-length above the tile.
-  check("and the target chip is near the access switch, not mid-link", Math.abs(tchip.y + tchip.height / 2 - 342.8) < 60 && tchip.y + tchip.height / 2 < 342.8, JSON.stringify(tchip));
+  check("and the target chip is near the access switch, not mid-link", Math.abs(tchip.y + tchip.height / 2 - 314) < 45 && tchip.y + tchip.height / 2 < 314, JSON.stringify(tchip));
 }
 
 // ------------------------------------------------------------- the centre label of a short link slides past the name
@@ -173,7 +179,9 @@ const pathEnds = async (edgeId) => {
   const e2 = await page.evaluate(() => window.__cvStore.getState().doc.pages[0].edges.find((e) => e.id === "e2").data);
   check("dropped on the port, the end is anchored there and takes the port's name", e2.targetPortLabel === "Gi0/0/3" && e2.targetAnchor && Math.abs(e2.targetAnchor.x - 2.2 / 24) < 0.01, JSON.stringify({ label: e2.targetPortLabel, anchor: e2.targetAnchor }));
   const path = await pathEnds("e2");
-  check("and the link now ends on that port", Math.abs(path.end.y - (100 + 76 * (2.2 + 19.6 * 2.5 / 4) / 24)) < 1.5, JSON.stringify(path.end));
+  // …which is the ring, on the bearing of port 3: below the middle of the left side.
+  check("and the link now ends on the ring, on the bearing of that port",
+    Math.abs(Math.hypot(path.end.x - 738, path.end.y - 138) - 44) < 1.5 && path.end.x < 700 && path.end.y > 142 && path.end.y < 160, JSON.stringify(path.end));
 }
 
 // ------------------------------------------------------------- auto routing round everything, in lanes
@@ -192,7 +200,7 @@ const pathEnds = async (edgeId) => {
   const routed = await pathEnds("e1");
   const xs = routed.d.match(/-?\d+(\.\d+)?/g).map(Number).filter((_, i) => i % 2 === 0);
   check("set to auto, a link goes round a note in its way", Math.max(...xs) > 390 + 10 || Math.min(...xs) < 290 - 10, routed.d);
-  check("and still starts and ends where it did", Math.abs(routed.start.y - 162.7) < 2 && Math.abs(routed.end.y - 342.8) < 2, JSON.stringify([routed.start, routed.end]));
+  check("and still starts and ends where it did", Math.abs(routed.start.y - 182) < 2 && Math.abs(routed.end.y - 314) < 2, JSON.stringify([routed.start, routed.end]));
   // A second auto link between the same pair takes its own lane.
   await page.evaluate(() => {
     const s = window.__cvStore.getState();
@@ -205,7 +213,7 @@ const pathEnds = async (edgeId) => {
   const one = await pathEnds("e1");
   const two = await pathEnds("e1b");
   const midX = (d) => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number); const xs = n.filter((_, i) => i % 2 === 0); return xs[Math.floor(xs.length / 2)]; };
-  check("two auto links between one pair run in separate lanes", one.d !== two.d && Math.abs(midX(one.d) - midX(two.d)) >= 8, JSON.stringify({ a: midX(one.d), b: midX(two.d) }));
+  check("two auto links between one pair run in separate lanes", one.d !== two.d && Math.abs(one.end.x - two.end.x) >= 8, JSON.stringify({ a: one.end, b: two.end, mids: [midX(one.d), midX(two.d)] }));
   // Re-route all: every link back on the page's default path, hand-drawn routes and pinned ends gone.
   await page.evaluate(() => window.__cvStore.getState().updateEdgeData("e2", { waypoints: [{ x: 500, y: 50 }] }));
   await page.waitForTimeout(200);

@@ -10,7 +10,7 @@ import { newProbe } from '../lib/probes';
 import { drawnPath, judgePath } from '../lib/pathCheck';
 import { activePage } from '../lib/pages';
 import { targetOf } from '../lib/probeTemplates';
-import { useStore } from '../state/store';
+import { useRuntimeSlowly, useStore } from '../state/store';
 import type { DeviceNodeData } from '../types/domain';
 import { SavedCredentialSelect } from './CredentialPicker';
 import { t } from '../i18n';
@@ -22,7 +22,7 @@ export function PathCheckPanel() {
   const meta = useStore((s) => s.meta);
   const nodeStatus = useStore((s) => s.nodeStatus);
   const linkStatus = useStore((s) => s.linkStatus);
-  useStore((s) => s.runtime);
+  useRuntimeSlowly();
   const devices = useMemo(
     () =>
       page.nodes

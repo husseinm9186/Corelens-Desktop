@@ -17,7 +17,6 @@
  */
 import { noteBlocks, plainLine } from './noteMarkdown';
 import { inkMarkup, type InkStroke } from './ink';
-import { getBezierPath, getSmoothStepPath, getStraightPath, Position } from '@xyflow/react';
 import {
   SHEET_SECTION_TINT,
   sheetFor,
@@ -36,22 +35,14 @@ import { MAX_EDGES_FOR_JUMPS } from '../components/edges/pathRegistry';
 import { drawsStacked } from './stacked';
 import { centreLabel } from './cables';
 import { printFriendly } from './printTheme';
-import { CORNER_RADIUS, laneAmong, laneOffset, laneShift, obstaclesFor, routeAround, routePath, type Side as RouteSide } from './avoidRoute';
+import { obstaclesFor } from './avoidRoute';
+import { type LinkLayout, layoutLinks } from './linkLayout';
+import { linkPath } from './linkPath';
 import { alignedX, safeColour, sizeOf as textSizeOf, svgTextAttrs } from './textStyle';
 import { BOUNDARIES, boundaryChip, isBoundaryKind } from './boundaries';
 import { capPath, capsFor, doubleWidths, strokeFor } from './linkStyle';
 import { fitOnSheet } from './paper';
-import {
-  anchorPoint,
-  bearingAnchor,
-  centreOf,
-  nearestSide,
-  SIDE_TO_POSITION,
-  type Anchor as FloatingAnchorPoint,
-} from './floatingAnchor';
-import { glyphOutlineAnchor } from './glyphExtents';
 import { centreLabelFraction, placePortChip } from './portLabels';
-import { anchorSide, labelledPortAnchor, portedOf } from './portPoints';
 import type { TopoEdge, TopoNode } from '../state/store';
 import type {
   DeviceNodeData,
@@ -178,71 +169,6 @@ function sizeOf(n: TopoNode): { w: number; h: number } {
 function drawnRound(n: TopoNode, nodeStyle: 'glyph' | 'card'): boolean {
   if (nodeStyle !== 'glyph' || n.type !== 'device') return false;
   return !SHAPE_DEVICE_TYPES.has((n.data as DeviceNodeData).deviceType);
-}
-
-/** Where a handle sits on a node, and which way an edge leaves it. */
-function anchor(
-  n: TopoNode,
-  handle: string | null | undefined,
-  fallback: Position,
-  floating?: FloatingAnchorPoint,
-  /** The node at the other end, and how nodes are drawn: with both, the edge
-   *  leaves on the bearing to that node instead of a fixed side. */
-  toward?: { other: TopoNode; nodeStyle: 'glyph' | 'card'; pinned: boolean; portLabel?: string },
-) {
-  const { w, h } = sizeOf(n);
-  const { x, y } = n.position;
-  if (floating) {
-    // On a glyph, the drawing's edge the anchor is on.
-    const d = n.data as DeviceNodeData;
-    const glyph = toward ? drawnRound(n, toward.nodeStyle) && !d.imageDataUrl : false;
-    const icon = { x: x + w / 2 - GLYPH_ICON / 2, y: y + GLYPH_ICON_TOP, w: GLYPH_ICON, h: GLYPH_ICON };
-    const side = SIDE_TO_POSITION[glyph ? anchorSide(icon, portedOf(d), floating) : nearestSide(floating)];
-    const p = anchorPoint({ x, y, w, h }, floating);
-    return { x: p.x, y: p.y, side };
-  }
-  if (toward && !toward.pinned) {
-    const o = sizeOf(toward.other);
-    const otherCentre = centreOf({ x: toward.other.position.x, y: toward.other.position.y, w: o.w, h: o.h });
-    const d = n.data as DeviceNodeData;
-    // The same outline the canvas meets — the glyph's own, on the
-    // icon the export draws (GLYPH_ICON wide, GLYPH_ICON_TOP below the box's top).
-    if (drawnRound(n, toward.nodeStyle) && !d.imageDataUrl) {
-      const icon = { x: x + w / 2 - GLYPH_ICON / 2, y: y + GLYPH_ICON_TOP, w: GLYPH_ICON, h: GLYPH_ICON };
-      // A port the label names, else the drawing's outline.
-      const a = labelledPortAnchor(icon, portedOf(d), toward.portLabel, otherCentre) ?? glyphOutlineAnchor(icon, d.deviceType, otherCentre);
-      const p = anchorPoint(icon, a);
-      return { x: p.x, y: p.y, side: SIDE_TO_POSITION[anchorSide(icon, portedOf(d), a)] };
-    }
-    const bearing = bearingAnchor({ x, y, w, h }, otherCentre, drawnRound(n, toward.nodeStyle));
-    const p = anchorPoint({ x, y, w, h }, bearing);
-    return { x: p.x, y: p.y, side: SIDE_TO_POSITION[nearestSide(bearing)] };
-  }
-  const side =
-    handle === 't' ? Position.Top
-    : handle === 'b' ? Position.Bottom
-    : handle === 'l' ? Position.Left
-    : handle === 'r' ? Position.Right
-    : fallback;
-  switch (side) {
-    case Position.Top: return { x: x + w / 2, y, side };
-    case Position.Bottom: return { x: x + w / 2, y: y + h, side };
-    case Position.Left: return { x, y: y + h / 2, side };
-    default: return { x: x + w, y: y + h / 2, side };
-  }
-}
-
-function pathFor(type: LinkData['pathType'], p: Parameters<typeof getBezierPath>[0]) {
-  switch (type) {
-    case 'straight':
-      return getStraightPath({ sourceX: p.sourceX, sourceY: p.sourceY, targetX: p.targetX, targetY: p.targetY });
-    case 'step':
-      return getSmoothStepPath({ ...p, borderRadius: 0 });
-    case 'smoothstep':
-      return getSmoothStepPath({ ...p, borderRadius: CORNER_RADIUS });
-    default:
-      return getBezierPath(p);
-  }
 }
 
 /** The device glyph, as markup, tinted and placed. */
@@ -499,48 +425,40 @@ function labelBackground(
   return `<rect x="${left}" y="${baseline - size}" width="${w}" height="${size + 5}" rx="3" fill="${fill}"/>`;
 }
 
-/** Where a link runs in the export — its two ends and its plain path, before
- *  any hop. Shared by the drawing and by the hop detection, so the
- *  two can never disagree about where a link is. */
-function linkGeometry(e: TopoEdge, nodes: Map<string, TopoNode>, nodeStyle: 'glyph' | 'card', siblings?: readonly TopoEdge[]) {
-  const s = nodes.get(e.source);
-  const t = nodes.get(e.target);
-  if (!s || !t) return null;
+/** The page's link layout for an export: one pass per set of nodes, shared
+ *  by every link drawn from it. */
+const exportLayouts = new WeakMap<Map<string, TopoNode>, { edges: readonly TopoEdge[]; nodeStyle: string; layout: Map<string, LinkLayout> }>();
+function exportLayout(nodes: Map<string, TopoNode>, edges: readonly TopoEdge[], nodeStyle: 'glyph' | 'card'): Map<string, LinkLayout> {
+  const hit = exportLayouts.get(nodes);
+  if (hit && hit.edges === edges && hit.nodeStyle === nodeStyle) return hit.layout;
+  const all = [...nodes.values()];
+  const layout = layoutLinks(all, edges, {
+    // The ring round the icon the export draws (GLYPH_ICON wide,
+    // GLYPH_ICON_TOP below the box's top); a box for everything else.
+    shapeOf: (n) => {
+      const { w, h } = sizeOf(n as TopoNode);
+      const { x, y } = n.position;
+      return drawnRound(n as TopoNode, nodeStyle)
+        ? { x: x + w / 2 - GLYPH_ICON / 2, y: y + GLYPH_ICON_TOP, w: GLYPH_ICON, h: GLYPH_ICON, round: true }
+        : { x, y, w, h, round: false };
+    },
+    // A hand-placed end is saved against the node's own box.
+    anchorBoxOf: (n) => ({ x: n.position.x, y: n.position.y, ...sizeOf(n as TopoNode) }),
+    obstacles: () => obstaclesFor(all),
+  });
+  exportLayouts.set(nodes, { edges, nodeStyle, layout });
+  return layout;
+}
 
+/** Where a link runs in the export — its two ends and its plain path, before
+ *  any hop. The same layout and the same path builder the canvas draws
+ *  with, so an exported link meets its devices where the canvas shows it. */
+function linkGeometry(e: TopoEdge, nodes: Map<string, TopoNode>, nodeStyle: 'glyph' | 'card', siblings?: readonly TopoEdge[]) {
+  const lay = exportLayout(nodes, siblings ?? [e], nodeStyle).get(e.id);
+  if (!lay) return null;
   const data = (e.data ?? {}) as LinkData;
-  // Without explicit handles React Flow uses right-to-left; matching that keeps
-  // the export's routing the same as the screen's.
-  const pinned = Boolean(data.pinnedSides);
-  const a = anchor(s, e.sourceHandle, Position.Right, data.sourceAnchor, {
-    other: t,
-    nodeStyle,
-    pinned,
-    portLabel: data.sourcePortLabel,
-  });
-  const b = anchor(t, e.targetHandle, Position.Left, data.targetAnchor, {
-    other: s,
-    nodeStyle,
-    pinned,
-    portLabel: data.targetPortLabel,
-  });
-  // Routed round the devices in the way, as the canvas draws it;
-  // In its lane among the links joining the same pair.
-  const routed = data.pathType === 'avoid' || data.pathType === 'auto';
-  if (routed) {
-    const route = routeAround(
-      { x: a.x, y: a.y }, a.side as RouteSide, { x: b.x, y: b.y }, b.side as RouteSide,
-      obstaclesFor([...nodes.values()]),
-    );
-    if (route) {
-      const { path, labelAt } = routePath(laneOffset(route, laneShift(laneAmong(siblings ?? [], e.id))));
-      return { a, b, path, labelX: labelAt.x, labelY: labelAt.y };
-    }
-  }
-  const [path, labelX, labelY] = pathFor(routed ? 'smoothstep' : (data.pathType ?? 'smoothstep'), {
-    sourceX: a.x, sourceY: a.y, targetX: b.x, targetY: b.y,
-    sourcePosition: a.side, targetPosition: b.side,
-  });
-  return { a, b, path, labelX, labelY };
+  const { path, labelX, labelY } = linkPath(data.pathType, lay, data.waypoints ?? [], data.curvature);
+  return { a: lay.s, b: lay.t, path, labelX, labelY };
 }
 
 function edgeMarkup(

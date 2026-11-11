@@ -51,8 +51,8 @@ export function TopBar({ onExit }: { onExit: () => void }) {
   const events = useStore((s) => s.events);
   const linkStatus = useStore((s) => s.linkStatus);
   const nodeStatus = useStore((s) => s.nodeStatus);
-  const recentSamples = useStore((s) => s.recentSamples);
-  const runtime = useStore((s) => s.runtime);
+  // The live results are read when an export is asked for, not listened to:
+  // listening re-rendered the whole bar every time a probe answered.
   const exportMenu = useRef<HTMLDetailsElement>(null);
   const [about, setAbout] = useState(false);
   const updateWaiting = useStore((s) => (s.update.state === 'available' ? s.update.version : null));
@@ -421,7 +421,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
       const svgs = reportPages(
         reportInput({
           meta, doc: doc, template, sections, generatedAt: new Date(),
-          runtime: runtime, samples: recentSamples, events: events,
+          runtime: useStore.getState().runtime, samples: useStore.getState().recentSamples, events: events,
           nodeStatus: (id) => nodeStatus(id),
           typeLabel: (t) => DEVICE_LABEL[t as keyof typeof DEVICE_LABEL] ?? t,
           diagrams: sections.includes('diagrams') ? exportPages().map((page) => ({ name: page.name, svg: svgFor(page) })) : [],
@@ -952,7 +952,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
             <button type="button" onClick={() => void runExport(`${slug(meta.name)}-vlans.csv`, () => vlansCsv(scopedDoc()), 'text/csv')}>
               VLANs as CSV
             </button>
-            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-probe-results.csv`, () => probeResultsCsv(scopedDoc(), runtime, recentSamples), 'text/csv')}>
+            <button type="button" onClick={() => void runExport(`${slug(meta.name)}-probe-results.csv`, () => probeResultsCsv(scopedDoc(), useStore.getState().runtime, useStore.getState().recentSamples), 'text/csv')}>
               Probe results as CSV
             </button>
             {/* The address register. */}

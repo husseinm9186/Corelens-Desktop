@@ -32,7 +32,7 @@ roxmltree = "0.20"
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
 # A fake switch for the real sidecar to log into (tests/real_sidecar_against_a_fake_switch.rs).
-russh = "0.63"
+russh = "0.65"
 rand = "0.10"
 # A local TLS server with throwaway certificates made at test time,
 # so no private key is ever committed.

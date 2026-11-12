@@ -2769,6 +2769,11 @@ details[open] > .cv-palette-sub::before { transform: rotate(90deg); }
 .cv-canvas.is-panning,
 .cv-canvas.is-panning .react-flow__pane { cursor: grab; }
 .cv-canvas.is-panning .react-flow__pane:active { cursor: grabbing; }
+/* While the page is being dragged about, the drawing is one layer the
+   compositor slides: without this every step of a pan re-rasters all of it.
+   Only for the drag — a layer kept through a zoom is scaled, not redrawn,
+   and the drawing would go soft. */
+.react-flow__pane.dragging .react-flow__viewport { will-change: transform; }
 /* Nothing here disables the nodes while space is held: React Flow sets
    pointer-events on them inline, which no stylesheet can beat. It is done
    through `nodesDraggable` instead. */

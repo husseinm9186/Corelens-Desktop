@@ -8,7 +8,7 @@
  * their own, which took the top-left band away from lassos and drops.
  */
 import { useEffect, useRef, useState } from 'react';
-import { useReactFlow, useViewport } from '@xyflow/react';
+import { useReactFlow, useStore as useFlowStore } from '@xyflow/react';
 
 import { t } from '../i18n';
 import { activePage } from '../lib/pages';
@@ -52,7 +52,6 @@ export function CanvasToolbar() {
   };
   const [color, setColor] = useState(COLOURS[0]![0]);
   const [width, setWidth] = useState(3);
-  const { zoom } = useViewport();
   const gridStyle = (pg.canvas.gridEnabled ?? true) ? (pg.canvas.gridStyle ?? 'lines') : 'none';
   const growPage = pg.canvas.growPage ?? true;
   const closeMenus = (e: React.MouseEvent) => (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
@@ -135,21 +134,7 @@ export function CanvasToolbar() {
         <IconButton icon="layers" label={t('canvasTools.arrangeLayers')} region="arrange-layers" onClick={arrangeByLayer} className="cv-arrange-layers" />
         <IconButton icon="zoom-out" label={t('canvasTools.zoomOut')} shortcut="Ctrl+−" region="zoom-out" onClick={() => void rf.zoomOut()} />
         {/* The zoom as a number, and the presets behind it. */}
-        <details className="cv-dropdown cv-zoom-menu">
-          <summary className="cv-icon-btn cv-zoom-level" aria-label={t('canvasTools.zoomLevel')} title={t('canvasTools.zoomLevelHint')} data-region="zoom-level">
-            {Math.round(zoom * 100)} %
-          </summary>
-          <div className="cv-dropdown-menu" role="menu">
-            {[25, 50, 100, 200, 400].map((pc) => (
-              <button key={pc} type="button" role="menuitem" className={Math.round(zoom * 100) === pc ? 'is-on' : ''} onClick={(e) => { closeMenus(e); void rf.zoomTo(pc / 100, { duration: 150 }); }}>
-                {pc} %{pc === 100 ? <kbd>Ctrl+0</kbd> : null}
-              </button>
-            ))}
-            <button type="button" role="menuitem" onClick={(e) => { closeMenus(e); fit(); }}>{t('canvasTools.fitView')}</button>
-            <button type="button" role="menuitem" onClick={(e) => { closeMenus(e); void rf.zoomTo(1, { duration: 150 }); }}>{t('canvasTools.actualSize')}</button>
-            <p className="cv-help">{t('canvasTools.zoomHelp')}</p>
-          </div>
-        </details>
+        <ZoomMenu fit={fit} closeMenus={closeMenus} />
         <IconButton icon="zoom-in" label={t('canvasTools.zoomIn')} shortcut="Ctrl+=" region="zoom-in" onClick={() => void rf.zoomIn()} />
       </div>
       <span className="cv-strip-sep" />
@@ -311,5 +296,32 @@ export function CanvasToolbar() {
           onClick={() => useStore.getState().setSettings({ minimap: !minimap })} />
       </div>
     </div>
+  );
+}
+
+/**
+ * The zoom as a number, and the presets behind it. Its own component, reading
+ * the zoom alone and as a whole per cent: the strip around it has nothing to
+ * redraw when the canvas is panned or zoomed.
+ */
+function ZoomMenu({ fit, closeMenus }: { fit: () => void; closeMenus: (e: React.MouseEvent) => void }) {
+  const rf = useReactFlow();
+  const percent = useFlowStore((st) => Math.round(st.transform[2] * 100));
+  return (
+    <details className="cv-dropdown cv-zoom-menu">
+      <summary className="cv-icon-btn cv-zoom-level" aria-label={t('canvasTools.zoomLevel')} title={t('canvasTools.zoomLevelHint')} data-region="zoom-level">
+        {percent} %
+      </summary>
+      <div className="cv-dropdown-menu" role="menu">
+        {[25, 50, 100, 200, 400].map((pc) => (
+          <button key={pc} type="button" role="menuitem" className={percent === pc ? 'is-on' : ''} onClick={(e) => { closeMenus(e); void rf.zoomTo(pc / 100, { duration: 150 }); }}>
+            {pc} %{pc === 100 ? <kbd>Ctrl+0</kbd> : null}
+          </button>
+        ))}
+        <button type="button" role="menuitem" onClick={(e) => { closeMenus(e); fit(); }}>{t('canvasTools.fitView')}</button>
+        <button type="button" role="menuitem" onClick={(e) => { closeMenus(e); void rf.zoomTo(1, { duration: 150 }); }}>{t('canvasTools.actualSize')}</button>
+        <p className="cv-help">{t('canvasTools.zoomHelp')}</p>
+      </div>
+    </details>
   );
 }

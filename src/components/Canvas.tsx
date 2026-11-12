@@ -14,7 +14,6 @@ import {
   type NodeChange,
   type OnConnect,
   getNodesBounds,
-  useViewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -130,19 +129,22 @@ function HealthMiniMap({ health, ground }: { health: boolean; ground: Ground }) 
   // While the whole diagram is in view the overview says nothing the page
   // does not, so it fades back and returns on hover — or the moment
   // something is off the edge.
-  const viewport = useViewport();
+  // Read from the flow's own store as one yes-or-no, so a pan re-renders the
+  // overview only when the answer changes — it used to re-render on every
+  // step of one, measuring every device and the pane again each time.
   const nodes = useStore((s) => activePage(s.doc).nodes);
-  const quiet = useMemo(() => {
-    if (nodes.length === 0) return true;
-    const pane = document.querySelector('.react-flow__pane')?.getBoundingClientRect();
-    if (!pane) return false;
-    const b = getNodesBounds(nodes);
-    const left = b.x * viewport.zoom + viewport.x;
-    const top = b.y * viewport.zoom + viewport.y;
-    const right = (b.x + b.width) * viewport.zoom + viewport.x;
-    const bottom = (b.y + b.height) * viewport.zoom + viewport.y;
-    return left >= -8 && top >= -8 && right <= pane.width + 8 && bottom <= pane.height + 8;
-  }, [nodes, viewport.x, viewport.y, viewport.zoom]);
+  const bounds = useMemo(() => (nodes.length ? getNodesBounds(nodes) : null), [nodes]);
+  const quiet = useFlowStore((s) => {
+    if (!bounds) return true;
+    if (!s.width || !s.height) return false;
+    const [x, y, zoom] = s.transform;
+    return (
+      bounds.x * zoom + x >= -8 &&
+      bounds.y * zoom + y >= -8 &&
+      (bounds.x + bounds.width) * zoom + x <= s.width + 8 &&
+      (bounds.y + bounds.height) * zoom + y <= s.height + 8
+    );
+  });
   return (
     <MiniMap
       pannable
@@ -1821,6 +1823,10 @@ export function Canvas() {
         edges={shownEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        // A selected object keeps its place in the stack. Raised to the top
+        // for as long as it was selected, it showed nothing when it was sent
+        // backward or to the back — the very moment it is selected.
+        elevateNodesOnSelect={false}
         onNodesChange={onNodesChange}
         onEdgesChange={useStore.getState().onEdgesChange}
         onConnect={onConnect}

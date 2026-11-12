@@ -94,6 +94,10 @@ await selectOnly("c");
 await page.keyboard.press("Control+Shift+BracketLeft");
 await page.waitForTimeout(300);
 check("Ctrl+Shift+[ sends it to the back", (await order()) === "cab", await order());
+// Still selected, as it is when the order is changed: the change has to be
+// seen without clicking away first.
+check("and it is drawn under the others while it is still selected", (await zOf("c")) < (await zOf("a")) && (await zOf("c")) < (await zOf("b")),
+  `${await zOf("c")} vs ${await zOf("a")}, ${await zOf("b")}`);
 await page.keyboard.press("Control+BracketRight");
 await page.waitForTimeout(300);
 check("Ctrl+] brings it one step forward", (await order()) === "acb", await order());

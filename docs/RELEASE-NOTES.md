@@ -2,7 +2,7 @@
 
 Newest first.
 
-## Unreleased
+## 2.14.0 — 2026-11-12
 
 **Links meet a device on its ring**
 - A link ends on the ring round a device — the circle that marks it selected
@@ -45,8 +45,17 @@ Newest first.
 - Dragging a device re-renders the links at it once a frame, not four times,
   and no longer re-renders every link with a port label when it is let go.
 - Line hops are worked out for diagrams of up to 1,200 links (it was 160).
+- With no checks running, dragging a device on that diagram takes half the
+  time it did in 2.13.0. Panning no longer redraws the overview map and the
+  toolbar at every step, and the drawing is slid as one layer while it is
+  dragged about; zooming redraws the zoom figure and nothing else of the
+  strip. Panning a large diagram is still the slowest thing the canvas does.
 
 **Fixed**
+- *Send to back* and *Send backward* showed nothing on the object they
+  were used on: a selected object was drawn above everything for as long as
+  it stayed selected, so the change appeared only after clicking away. A
+  selected object now keeps its place in the stack.
 - *Project package* and *Project as a folder* failed, with nothing saved, on
   a project last saved before pages existed. The stored project is brought
   up to date before it is exported.
@@ -58,6 +67,8 @@ Newest first.
   The update checker moves to `tauri-plugin-updater` 2.14, which reads
   update archives with the fixed `zip`, and Tauri to 2.12. Building from
   source now needs Rust 1.90 or later.
+- The SSH library moves to `russh` 0.65 for an advisory in its agent
+  server, a part Corelens does not use.
 
 ## 2.13.0 — 2026-10-22
 

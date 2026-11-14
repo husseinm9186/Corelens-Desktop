@@ -18,9 +18,17 @@ fn repo() -> PathBuf {
 
 /// Build the fake once and hand back a `python`-shaped location that runs it.
 fn fake_location(script: &serde_json::Value, contexts: &str) -> SidecarLocation {
-    // cargo builds every example before running the integration tests; the binary sits beside the test's own.
-    let exe = std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().join("examples").join(if cfg!(windows) { "fake_sidecar.exe" } else { "fake_sidecar" });
-    assert!(exe.exists(), "no fake sidecar at {}", exe.display());
+    // cargo builds every example before running the integration tests and puts it in the
+    // profile directory's `examples`. How far above the test's own binary that is depends
+    // on the cargo: one level, or several where each crate's build has a folder of its own.
+    let name = if cfg!(windows) { "fake_sidecar.exe" } else { "fake_sidecar" };
+    let me = std::env::current_exe().unwrap();
+    let exe = me
+        .ancestors()
+        .skip(1)
+        .map(|dir| dir.join("examples").join(name))
+        .find(|candidate| candidate.exists())
+        .unwrap_or_else(|| panic!("no fake sidecar in an `examples` folder above {}", me.display()));
     let dir = std::env::temp_dir().join(format!("corelens-fake-sidecar-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let script_path = dir.join(format!("script-{}.json", rand_suffix()));

@@ -202,14 +202,13 @@ impl Sidecar {
         }
     }
 
-    // Ten arguments because that is what `open` carries; a struct would only move the names.
-    #[allow(clippy::too_many_arguments)]
     /// Open a session. `known_host_key` is the fingerprint Corelens's store
     /// holds for this host: the sidecar checks the presented key
     /// against it before any credential is sent and answers `host_key` on a
     /// mismatch. `None` is first contact; the reply's `host_key` is then the
     /// key to remember.
-    #[allow(clippy::too_many_arguments)] // one request, every field of it
+    // Ten arguments because that is what `open` carries; a struct would only move the names.
+    #[allow(clippy::too_many_arguments)]
     pub async fn open(&mut self, session: &str, host: &str, port: u16, os: &str, auth: &Auth, session_spec: &Value, connect_ms: u64, auth_ms: u64, known_host_key: Option<&str>, transport: &str) -> Result<Reply, SidecarError> {
         let body = json!({
             "op": "open", "session": session, "host": host, "port": port, "os": os,

@@ -2,6 +2,17 @@
 
 Newest first.
 
+## 2.15.0 — 2026-11-14
+
+**Device details for an as-built**
+- *Export → Device details for as-builts (CSV)* writes one row per device,
+  by site and then by name: name, hostname, type, role, vendor, model, serial
+  number, asset tag, software, management IP and every other address, MAC,
+  site, rack and rack unit, stack members, ports in use, VLANs, what it is
+  cabled to with both ports, when it was last read, and its notes. Boxes,
+  zones and text are left out. It follows the *Pages* choice at the top of
+  the menu, like the other tables.
+
 ## 2.14.0 — 2026-11-12
 
 **Links meet a device on its ring**

@@ -29,7 +29,7 @@ import { reportInput } from '../lib/reportData';
 import { diffCrawls, diffSessions, type DiffRow } from '../lib/runDiff';
 import { ReportDialog } from './ReportDialog';
 import { DEVICE_LABEL } from './icons';
-import { ipamCsv, portsCsv, probeResultsCsv, vlansCsv } from '../lib/tableCsv';
+import { asBuiltCsv, ipamCsv, portsCsv, probeResultsCsv, vlansCsv } from '../lib/tableCsv';
 import { t } from '../i18n';
 import type { ProjectPage } from '../state/store';
 import { artworkSummary, vendorSafeDocument, vendorSafeNodes } from '../lib/thirdPartyArt';
@@ -947,6 +947,13 @@ export function TopBar({ onExit }: { onExit: () => void }) {
               title="Two files — devices and links — in the same columns the CSV import reads"
             >
               Devices and links as CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => void runExport(`${slug(meta.name)}-as-built-devices.csv`, () => asBuiltCsv(scopedDoc()), 'text/csv')}
+              title="One row per device: identity, site and rack, addresses, software, and what it is cabled to"
+            >
+              Device details for as-builts (CSV)
             </button>
             <button type="button" onClick={exportCableSchedule}>
               Cable schedule as CSV

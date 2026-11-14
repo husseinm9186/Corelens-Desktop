@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseCsv } from './csv';
-import { portsCsv, probeResultsCsv, vlansCsv } from './tableCsv';
+import { asBuiltCsv, portsCsv, probeResultsCsv, vlansCsv } from './tableCsv';
 import { emptyDocument } from '../state/store';
-import type { TopoNode } from '../state/store';
+import type { TopoEdge, TopoNode } from '../state/store';
 import type { Probe } from '../types/domain';
 
 const doc = () => {
@@ -49,5 +49,43 @@ describe('table CSVs', () => {
     const samples = new Map([['p1', [{ timestampMs: 1, status: 'healthy', rttMs: 1 }, { timestampMs: 2, status: 'down', rttMs: null }]]]);
     const rows = parseCsv(probeResultsCsv(doc(), runtime, samples));
     expect(rows[1]).toEqual(['ACCESS-SW7', 'Ping', 'tcp', '192.0.2.7:22', 'yes', 'warning', '12.5', '1970-01-02T00:00:00.000Z', '', '0', '50', '2', 'slow']);
+  });
+
+  it('lists each device once for an as-built, with where it is and what it is cabled to', () => {
+    const d = doc();
+    const sw = d.pages[0]!.nodes[0]!;
+    Object.assign(sw.data, {
+      hostname: 'access-sw7.example', role: 'Access', vendor: 'Example', model: 'EX-48', serial: 'SN-0007', assetTag: 'A-7',
+      osVersion: '1.2.3', site: 'Site B', rack: 'R2', rackU: 12, rackUnits: 1, notes: 'Floor 2, east',
+      stackKind: 'stack', stackMembers: '1: SN-0007\n2: SN-0008',
+      addresses: [
+        { id: 'a1', label: 'Loopback0', address: '198.51.100.7', isPrimary: false },
+        { id: 'a2', label: 'Management', address: '192.0.2.7', isPrimary: true },
+      ],
+    });
+    const core = { id: 'core', type: 'device', position: { x: 0, y: 0 }, data: { label: 'CORE-1', deviceType: 'core-switch', tags: [], addresses: [], site: 'Site A' } } as unknown as TopoNode;
+    const zone = { id: 'z', type: 'device', position: { x: 0, y: 0 }, data: { label: 'DMZ', deviceType: 'zone', tags: [], addresses: [] } } as unknown as TopoNode;
+    const note = { id: 'n', type: 'note', position: { x: 0, y: 0 }, data: { body: 'x' } } as unknown as TopoNode;
+    d.pages[0]!.nodes.push(core, zone, note);
+    d.pages[0]!.edges = [
+      { id: 'e1', source: 'sw', target: 'core', data: { sourcePortLabel: 'Gi0/1', targetPortLabel: 'Te1/1' } },
+      { id: 'e2', source: 'core', target: 'sw', data: { sourcePortLabel: '', targetPortLabel: '' } },
+      { id: 'e3', source: 'n', target: 'sw', data: { kind: 'leader' } },
+    ] as unknown as TopoEdge[];
+
+    const rows = parseCsv(asBuiltCsv(d));
+    expect(rows[0]).toEqual([
+      'Device', 'Hostname', 'Type', 'Role', 'Vendor', 'Model', 'Serial number', 'Asset tag',
+      'Software', 'Management IP', 'Other addresses', 'MAC address', 'Site', 'Rack', 'Rack U', 'Height (U)',
+      'Stack', 'Stack members', 'Ports in use', 'VLANs', 'Connects to', 'Last read', 'Page', 'Notes',
+    ]);
+    // Site A before Site B; the zone and the note are not devices.
+    expect(rows.slice(1).map((r) => r[0])).toEqual(['CORE-1', 'ACCESS-SW7']);
+    expect(rows[1]![20]).toBe('Te1/1 to ACCESS-SW7 Gi0/1; ACCESS-SW7');
+    expect(rows[2]).toEqual([
+      'ACCESS-SW7', 'access-sw7.example', 'access-switch', 'Access', 'Example', 'EX-48', 'SN-0007', 'A-7',
+      '1.2.3', '192.0.2.7', 'Loopback0: 198.51.100.7', '', 'Site B', 'R2', '12', '1',
+      'stack', '1: SN-0007; 2: SN-0008', '2 of 3', '10,20', 'Gi0/1 to CORE-1 Te1/1; CORE-1', '', 'Page 1', 'Floor 2, east',
+    ]);
   });
 });

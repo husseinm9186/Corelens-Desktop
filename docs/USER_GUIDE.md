@@ -1467,6 +1467,11 @@ The **Export** menu gives you:
 - **Devices and links**, **Cable schedule**, **Ports**, **VLANs** and **Probe
   results as CSV** — the pages chosen under **Pages** at the top of the
   menu: this page, or all of them
+- **Device details for as-builts (CSV)** — one row per device for an as-built
+  document: name, hostname, type, role, vendor, model, serial number, asset
+  tag, software, management IP and every other address, MAC, site, rack and
+  rack unit, stack members, ports in use, VLANs, what it is cabled to with
+  both ports, and its notes. Drawn shapes are left out
 - **Validation report (Markdown)** — project metadata, object counts, status
   summary, the drawings (as images inside the file), the full transition table
   and the cable schedule

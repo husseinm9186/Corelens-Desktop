@@ -306,6 +306,14 @@ const csvs = await exported();
 check("ports, VLANs and probe results come out as CSV", csvs.length === 3 && csvs[0].text.includes("CORE-SW1,Core,Gi0/1") && csvs[1].text.includes("10,STAFF,CORE-SW1") && csvs[2].text.includes("CORE-SW1,Ping,icmp,192.0.2.10"), JSON.stringify(csvs.map((c) => c.text.slice(0, 120))));
 
 await clearExports();
+await exportButton("Device details for as-builts (CSV)");
+const asBuilt = (await exported())[0];
+const asBuiltRows = (asBuilt?.text ?? "").trim().split("\n");
+check("device details for an as-built come out as one row per device",
+  asBuiltRows[0]?.startsWith("Device,Hostname,Type,Role,Vendor,Model,Serial number") && asBuiltRows.some((r) => r.startsWith("CORE-SW1,")) && asBuiltRows.filter((r) => r.startsWith("CORE-SW1,")).length === 1,
+  JSON.stringify({ name: asBuilt?.name, head: asBuiltRows.slice(0, 2) }));
+
+await clearExports();
 await exportButton("Validation report (Markdown)");
 const md = (await exported())[0]?.text ?? "";
 check("the report carries each page's drawing", (md.match(/!\[[^\]]*\]\(data:image\/svg\+xml;base64,/g) ?? []).length === pagesCount && md.includes("### Branch"));

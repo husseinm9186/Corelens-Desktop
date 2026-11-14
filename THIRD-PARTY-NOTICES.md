@@ -508,8 +508,8 @@ MIT OR Apache-2.0 (350), MIT (141), Apache-2.0 OR MIT (98), MIT/Apache-2.0 (29),
 | quick-error | 2.0.1 | MIT/Apache-2.0 |
 | quick-xml | 0.41.0 | MIT |
 | quinn | 0.11.12 | MIT OR Apache-2.0 |
-| quinn-proto | 0.11.18 | MIT OR Apache-2.0 |
-| quinn-udp | 0.5.15 | MIT OR Apache-2.0 |
+| quinn-proto | 0.11.19 | MIT OR Apache-2.0 |
+| quinn-udp | 0.5.16 | MIT OR Apache-2.0 |
 | quote | 1.0.47 | MIT OR Apache-2.0 |
 | r-efi | 5.3.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later |
 | r-efi | 6.0.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later |
@@ -1787,8 +1787,8 @@ SOFTWARE.
 - psl-types 2.0.11
 - publicsuffix 2.3.0
 - quinn 0.11.12
-- quinn-proto 0.11.18
-- quinn-udp 0.5.15
+- quinn-proto 0.11.19
+- quinn-udp 0.5.16
 - regex 1.13.1
 - regex-automata 0.4.18
 - regex-syntax 0.8.11
@@ -6388,8 +6388,8 @@ SOFTWARE.
 ### 3 components
 
 - quinn 0.11.12
-- quinn-proto 0.11.18
-- quinn-udp 0.5.15
+- quinn-proto 0.11.19
+- quinn-udp 0.5.16
 
 ```
 Copyright (c) 2018 The quinn Developers

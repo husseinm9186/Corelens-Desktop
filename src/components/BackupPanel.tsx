@@ -11,13 +11,12 @@ import {
   type CollectionGroup,
   type PlannedGroup,
 } from '../lib/collectionGroups';
+import { diagramTargets, type DrawnDevice } from '../lib/backupTargets';
 import { PAGING_CHOICES, isPagingMode, parseCommandList, type PagingMode } from '../lib/showCommands';
 import {
-  commandsFor,
   newCommandSet,
   parseCommandSets,
   serializeCommandSets,
-  setsFor,
   type CommandSet,
 } from '../lib/commandSets';
 
@@ -117,6 +116,8 @@ export function BackupPanel({
   // and the paging choice are remembered; whether to run them is not.
   const [showOn, setShowOn] = useState(false);
   const [showText, setShowText] = useState('');
+  // The device's own tables go with a backup unless someone says not.
+  const [tablesOn, setTablesOn] = useState(true);
   const [paging, setPaging] = useState<PagingMode>('auto');
   const [showRestored, setShowRestored] = useState(false);
   // Command sets written once and applied by role or tag.
@@ -181,34 +182,11 @@ export function BackupPanel({
   const targets = useMemo(() => {
     // Every page: a device's config doesn't care which page it is
     // drawn on, the same reasoning as the Monitored Objects table.
-    const fromDiagram = allNodes(doc)
-      .filter((n) => n.type === 'device')
-      .map((n) => {
-        const data = n.data as {
-          label?: string;
-          addresses?: { address: string; isPrimary?: boolean }[];
-          showCommands?: string;
-          role?: string;
-          tags?: string[];
-          site?: string;
-        };
-        const address =
-          data.addresses?.find((a) => a.isPrimary)?.address ?? data.addresses?.[0]?.address ?? '';
-        return {
-          name: data.label ?? 'device',
-          address,
-          // What command sets and collection groups match on.
-          role: data.role,
-          tags: data.tags ?? [],
-          // The device's own Site, else the project's, for `{site}`.
-          site: data.site?.trim() || meta?.site || '',
-          // Matching sets first, then the device's own list.
-          commands: commandsFor(sets, data),
-          own: parseCommandList(data.showCommands).length,
-          setNames: setsFor(sets, data).map((s) => s.name || 'unnamed set'),
-        };
-      })
-      .filter((t) => t.address);
+    const fromDiagram = diagramTargets(
+      allNodes(doc).filter((n) => n.type === 'device').map((n) => n.data as DrawnDevice),
+      sets,
+      meta?.site ?? '',
+    );
 
     const seen = new Set(fromDiagram.map((t) => t.address));
     // A device handed over from a crawl has no inspector entry yet, so it has
@@ -257,6 +235,7 @@ export function BackupPanel({
       .then((st) => {
         if (st.backupShowCommands) setShowText(st.backupShowCommands);
         if (isPagingMode(st.backupPaging)) setPaging(st.backupPaging);
+        if (st.backupTables === 'off') setTablesOn(false);
         setSets(parseCommandSets(st.backupCommandSets));
         if (st.backupFilePattern) setFilePattern(st.backupFilePattern);
         setGroups(parseGroups(st.backupGroups));
@@ -268,7 +247,8 @@ export function BackupPanel({
     if (!showRestored) return;
     void ipc.setSetting('backupShowCommands', showText.trim() ? showText : null).catch(() => {});
     void ipc.setSetting('backupPaging', paging).catch(() => {});
-  }, [showRestored, showText, paging]);
+    void ipc.setSetting('backupTables', tablesOn ? null : 'off').catch(() => {});
+  }, [showRestored, showText, paging, tablesOn]);
   useEffect(() => {
     if (!showRestored) return;
     void ipc.setSetting('backupCommandSets', serializeCommandSets(sets)).catch(() => {});
@@ -462,6 +442,7 @@ export function BackupPanel({
       port,
       credentialId: credentialId ?? undefined,
       showCommands: showOn ? globalCommands : [],
+      tables: tablesOn,
       paging,
       filePattern: filePattern.trim() || undefined,
       snmpCopy: snmpCopy && snmpCredentialId ? { credentialId: snmpCredentialId } : undefined,
@@ -585,7 +566,7 @@ export function BackupPanel({
           </button>
         ) : (
           <button type="button" className="cv-btn cv-btn-start" onClick={start}
-            disabled={busy || !picked.size || (!credentialId && (!username || !password) && !(snmpCopy && snmpCredentialId)) || (snmpCopy && (!snmpCredentialId || !settings.sftpHost)) || (!kinds.length && !anyShowCommand) || !!patternIssue}>
+            disabled={busy || !picked.size || (!credentialId && (!username || !password) && !(snmpCopy && snmpCredentialId)) || (snmpCopy && (!snmpCredentialId || !settings.sftpHost)) || (!kinds.length && !anyShowCommand && !tablesOn) || !!patternIssue}>
             Back up {picked.size || 'selected'}
           </button>
         )}
@@ -603,6 +584,11 @@ export function BackupPanel({
           <input type="checkbox" checked={showOn} disabled={busy}
             onChange={(e) => setShowOn(e.target.checked)} />
           Show commands
+        </label>
+        <label className="cv-check cv-check-inline" title={t('backup.tablesHint')}>
+          <input type="checkbox" checked={tablesOn} disabled={busy}
+            onChange={(e) => setTablesOn(e.target.checked)} />
+          {t('backup.tables')}
         </label>
         <label className="cv-check cv-check-inline">
           <input type="checkbox" checked={secondFactor} disabled={busy}

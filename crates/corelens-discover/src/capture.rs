@@ -94,6 +94,10 @@ pub struct BackupOptions {
     pub second_factor: bool,
     /// Show commands as well. `None` when none were asked for.
     pub show: Option<ShowPlan>,
+    /// File the device's own tables with its backup — interfaces, ARP, MAC
+    /// addresses and routes — each asked the way its platform spells it.
+    /// See [`table_questions`].
+    pub tables: bool,
     /// How captures are named inside each device's folder. `None`
     /// is `backup::DEFAULT_PATTERN`.
     pub file_pattern: Option<String>,
@@ -122,6 +126,7 @@ impl Default for BackupOptions {
             ssh: SshOptions::default(),
             second_factor: false,
             show: None,
+            tables: false,
             file_pattern: None,
             fallback_credentials: Vec::new(),
             snmp_copy: None,
@@ -357,6 +362,25 @@ pub async fn run_backups(
     events: mpsc::Sender<BackupEvent>,
     cancel: CancellationToken,
 ) -> BackupRun {
+    // One address is one device, logged in to once and filed once, however
+    // many times it was listed — a device drawn on two pages is listed twice.
+    // The first listing is kept, with the commands of the others added.
+    let targets = {
+        let mut once: Vec<BackupTarget> = Vec::new();
+        for t in targets {
+            match once.iter_mut().find(|k| k.address.trim() == t.address.trim()) {
+                Some(kept) => {
+                    for c in t.commands {
+                        if !kept.commands.contains(&c) {
+                            kept.commands.push(c);
+                        }
+                    }
+                }
+                None => once.push(t),
+            }
+        }
+        once
+    };
     let _ = events
         .send(BackupEvent::Started {
             devices: targets.len(),
@@ -460,7 +484,9 @@ async fn back_up_one(
         .show
         .as_ref()
         .map(|plan| !crate::showcmd::plan_for(&plan.commands, &target.commands).is_empty())
-        .unwrap_or(false);
+        .unwrap_or(false)
+        // The device's tables are read over a shell too.
+        || options.tables;
     if kinds.is_empty() && !show_wanted {
         return Ok(saved);
     }
@@ -625,10 +651,12 @@ async fn back_up_over_ssh(
             .unwrap_or(false);
 
     // The commands this device gets, if any were asked for.
-    let show = options.show.as_ref().and_then(|plan| {
-        let commands = crate::showcmd::plan_for(&plan.commands, &target.commands);
-        (!commands.is_empty()).then_some((commands, plan.paging))
-    });
+    // The device's tables count as something asked for, with or without a list.
+    let show = {
+        let commands = options.show.as_ref().map(|plan| crate::showcmd::plan_for(&plan.commands, &target.commands)).unwrap_or_default();
+        let paging = options.show.as_ref().map(|plan| plan.paging).unwrap_or(crate::showcmd::Paging::Auto);
+        (!commands.is_empty() || options.tables).then_some((commands, paging))
+    };
 
     // User mode is only fatal when there is nothing else to do. Most show
     // commands run without enable, so a run that asked for them still has
@@ -708,6 +736,59 @@ async fn back_up_over_ssh(
     Ok(saved)
 }
 
+/// One of a device's own tables, as a backup asks for it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TableQuestion {
+    pub what: &'static str,
+    /// The command, each way a platform of this family may spell it.
+    pub spellings: Vec<String>,
+    /// Ask every spelling (IPv4 and IPv6 routes are two tables), or stop at
+    /// the first the device answers.
+    pub every: bool,
+}
+
+/// The tables a backup files beside a configuration, for the platform a
+/// version text names: interfaces, ARP, MAC addresses, routes. The commands
+/// are the platform's own, the ones the dialects already hold — vendor fact,
+/// nobody's list — and only those that read: one that `check_read_only`
+/// would refuse is left out.
+pub fn table_questions(version: &str) -> Vec<TableQuestion> {
+    let reads = |commands: Vec<String>| -> Vec<String> {
+        let mut kept: Vec<String> = Vec::new();
+        for c in commands {
+            if crate::showcmd::check_read_only(&c).is_ok() && !kept.contains(&c) {
+                kept.push(c);
+            }
+        }
+        kept
+    };
+    let own = |c: &[&str]| c.iter().map(|c| c.to_string()).collect::<Vec<_>>();
+    let tables = if crate::fortios::rejected_command(version) {
+        vec![
+            TableQuestion { what: "interfaces", spellings: own(&["get system interface"]), every: false },
+            TableQuestion { what: "arp", spellings: own(&["get system arp"]), every: false },
+            TableQuestion { what: "routes", spellings: own(&["get router info routing-table all"]), every: false },
+        ]
+    } else {
+        let d = crate::dialect::dialect_for(version);
+        let mut interfaces: Vec<String> = d.interface_readings().iter().map(|r| r.command.to_string()).collect();
+        if crate::arubasw::is_arubaos_switch(version) {
+            interfaces.push("show ip".to_string());
+        }
+        vec![
+            TableQuestion { what: "interfaces", spellings: interfaces, every: false },
+            TableQuestion { what: "arp", spellings: own(d.arp_commands()), every: false },
+            TableQuestion { what: "mac addresses", spellings: d.mac_table_readings().iter().map(|r| r.command.to_string()).collect(), every: false },
+            TableQuestion { what: "routes", spellings: own(d.route_commands()), every: true },
+        ]
+    };
+    tables
+        .into_iter()
+        .map(|t| TableQuestion { spellings: reads(t.spellings), ..t })
+        .filter(|t| !t.spellings.is_empty())
+        .collect()
+}
+
 /// Runs a device's show commands and files them as one capture.
 ///
 /// The read-only check is repeated here as well as at the interface boundary:
@@ -733,6 +814,35 @@ async fn capture_show(
     }
 
     let mut sections = Vec::with_capacity(commands.len());
+    // The device's own tables first, each the way its platform spells it.
+    // A spelling the device refuses is not filed: the next one is tried, and
+    // a table it has no command for is simply not there.
+    if options.tables {
+        let mut version = String::new();
+        for command in crate::dialect::VERSION_COMMANDS {
+            let out = device.run(command).await.unwrap_or_default();
+            if crate::dialect::identifies(&out) {
+                version = out;
+                break;
+            }
+        }
+        for table in table_questions(&version) {
+            for command in &table.spellings {
+                // One the list below asks anyway is asked once, there.
+                if commands.iter().any(|c| c.trim().eq_ignore_ascii_case(command)) {
+                    break;
+                }
+                let Ok(text) = device.run(command).await else { continue };
+                if text.trim().is_empty() || crate::stacking::command_rejected(&text) || crate::fortios::rejected_command(&text) {
+                    continue;
+                }
+                sections.push(Section { command: command.clone(), output: text, rejected: false });
+                if !table.every {
+                    break;
+                }
+            }
+        }
+    }
     for command in commands {
         if let Err(why) = check_read_only(command) {
             sections.push(Section {
@@ -858,6 +968,19 @@ mod tests {
     /// "cannot serialize tagged newtype variant DiffLine::Same containing a
     /// string". Testing the values alone did not notice, because the values
     /// were right.
+    #[test]
+    fn a_backups_tables_are_the_platforms_own_and_only_ever_read() {
+        let ios = table_questions("Cisco IOS Software, Version 15.2");
+        assert_eq!(ios.iter().map(|t| t.what).collect::<Vec<_>>(), vec!["interfaces", "arp", "mac addresses", "routes"]);
+        for version in ["Cisco IOS Software", "Arista vEOS", "JUNOS 21.4R1", "Command fail. Return code -61", "Dell EMC Networking OS10", ""] {
+            for table in table_questions(version) {
+                for c in &table.spellings {
+                    assert!(crate::showcmd::check_read_only(c).is_ok(), "{version:?}: `{c}`");
+                }
+            }
+        }
+    }
+
     #[test]
     fn diff_lines_serialise_the_way_the_interface_reads_them() {
         let lines = diff("a\nb\n", "a\nc\n");

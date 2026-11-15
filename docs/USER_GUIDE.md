@@ -1012,8 +1012,12 @@ its own login or the project's, and the project's other saved logins in turn
 if that is refused — asks it what it is, and writes the answer
 into its fields: hostname, model, every chassis serial, software, the base
 MAC where the platform prints one, and the members of a stack with their
-serials. This is not a crawl. The device is asked its version, whatever else
-its platform needs to state a model and serial, and its stack table; it is
+serials. The addresses on its own interfaces are added to its **Addresses**
+under **Checks**, each named after its interface; the address it is managed
+on stays the primary, and no check is made for the others until you add one.
+This is not a crawl. The device is asked its version, whatever else
+its platform needs to state a model and serial, its stack table and its own
+interface table; it is
 never asked about its neighbours, its ARP or MAC tables or its routes, no
 other address is contacted, and nothing is written to it. The status line
 lists the commands that were sent, so you can tell a network's owner exactly
@@ -1312,6 +1316,20 @@ why. Show commands always go over SSH. Nothing listens on this machine.
 
 Built from the MIB's definition; the first Cisco to answer one of these for
 real is what verifies it, so a diagnostic of that run is worth keeping.
+
+## The device's tables, with every backup
+
+A backup also files each device's own **interface, ARP, MAC address and
+routing tables**, unless you untick **Interface, ARP, MAC and routing
+tables** on the **Backups** tab. Each is asked the way the device's platform
+spells it — `show ip interface brief` and `show ip arp` on Cisco IOS, the
+equivalents elsewhere — and filed in the device's show-commands capture for
+that run, so two runs can be compared with **Before and after**. Only
+commands that read are sent. A table a device has no command for, or
+refuses, is left out rather than filed as an error. The tick is remembered.
+
+A device drawn on more than one page is one device to a backup: it is listed
+once, logged in to once and filed once.
 
 ## Capture show commands
 

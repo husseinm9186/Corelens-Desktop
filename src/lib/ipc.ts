@@ -353,6 +353,8 @@ export type DeviceInfo = {
   software: string | null;
   mac: string | null;
   uptimeSeconds: number | null;
+  /** The addresses on its own interfaces that are up. */
+  addresses: DeviceAddress[];
   stack: StackInfo | null;
   /** Every command sent, in order. */
   commands: string[];
@@ -1087,6 +1089,8 @@ export type StoredSettings = Partial<{
    *  paging choice. The user's own — nothing ships pre-filled. */
   backupShowCommands: string;
   backupPaging: string;
+  /** 'off' when the device tables are left out of a backup; on otherwise. */
+  backupTables: string;
   /** Named command sets applied by role or tag, as JSON. */
   backupCommandSets: string;
   /** How capture files are named, e.g. `{site}_{device}_{stamp}_{kind}`. */
@@ -1768,6 +1772,8 @@ export const ipc = {
       /** Ask Cisco devices to send their configuration over SNMP to the
        *  project's SFTP server, with this saved read-write credential. */
       snmpCopy?: { credentialId: string; port?: number };
+      /** Also file each device's interface, ARP, MAC and routing tables. */
+      tables?: boolean;
     },
     credentials: CredentialInput,
     stamp: string,

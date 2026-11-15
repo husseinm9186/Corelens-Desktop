@@ -116,7 +116,7 @@ export async function getDeviceInfo(nodeId: string, data: DeviceNodeData) {
       state.setStatusMessage(t('deviceInfo.gone', { name: plan.label }));
       return;
     }
-    const { patch, changed } = deviceInfoPatch(info, node.data as DeviceNodeData, Date.now());
+    const { patch, changed } = deviceInfoPatch(info, node.data as DeviceNodeData, Date.now(), plan.address);
     state.updateNodeData(nodeId, patch);
     const asked = info.commands.join(', ');
     state.setStatusMessage(

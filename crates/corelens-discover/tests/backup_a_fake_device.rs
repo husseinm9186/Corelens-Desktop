@@ -148,6 +148,8 @@ impl server::Handler for FakeSwitch {
             "terminal length 0" | "terminal pager 0" => String::new(),
             "show version" => "Fake Switch Software, Version 1.0\r\nuptime is 1 day\r\n".into(),
             "show clock" => "*12:00:00.000 UTC Thu Jan 1 2026\r\n".into(),
+            "show ip interface brief" => "Interface              IP-Address      OK? Method Status                Protocol\r\nVlan10                 192.0.2.1       YES NVRAM  up                    up\r\n".into(),
+            "show ip arp" => "Protocol  Address          Age (min)  Hardware Addr   Type   Interface\r\nInternet  192.0.2.7                0   0000.5e00.5301  ARPA   Vlan10\r\n".into(),
             "show running-config" if is_enabled => running_config(&self.hostname),
             "show running-config" => "% Invalid input detected at '^' marker.\r\n".into(),
             "show startup-config" if is_enabled => running_config(&self.hostname),
@@ -240,6 +242,7 @@ fn options(root: std::path::PathBuf, port: u16, kinds: Vec<BackupKind>) -> Backu
         show: None,
         file_pattern: None,
         fallback_credentials: Vec::new(),
+        tables: false,
         snmp_copy: None,
     }
 }
@@ -609,4 +612,91 @@ async fn a_refused_login_falls_back_to_the_next_saved_one() {
     assert!(text.contains("hostname ACCESS-SW-07"));
 
     std::fs::remove_dir_all(&root).ok();
+}
+
+/// The device's own tables are filed with its backup when asked for, each
+/// asked once; what the device refuses is left out, not filed as an error.
+#[tokio::test]
+async fn a_backup_files_the_devices_tables_beside_its_configuration() {
+    let (port, received) = start_with_log("SW-TABLES", false).await;
+    let root = temp_root("tables");
+    let store = Arc::new(std::sync::Mutex::new(HostKeyStore::new()));
+    let (tx, _rx) = mpsc::channel(128);
+    let mut options = show_options(root.clone(), port, vec![BackupKind::Running], &["show clock"], corelens_discover::showcmd::Paging::Auto);
+    options.tables = true;
+
+    let run = run_backups(
+        vec![BackupTarget { address: "127.0.0.1".into(), name: "SW-TABLES".into(), commands: Vec::new(), site: String::new() }],
+        creds("correct-horse"),
+        options,
+        store,
+        "20260101-120000".into(),
+        tx,
+        CancellationToken::new(),
+    )
+    .await;
+
+    assert!(run.failed.is_empty(), "{:?}", run.failed);
+    assert_eq!(run.saved.len(), 2, "the configuration and one capture: {:?}", run.saved);
+    let capture = run.saved.iter().find(|s| !s.path.contains("running")).expect("a show capture");
+    let text = std::fs::read_to_string(&capture.path).unwrap();
+    assert!(text.contains("show ip interface brief") && text.contains("192.0.2.1"), "{text}");
+    assert!(text.contains("show ip arp") && text.contains("0000.5e00.5301"), "{text}");
+    assert!(text.contains("show clock"), "the listed command is still there: {text}");
+    assert!(!text.contains("Invalid input"), "a table the device refused is not filed: {text}");
+
+    let got = received.lock().unwrap().clone();
+    assert_eq!(got.iter().filter(|c| c.as_str() == "show ip arp").count(), 1, "{got:?}");
+    for c in &got {
+        assert!(!c.starts_with("conf") && !c.starts_with("copy") && !c.starts_with("write"), "`{c}` was sent");
+    }
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// And not when it was not asked for: an ordinary backup sends nothing more.
+#[tokio::test]
+async fn a_backup_without_the_tables_asks_for_none() {
+    let (port, received) = start_with_log("SW-PLAIN", false).await;
+    let root = temp_root("no-tables");
+    let store = Arc::new(std::sync::Mutex::new(HostKeyStore::new()));
+    let (tx, _rx) = mpsc::channel(128);
+    let run = run_backups(
+        vec![BackupTarget { address: "127.0.0.1".into(), name: "SW-PLAIN".into(), commands: Vec::new(), site: String::new() }],
+        creds("correct-horse"),
+        show_options(root.clone(), port, vec![BackupKind::Running], &[], corelens_discover::showcmd::Paging::Auto),
+        store,
+        "20260101-120000".into(),
+        tx,
+        CancellationToken::new(),
+    )
+    .await;
+    assert_eq!(run.saved.len(), 1, "{:?}", run.saved);
+    let got = received.lock().unwrap().clone();
+    assert!(!got.iter().any(|c| c.contains("arp") || c.contains("interface brief") || c.contains("route")), "{got:?}");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A device listed twice is one device: logged in to once, filed once.
+#[tokio::test]
+async fn a_device_listed_twice_is_backed_up_once() {
+    let (port, received) = start_with_log("SW-TWICE", false).await;
+    let root = temp_root("twice");
+    let store = Arc::new(std::sync::Mutex::new(HostKeyStore::new()));
+    let (tx, _rx) = mpsc::channel(128);
+    let target = || BackupTarget { address: "127.0.0.1".into(), name: "SW-TWICE".into(), commands: Vec::new(), site: String::new() };
+    let run = run_backups(
+        vec![target(), target()],
+        creds("correct-horse"),
+        options(root.clone(), port, vec![BackupKind::Running]),
+        store,
+        "20260101-120000".into(),
+        tx,
+        CancellationToken::new(),
+    )
+    .await;
+    assert!(run.failed.is_empty(), "{:?}", run.failed);
+    assert_eq!(run.saved.len(), 1, "{:?}", run.saved);
+    let asked = received.lock().unwrap().iter().filter(|c| c.as_str() == "show running-config").count();
+    assert_eq!(asked, 1, "the configuration was read once");
+    let _ = std::fs::remove_dir_all(&root);
 }

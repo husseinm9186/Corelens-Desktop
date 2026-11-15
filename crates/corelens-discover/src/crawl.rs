@@ -2722,9 +2722,12 @@ pub fn serials_in_version(version: &str) -> Vec<String> {
         if let Some((label, value)) = t.split_once(':') {
             let l = label.trim().to_ascii_lowercase();
             // "System Serial Number     : FOC1932X0AB", once per stack member.
-            // The motherboard's own serial is a different part and is not what
-            // a support contract is keyed on, so it is skipped deliberately.
-            if l.contains("serial number") && !l.contains("motherboard") {
+            // A part inside the box has a serial of its own — the
+            // motherboard, the power supply, a fan tray, a daughterboard —
+            // and none of them is what a support contract is keyed on. Listed
+            // beside the chassis they also read as a second chassis.
+            const PARTS: [&str; 5] = ["motherboard", "power supply", "fan", "daughter", "supervisor"];
+            if l.contains("serial number") && !PARTS.iter().any(|part| l.contains(part)) {
                 push(value);
                 continue;
             }
@@ -2847,6 +2850,28 @@ Switch 04
 ---------
 System Serial Number            : FOC1932X0DD
 ";
+
+    /// The hardware block of a compact Catalyst's `show version`, in the
+    /// shape IOS prints it. The numbers are made up.
+    const COMPACT: &str = "\
+Base ethernet MAC Address       : 00:00:5E:00:53:80
+Motherboard assembly number     : 73-000000-04
+Power supply part number        : 341-0000-02
+Motherboard serial number       : FOC0000MOTH
+Power supply serial number      : LIT0000PSU1
+Model revision number           : Q0
+Model number                    : WS-C2960CX-8PC-L
+System serial number            : FOC0000TEST
+Top Assembly Part Number        : 68-000000-01
+";
+
+    #[test]
+    fn a_power_supplys_serial_is_not_the_chassis() {
+        // One switch, one chassis serial. The power supply has a serial of
+        // its own, and it was being listed as a second chassis — "2 chassis
+        // — a stack or a pair" on a single switch.
+        assert_eq!(serials_in_version(COMPACT), vec!["FOC0000TEST"]);
+    }
 
     #[test]
     fn a_stack_yields_every_members_serial_in_order() {

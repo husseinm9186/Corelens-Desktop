@@ -83,7 +83,8 @@ await page.addInitScript(({ p }) => {
         return Promise.resolve({
           hostname: "CORE-SW1", family: "Cisco IOS", model: "C9300-48P",
           serials: ["FOC0000TEST", "FOC0001TEST"], software: "Cisco IOS Software, Version 16.12.4",
-          mac: null, uptimeSeconds: 3600, stack: null, commands: ["show version", "show switch"], unverified: false,
+          mac: null, uptimeSeconds: 3600, stack: null,
+          addresses: [{ ip: "192.0.2.10", interface: "Vlan10", isManagement: true }, { ip: "198.51.100.1", interface: "Vlan20", isManagement: false }], commands: ["show version", "show switch"], unverified: false,
         });
       }
       if (cmd === "get_settings") return Promise.resolve({});
@@ -146,6 +147,17 @@ check("the model is in the device's fields", values.includes("C9300-48P"), JSON.
 check("every serial is in the device's fields", values.includes("FOC0000TEST, FOC0001TEST"));
 check("and the software", values.includes("Cisco IOS Software, Version 16.12.4"));
 check("the display name is the drawing's and was not changed", values.includes("CORE-SW1"));
+
+// Its own interface addresses, under Checks; the one it is managed on stays primary.
+await page.locator("[role=tab]", { hasText: "Checks" }).first().click();
+await page.waitForTimeout(300);
+const listed = await page.locator(".cv-inspector input").evaluateAll((els) => els.map((e) => e.value));
+check("its other interface address is listed under Checks, by interface name",
+  listed.includes("198.51.100.1") && listed.includes("Vlan20"), JSON.stringify(listed.filter(Boolean)));
+check("the address it is managed on is still there, once, under the label it was given",
+  // A second entry for it would carry the interface's name; the probe's own target field also shows the address.
+  listed.indexOf("192.0.2.10") === listed.indexOf("Mgmt") + 1 && !listed.includes("Vlan10"), JSON.stringify(listed.filter(Boolean)));
+check("the status line says interface addresses were added", /interface addresses/.test(said), said);
 
 // A second time: the same answers change nothing.
 await rightClick("CORE-SW1");

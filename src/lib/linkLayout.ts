@@ -518,6 +518,49 @@ export function layoutLinks(
     });
   }
 
+  // --- links between the same two devices never share an end ---
+  // The automatic ends above already have a slot each. An end placed by hand
+  // stays where it was put — unless another link between the same two
+  // devices ends on that very point, which would draw the two as one line.
+  // Those are set side by side along the device's edge, in the order of
+  // their ids at both devices so the pair runs parallel instead of crossing.
+  const sameTwo = new Map<string, Pending[]>();
+  for (const p of pending) {
+    if (p.sNode.id === p.tNode.id || !p.s || !p.t) continue;
+    const key = p.sNode.id < p.tNode.id ? `${p.sNode.id}\u0000${p.tNode.id}` : `${p.tNode.id}\u0000${p.sNode.id}`;
+    const list = sameTwo.get(key);
+    if (list) list.push(p);
+    else sameTwo.set(key, [p]);
+  }
+  for (const list of sameTwo.values()) {
+    if (list.length < 2) continue;
+    list.sort((a, b) => (a.edge.id < b.edge.id ? -1 : a.edge.id > b.edge.id ? 1 : 0));
+    for (const device of [list[0]!.sNode, list[0]!.tNode]) {
+      const shape = shapeOf(device);
+      const ends = list.map((p) => ({ p, which: (p.sNode.id === device.id ? 's' : 't') as 's' | 't' }));
+      const done = new Set<number>();
+      for (let i = 0; i < ends.length; i++) {
+        if (done.has(i)) continue;
+        const first = ends[i]!.p[ends[i]!.which]!;
+        const cluster = [i];
+        for (let j = i + 1; j < ends.length; j++) {
+          const other = ends[j]!.p[ends[j]!.which]!;
+          if (!done.has(j) && Math.hypot(other.x - first.x, other.y - first.y) < SLOT_GAP / 2) cluster.push(j);
+        }
+        if (cluster.length < 2) continue;
+        const along = first.side === 't' || first.side === 'b' ? { x: 1, y: 0 } : { x: 0, y: 1 };
+        cluster.forEach((index, n) => {
+          done.add(index);
+          const d = (n - (cluster.length - 1) / 2) * SLOT_GAP;
+          const at = { x: first.x + along.x * d, y: first.y + along.y * d };
+          const q = shape.round ? projectToOutline(shape, at) : at;
+          const { p, which } = ends[index]!;
+          p[which] = { x: round2(q.x), y: round2(q.y), side: first.side };
+        });
+      }
+    }
+  }
+
   // --- tracks for the orthogonal links whose middle runs share a channel ---
   interface Run {
     p: Pending;

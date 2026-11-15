@@ -1583,7 +1583,7 @@ pub fn all_settings(conn: &Connection) -> rusqlite::Result<std::collections::Has
 ///
 /// Everything a backup run is shaped by: where it writes, what it names the
 /// files, which commands it sends, which checks it applies.
-pub const PROJECT_KEYS: [&str; 23] = [
+pub const PROJECT_KEYS: [&str; 24] = [
     // Shadow mode — both parsers on every collection in this project.
     "collectorShadow",
     // Where this customer's work is written.
@@ -1598,6 +1598,7 @@ pub const PROJECT_KEYS: [&str; 23] = [
     "backupFilePattern",
     "backupGroups",
     "backupPaging",
+    "backupTables",
     "backupShowCommands",
     // What a discovery was pointed at. These are **addresses on a
     // customer's network** — a seed and a list of subnets — and they used to

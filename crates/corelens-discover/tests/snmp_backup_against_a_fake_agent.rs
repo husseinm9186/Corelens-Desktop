@@ -59,6 +59,7 @@ fn options(root: std::path::PathBuf, agent_port: u16, sftp_port: u16, kinds: Vec
         show: None,
         file_pattern: None,
         fallback_credentials: Vec::new(),
+        tables: false,
         snmp_copy: Some(SnmpBackup {
             copy: SnmpCopy {
                 auth: SnmpAuth::V2c { community: COMMUNITY.into() },

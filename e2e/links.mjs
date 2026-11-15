@@ -226,6 +226,25 @@ const pathEnds = async (edgeId) => {
   check("and one undo brings them back", (await page.evaluate(() => window.__cvStore.getState().doc.pages[0].edges.find((e) => e.id === "e1").data.pathType)) === "auto");
 }
 
+// ------------------------------------------------------------- two links dropped on the same two points
+{
+  await page.evaluate(() => {
+    const s = window.__cvStore.getState();
+    const doc = s.doc;
+    const held = { sourcePortLabel: "", targetPortLabel: "", label: "", pathType: "straight", direction: "none", width: 2, enabled: true, maintenance: false,
+      healthRule: { type: "manual", manualStatus: "healthy" }, sourceAnchor: { x: 0.5, y: 1 }, targetAnchor: { x: 0.5, y: 0 }, pinnedSides: true };
+    const twins = ["tw1", "tw2"].map((id) => ({ id, source: "core", target: "acc", type: "live", data: { ...held } }));
+    const pages = doc.pages.map((p) => (p.id === doc.activePageId ? { ...p, edges: [...p.edges.filter((e) => !e.id.startsWith("tw")), ...twins] } : p));
+    window.__cvStore.setState({ doc: { ...doc, pages } });
+  });
+  await page.waitForTimeout(400);
+  const a = await pathEnds("tw1");
+  const b = await pathEnds("tw2");
+  const apart = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+  check("two links placed on the same two points are drawn side by side, not as one line",
+    a.d !== b.d && apart(a.start, b.start) >= 8 && apart(a.end, b.end) >= 8, JSON.stringify({ a: [a.start, a.end], b: [b.start, b.end] }));
+}
+
 await browser.close();
 if (failures) {
   console.log(`\n${failures} check(s) failed`);

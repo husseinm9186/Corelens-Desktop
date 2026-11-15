@@ -195,6 +195,10 @@ check("the global list is sent trimmed, without blanks or repeats",
   JSON.stringify(sent?.input?.showCommands) === JSON.stringify(["show version", "show clock"]),
   JSON.stringify(sent?.input?.showCommands));
 check("the paging choice is sent", sent?.input?.paging === "cisco-asa", sent?.input?.paging);
+// The device's own tables go with a backup unless unticked.
+check("the interface, ARP, MAC and routing tables are ticked without being asked",
+  await checkbox("Interface, ARP, MAC and routing tables").isChecked());
+check("and the run is told to file them", sent?.input?.tables === true, JSON.stringify(sent?.input?.tables));
 check("no configuration is asked for when none is ticked",
   JSON.stringify(sent?.input?.kinds) === "[]", JSON.stringify(sent?.input?.kinds));
 const targetA = sent?.input?.targets?.find((t) => t.name === "LAB-SW-A");
@@ -422,6 +426,26 @@ await page.waitForTimeout(400);
 const overSnmp = await lastStart();
 check("the run carries the SNMP credential by id", overSnmp?.input?.snmpCopy?.credentialId === "cred-snmp-rw", JSON.stringify(overSnmp?.input?.snmpCopy));
 check("and no SSH login", overSnmp?.credentials?.username === "" && overSnmp?.input?.credentialId === undefined, JSON.stringify(overSnmp?.credentials));
+// ----------------------------------------------- the tables, left out
+await openBackups();
+await field("Username").fill("e2e-user");
+await field("Password").fill("e2e-not-a-password");
+await page.locator('input[aria-label="Back up LAB-RTR-B"]').check();
+await checkbox("Running config").uncheck();
+await page.waitForTimeout(200);
+check("the tables alone are something to back up", !(await backUp().isDisabled()));
+await checkbox("Interface, ARP, MAC and routing tables").uncheck();
+await page.waitForTimeout(200);
+check("unticked, with nothing else asked for, there is nothing to run", await backUp().isDisabled());
+await checkbox("Running config").check();
+await page.waitForTimeout(200);
+await backUp().click();
+await page.waitForTimeout(400);
+check("unticked, the run is told to leave the tables out", (await lastStart())?.input?.tables === false,
+  JSON.stringify((await lastStart())?.input?.tables));
+await openBackups();
+check("and the choice is remembered", !(await checkbox("Interface, ARP, MAC and routing tables").isChecked()));
+
 await page.evaluate(() => localStorage.removeItem("cv.e2e.show.vault"));
 
 await browser.close();

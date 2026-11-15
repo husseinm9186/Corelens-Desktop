@@ -862,7 +862,7 @@ async fn a_device_is_asked_what_it_is_and_nothing_else() {
         .await
         .expect("should connect and log in");
 
-    let info = corelens_discover::deviceinfo::read(&mut device).await;
+    let info = corelens_discover::deviceinfo::read(&mut device, "127.0.0.1").await;
     device.close().await;
 
     assert_eq!(info.hostname, "CORE-SW-01");

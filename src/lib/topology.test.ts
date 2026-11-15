@@ -1589,3 +1589,36 @@ describe('a wide tier wraps', () => {
     expect(at('CORE').y).toBeLessThan(Math.min(...names.map((n) => at(n).y)));
   });
 });
+
+describe("a crawled device's own interface addresses", () => {
+  const read = device('EXAMPLE-SW', '192.0.2.1', [], {
+    addresses: [
+      { ip: '192.0.2.1', interface: 'Vlan10', isManagement: true },
+      { ip: '198.51.100.1', interface: 'Vlan20', isManagement: false },
+    ],
+  });
+  const addressesOf = (data: unknown) =>
+    ((data as DeviceNodeData).addresses ?? []).map((a) => [a.label, a.address, a.isPrimary]);
+
+  it('are all listed on a new device, the one it is managed on as the primary', () => {
+    const t = buildTopology({ devices: [read], notVisited: [] }, 'p');
+    expect(addressesOf(t.nodes[0]!.data)).toEqual([['Vlan10', '192.0.2.1', true], ['Vlan20', '198.51.100.1', false]]);
+  });
+
+  it('join what a drawn device already has, and what was typed is kept', () => {
+    const drawn = sweptNode('n1', '192.0.2.1', '192.0.2.1');
+    const typed = { id: 'mine', label: 'Out of band', address: '192.0.2.99', isPrimary: false };
+    (drawn.data as DeviceNodeData).addresses = [...((drawn.data as DeviceNodeData).addresses ?? []), typed];
+    const before = (drawn.data as DeviceNodeData).addresses!.map((a) => a.id);
+    const t = buildTopology({ devices: [read], notVisited: [] }, 'p', { existingNodes: [drawn as never] });
+    const patch = t.updated[0]!.data.addresses!;
+    expect(patch.map((a) => a.address)).toEqual(['192.0.2.1', '192.0.2.99', '198.51.100.1']);
+    expect(patch.filter((a) => a.isPrimary).map((a) => a.address)).toEqual(['192.0.2.1']);
+    expect(patch.slice(0, 2).map((a) => a.id)).toEqual(before);
+
+    // Found again with nothing new: the addresses are not rewritten.
+    const settled = { ...drawn, data: { ...drawn.data, ...t.updated[0]!.data } };
+    const again = buildTopology({ devices: [read], notVisited: [] }, 'p', { existingNodes: [settled as never] });
+    expect(again.updated[0]?.data.addresses).toBeUndefined();
+  });
+});

@@ -28,6 +28,8 @@ export const en = {
   'ssh.closeOne': 'Close the session to {name}',
   'ssh.connect': 'SSH to this device',
   'ssh.noAddress': 'This device has no address to connect to.',
+  'backup.tables': 'Interface, ARP, MAC and routing tables',
+  'backup.tablesHint': 'Also files each device\'s own interface, ARP, MAC address and routing tables with its backup, asked the way its platform spells them. Read-only; a table a device has no command for is left out.',
   'deviceInfo.get': 'Get device info',
   'deviceInfo.asking': 'Asking {name} what it is…',
   'deviceInfo.filled': '{name}: filled in {fields}. Asked only this device: {asked}.',

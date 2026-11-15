@@ -3,13 +3,16 @@
 //! A crawl logs in to a device, reads what it is, then asks it who its
 //! neighbours are and goes to them. Some networks may not be walked that
 //! way. This is the part of the reading that names the box — its model, its
-//! serials, its software, how long it has been up, the members of its stack —
-//! asked of the one address somebody chose, with no question about any other
-//! device and no address followed afterwards.
+//! serials, its software, how long it has been up, the members of its stack,
+//! and the addresses on its own interfaces — asked of the one address
+//! somebody chose, with no question about any other device and no address
+//! followed afterwards.
 //!
 //! **What is asked is a list, and the list is checked.** [`questions`] is
 //! every command sent once the version has answered, and its test fails if a
-//! neighbour, ARP, MAC-table, route or interface command is ever among them.
+//! neighbour, ARP, MAC-table or route command is ever among them. The
+//! device's own interface table is asked for, because the addresses it
+//! answers on are part of what it is.
 //! Nothing is written to the device: every command is a `show`, a `display`,
 //! a `get` or a print.
 //!
@@ -36,6 +39,9 @@ pub struct DeviceInfo {
     /// The chassis's base MAC, where the platform prints one.
     pub mac: Option<String>,
     pub uptime_seconds: Option<u64>,
+    /// The addresses on its own interfaces that are up, the one it was
+    /// reached on marked as its management address.
+    pub addresses: Vec<crate::types::DeviceAddress>,
     /// The members, where this is several boxes answering as one.
     pub stack: Option<StackInfo>,
     /// Every command that was sent, in order — shown to whoever asked.
@@ -69,6 +75,42 @@ pub fn questions(version: &str) -> Vec<String> {
     asked
 }
 
+/// The spellings of the device's own interface table, tried in order until
+/// one reads. Sent after [`questions`].
+pub fn interface_questions(version: &str) -> Vec<String> {
+    if crate::fortios::rejected_command(version) {
+        return vec![FORTI_INTERFACES.to_string()];
+    }
+    let mut asked: Vec<String> = dialect_for(version).interface_readings().iter().map(|r| r.command.to_string()).collect();
+    if crate::arubasw::is_arubaos_switch(version) {
+        asked.push(ARUBA_IP.to_string());
+    }
+    asked
+}
+
+/// What an answer to one of [`interface_questions`] says, if it reads.
+fn interfaces_in(version: &str, command: &str, answer: &str, reached_on: &str) -> Vec<crate::types::DeviceAddress> {
+    if command == FORTI_INTERFACES && crate::fortios::rejected_command(version) {
+        let mut found = crate::fortios::parse_system_interface(answer);
+        for a in &mut found {
+            a.is_management = a.ip == reached_on;
+        }
+        return found;
+    }
+    if command == ARUBA_IP && crate::arubasw::is_arubaos_switch(version) {
+        return crate::interfaces::addresses_from(&crate::arubasw::parse_show_ip(answer), reached_on);
+    }
+    dialect_for(version)
+        .interface_readings()
+        .iter()
+        .find(|r| r.command == command)
+        .map(|r| crate::interfaces::addresses_from(&(r.parse)(answer), reached_on))
+        .unwrap_or_default()
+}
+
+const ARUBA_IP: &str = "show ip";
+const FORTI_INTERFACES: &str = "get system interface";
+
 const ARUBA_SYSTEM: &str = "show system";
 const FORTI_STATUS: &str = "get system status";
 const FORTI_PERFORMANCE: &str = "get system performance status";
@@ -76,7 +118,7 @@ const FORTI_PERFORMANCE: &str = "get system performance status";
 /// Asks `device` what it is. The session is left open for the caller to
 /// close; a command that fails is an empty answer, not an error, because a
 /// device that will not print its stack table has still said its serial.
-pub async fn read(device: &mut Device) -> DeviceInfo {
+pub async fn read(device: &mut Device, reached_on: &str) -> DeviceInfo {
     let hostname = device.hostname().to_string();
     let mut commands = Vec::new();
     let mut version = String::new();
@@ -102,13 +144,23 @@ pub async fn read(device: &mut Device) -> DeviceInfo {
         commands.push(command.clone());
         answers.push((command, out));
     }
-    let mut info = from_answers(&hostname, &version, &answers);
+    // Its own interface table: the first spelling that reads, and no more.
+    for command in interface_questions(&version) {
+        let out = device.run(&command).await.unwrap_or_default();
+        commands.push(command.clone());
+        let read = !interfaces_in(&version, &command, &out, reached_on).is_empty();
+        answers.push((command, out));
+        if read {
+            break;
+        }
+    }
+    let mut info = from_answers(&hostname, reached_on, &version, &answers);
     info.commands = commands;
     info
 }
 
 /// Reads what was answered. Pure, so it is tested without a device.
-pub fn from_answers(hostname: &str, version: &str, answers: &[(String, String)]) -> DeviceInfo {
+pub fn from_answers(hostname: &str, reached_on: &str, version: &str, answers: &[(String, String)]) -> DeviceInfo {
     let dialect = dialect_for(version);
     let answer = |command: &str| answers.iter().find(|(c, _)| c == command).map(|(_, a)| a.as_str()).unwrap_or("");
     let identity_answers: Vec<String> = dialect.identity_commands().iter().map(|c| answer(c).to_string()).collect();
@@ -167,6 +219,11 @@ pub fn from_answers(hostname: &str, version: &str, answers: &[(String, String)])
         software,
         mac: aruba.base_mac.clone().or_else(|| base_mac(version)),
         uptime_seconds,
+        addresses: interface_questions(version)
+            .iter()
+            .map(|c| interfaces_in(version, c, answer(c), reached_on))
+            .find(|found| !found.is_empty())
+            .unwrap_or_default(),
         unverified: !dialect.verified_against_hardware() || stack.as_ref().is_some_and(|s| s.unverified),
         stack,
         commands: Vec::new(),
@@ -204,7 +261,7 @@ System Serial Number            : FOC0001TEST
 
     #[test]
     fn a_version_alone_names_the_box() {
-        let info = from_answers("EXAMPLE-SW", IOS, &[]);
+        let info = from_answers("EXAMPLE-SW", "192.0.2.1", IOS, &[]);
         assert_eq!(info.hostname, "EXAMPLE-SW");
         assert_eq!(info.model.as_deref(), Some("C9300-48P"));
         assert_eq!(info.serials, vec!["FOC0000TEST", "FOC0001TEST"]);
@@ -220,7 +277,7 @@ System Serial Number            : FOC0001TEST
         let status = "Version: FortiGate-60F v7.0.0,build0000\nSerial-Number: FGT0000TEST\nHostname: EXAMPLE-FW\n";
         let asked = questions(refused);
         assert_eq!(asked, vec![FORTI_STATUS, FORTI_PERFORMANCE]);
-        let info = from_answers("EXAMPLE-FW", refused, &[(FORTI_STATUS.to_string(), status.to_string())]);
+        let info = from_answers("EXAMPLE-FW", "192.0.2.1", refused, &[(FORTI_STATUS.to_string(), status.to_string())]);
         assert_eq!(info.serials, vec!["FGT0000TEST"]);
         assert!(info.software.is_some());
     }
@@ -236,7 +293,9 @@ System Serial Number            : FOC0001TEST
             asked.extend(d.paging_off().map(str::to_string));
             asked.extend(d.identity_commands().iter().map(|c| c.to_string()));
             asked.extend(d.stack_commands().iter().map(|c| c.to_string()));
-            asked.extend([ARUBA_SYSTEM, FORTI_STATUS, FORTI_PERFORMANCE].map(str::to_string));
+            asked.extend([ARUBA_SYSTEM, ARUBA_IP, FORTI_STATUS, FORTI_PERFORMANCE, FORTI_INTERFACES].map(str::to_string));
+            // Its own interface table is asked for; that is the one table that is.
+            asked.extend(d.interface_readings().iter().map(|r| r.command.to_string()));
             asked.extend(crate::dialect::VERSION_COMMANDS.iter().map(|c| c.to_string()));
 
             let mut never: Vec<&str> = Vec::new();
@@ -244,12 +303,14 @@ System Serial Number            : FOC0001TEST
             never.extend(d.lldp_readings().iter().map(|r| r.command));
             never.extend(d.ap_readings().iter().map(|r| r.command));
             never.extend(d.mac_table_readings().iter().map(|r| r.command));
-            never.extend(d.interface_readings().iter().map(|r| r.command));
             never.extend(d.port_channel_readings().iter().map(|r| r.command));
             never.extend(d.policy_route_readings().iter().map(|r| r.command));
             never.extend(d.arp_commands());
             never.extend(d.route_commands());
             never.extend(d.default_route_commands());
+            // A platform may read two tables off one command; the interface
+            // table is the one that is wanted.
+            never.retain(|c| !d.interface_readings().iter().any(|r| r.command == *c));
             for a in &asked {
                 assert!(!never.contains(&a.as_str()), "{}: `{a}` reads a table, not an identity", d.name());
                 // Whole words: `/system routerboard print` names hardware.
@@ -262,6 +323,21 @@ System Serial Number            : FOC0001TEST
             checked += 1;
         }
         assert!(checked > 5, "the dialects were not walked");
+    }
+
+    #[test]
+    fn its_own_interface_addresses_are_read_and_the_one_dialled_is_management() {
+        let brief = "\
+Interface              IP-Address      OK? Method Status                Protocol
+Vlan10                 192.0.2.1       YES NVRAM  up                    up
+Vlan20                 198.51.100.1    YES NVRAM  up                    up
+Vlan30                 203.0.113.1     YES NVRAM  administratively down down
+GigabitEthernet1/0/1   unassigned      YES unset  up                    up
+";
+        let command = interface_questions(IOS).into_iter().next().expect("IOS has an interface table");
+        let info = from_answers("EXAMPLE-SW", "192.0.2.1", IOS, &[(command, brief.to_string())]);
+        let got: Vec<(&str, Option<&str>, bool)> = info.addresses.iter().map(|a| (a.ip.as_str(), a.interface.as_deref(), a.is_management)).collect();
+        assert_eq!(got, vec![("192.0.2.1", Some("Vlan10"), true), ("198.51.100.1", Some("Vlan20"), false)]);
     }
 
     #[test]

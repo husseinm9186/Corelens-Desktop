@@ -254,3 +254,48 @@ describe('a route bent by hand', () => {
     expect(shifted[1]!.y).not.toBe(100);
   });
 });
+
+describe('several links between the same two devices', () => {
+  const apart = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
+  const KINDS = ['straight', 'bezier', 'smoothstep', 'step', 'auto', 'avoid'];
+  const PLACES: [number, number][] = [[400, 0], [400, 30], [400, 300], [0, 300], [120, 60]];
+
+  it('never lie on top of each other when both were dropped on the same connection points', () => {
+    for (const pathType of KINDS) {
+      for (const [x, y] of PLACES) {
+        const nodes = [glyph('a', 0, 0), glyph('b', x, y)];
+        const held = { pathType, sourceAnchor: { x: 1, y: 0.5 }, targetAnchor: { x: 0, y: 0.5 }, pinnedSides: true };
+        const out = layout(nodes, [link('e1', 'a', 'b', held), link('e2', 'a', 'b', held), link('e3', 'b', 'a', { ...held, sourceAnchor: held.targetAnchor, targetAnchor: held.sourceAnchor })]);
+        const [l1, l2, l3] = [out.get('e1')!, out.get('e2')!, out.get('e3')!];
+        const where = `${pathType} at ${x},${y}`;
+        expect(apart(l1.s, l2.s), where).toBeGreaterThanOrEqual(SLOT_GAP - 2);
+        expect(apart(l1.t, l2.t), where).toBeGreaterThanOrEqual(SLOT_GAP - 2);
+        // The one drawn the other way round is the same pair of devices.
+        expect(apart(l3.t, l1.s), where).toBeGreaterThanOrEqual(SLOT_GAP - 2);
+        expect(apart(l3.t, l2.s), where).toBeGreaterThanOrEqual(SLOT_GAP - 2);
+        // Still on the ring.
+        for (const end of [l1.s, l2.s, l3.t]) expect(onRing(nodes[0]!, end), where).toBeCloseTo(38 + RING_GAP, 0);
+      }
+    }
+  });
+
+  it('keep clear of one placed by hand where another lands there by itself', () => {
+    const nodes = [glyph('a', 0, 0), glyph('b', 400, 0)];
+    const out = layout(nodes, [
+      link('e1', 'a', 'b', { pathType: 'straight', sourceAnchor: { x: 1, y: 0.5 }, targetAnchor: { x: 0, y: 0.5 }, pinnedSides: true }),
+      link('e2', 'a', 'b', { pathType: 'straight' }),
+    ]);
+    expect(apart(out.get('e1')!.s, out.get('e2')!.s)).toBeGreaterThanOrEqual(SLOT_GAP - 2);
+    expect(apart(out.get('e1')!.t, out.get('e2')!.t)).toBeGreaterThanOrEqual(SLOT_GAP - 2);
+  });
+
+  it('a hand-placed end with no twin stays exactly where it was put', () => {
+    const nodes = [glyph('a', 0, 0), glyph('b', 400, 0), glyph('c', 400, 300)];
+    const held = { pathType: 'straight', sourceAnchor: { x: 1, y: 0.5 }, targetAnchor: { x: 0, y: 0.5 }, pinnedSides: true };
+    const alone = layout(nodes, [link('e1', 'a', 'b', held)]).get('e1')!;
+    // Another link from the same point to a different device moves nothing.
+    const withOther = layout(nodes, [link('e1', 'a', 'b', held), link('e2', 'a', 'c', held)]).get('e1')!;
+    expect(withOther.s).toEqual(alone.s);
+    expect(withOther.t).toEqual(alone.t);
+  });
+});

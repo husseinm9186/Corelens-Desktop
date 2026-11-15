@@ -871,7 +871,7 @@ pub async fn get_device_info(
     let options = SshOptions { port: port.unwrap_or(22), ..SshOptions::default() };
     let mut session =
         connect_with_project_logins(&state, device, &credential_id, options, Arc::clone(&store), "Get device info").await?;
-    let info = corelens_discover::deviceinfo::read(&mut session).await;
+    let info = corelens_discover::deviceinfo::read(&mut session, device).await;
     session.close().await;
     persist_host_keys(&app, &store);
     Ok(info)
@@ -1058,6 +1058,10 @@ pub struct BackupInput {
     /// credential — is read over SSH as usual.
     #[serde(default)]
     pub snmp_copy: Option<SnmpCopyInput>,
+    /// File each device's interface, ARP, MAC and routing tables with its
+    /// backup. Absent means no.
+    #[serde(default)]
+    pub tables: bool,
 }
 
 #[derive(Deserialize)]
@@ -1160,7 +1164,7 @@ pub async fn start_backup(
         return Err(format!("Nothing was run. Only commands that read are allowed: {list}"));
     }
     let wants_show = every_command.iter().any(|c| !c.trim().is_empty());
-    if kinds.is_empty() && !wants_show {
+    if kinds.is_empty() && !wants_show && !input.tables {
         return Err("Choose a configuration to capture, or give at least one show command.".into());
     }
     let paging = match input.paging.as_deref() {
@@ -1198,10 +1202,11 @@ pub async fn start_backup(
             ..SshOptions::default()
         },
         second_factor: input.second_factor,
-        show: wants_show.then(|| corelens_discover::capture::ShowPlan {
+        show: (wants_show || input.tables).then(|| corelens_discover::capture::ShowPlan {
             commands: input.show_commands.clone(),
             paging,
         }),
+        tables: input.tables,
         file_pattern,
         // Every other SSH login the project keeps, for a device that
         // refuses the run's own. One that has gone is one fewer to try.

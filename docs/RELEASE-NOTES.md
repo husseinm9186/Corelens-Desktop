@@ -2,6 +2,34 @@
 
 Newest first.
 
+## 2.17.1 — 2026-11-15
+
+**Fixed**
+- A power supply's serial number was listed as a second chassis serial, so
+  a single switch read "2 chassis". Only the chassis serial is taken now;
+  the motherboard's, the power supply's and a fan tray's are not. Run **Get
+  device info** again on a device that shows the extra serial to correct it.
+- A device drawn on more than one page was listed, and backed up, once per
+  page. It is one device to a backup now.
+- Two links between the same two devices, both dropped on the same
+  connection points, were drawn exactly on top of each other. They are
+  drawn side by side.
+
+**A backup files the device's tables too**
+- Every backup also files each device's own interface, ARP, MAC address and
+  routing tables, asked the way its platform spells them and read-only.
+  Untick **Interface, ARP, MAC and routing tables** on the Backups tab to
+  leave them out; the choice is remembered.
+
+**A device's interface addresses, under Checks**
+- A discovery lists every address on a device's own interfaces in its
+  **Addresses**, named after the interface. The address it is managed on is
+  the primary. Addresses and labels typed by hand are kept — a re-discovery
+  used to replace the whole list with one address.
+- **Get device info** does the same, and so now also asks the device for its
+  own interface table. It still asks nothing about neighbours, ARP, MAC
+  tables or routes, and contacts no other address.
+
 ## 2.17.0 — 2026-11-15
 
 **Get device info: one device asked what it is, with no crawl**

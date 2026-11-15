@@ -1028,7 +1028,7 @@ pub fn set_setting(
     // This table is plain text in the same database as the projects, and
     // nothing typed into Corelens is ever written where it could leave the
     // machine.
-    const ALLOWED: [&str; 35] = [
+    const ALLOWED: [&str; 36] = [
         // The shadow-mode feature flag, per project.
         "collectorShadow",
         "backupFolder",
@@ -1059,6 +1059,8 @@ pub fn set_setting(
         // never shipped as a default.
         "backupShowCommands",
         "backupPaging",
+        // Whether a backup leaves the device tables out; absent means it files them.
+        "backupTables",
         // Named command sets applied by role or tag, as one JSON
         // string. Commands and the words they match on — no secrets, and no
         // set ships built in.

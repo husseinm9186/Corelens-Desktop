@@ -11,6 +11,7 @@ const info = (over: Partial<DeviceInfo> = {}): DeviceInfo => ({
   software: 'Cisco IOS Software, Version 16.12.4',
   mac: '00:11:22:33:44:55',
   uptimeSeconds: 60,
+  addresses: [],
   stack: null,
   commands: ['show version'],
   unverified: false,
@@ -47,6 +48,18 @@ describe('what a device said, onto its fields', () => {
   it('says nothing changed when the device repeats what is there', () => {
     const first = deviceInfoPatch(info(), drawn(), 1).patch;
     expect(deviceInfoPatch(info(), drawn(first), 2).changed).toEqual([]);
+  });
+
+  it('lists its own interface addresses under its checks, the one dialled as primary', () => {
+    const had = drawn({ addresses: [{ id: 'mine', label: 'Mgmt', address: '192.0.2.10', isPrimary: true }] });
+    const said = info({ addresses: [{ ip: '192.0.2.10', interface: 'Vlan10', isManagement: true }, { ip: '198.51.100.1', interface: 'Vlan20', isManagement: false }] });
+    const { patch, changed } = deviceInfoPatch(said, had, 1, '192.0.2.10');
+    expect(patch.addresses?.map((a) => [a.label, a.address, a.isPrimary])).toEqual([['Mgmt', '192.0.2.10', true], ['Vlan20', '198.51.100.1', false]]);
+    expect(changed).toContain('interface addresses');
+    // And a second reading adds nothing.
+    const again = deviceInfoPatch(said, drawn({ ...patch } as never), 2, '192.0.2.10');
+    expect(again.changed).toEqual([]);
+    expect('addresses' in again.patch).toBe(false);
   });
 
   it('lists a stack, a member a line with its serial', () => {

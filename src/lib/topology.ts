@@ -11,6 +11,7 @@
  * Pure, so the identity, de-duplication and layout rules can be tested without
  * a network or a browser.
  */
+import { sameAddresses, withInterfaceAddresses } from './deviceAddresses';
 import type {
   AttachedDevice,
   CrawledDevice,
@@ -390,6 +391,8 @@ interface Entry {
   via?: string | null;
   /** Where each field came from. */
   evidence?: Record<string, Evidence>;
+  /** The addresses on its own interfaces, where it was logged in to. */
+  interfaces?: { ip: string; interface: string | null }[];
   reached: boolean;
   depth: number;
 }
@@ -447,6 +450,7 @@ export function buildTopology(
       key: identity(d.hostname, d.address),
       name: d.hostname || d.address,
       address: d.probeTarget || d.address,
+      interfaces: d.addresses ?? [],
       klass: d.class,
       platform: d.platform,
       serial: d.serial,
@@ -690,10 +694,12 @@ export function buildTopology(
         // name someone corrected by hand should not be overwritten by the one
         // a neighbour advertises.
         const patch: Partial<DeviceNodeData> = {};
-        if (e.address) {
-          patch.addresses = [
-            { id: uid(), label: 'Discovered', address: e.address, isPrimary: true },
-          ];
+        // Its own interface addresses join the ones it has; the address
+        // it is managed on is the primary. What was typed stays.
+        if (e.address || e.interfaces?.length) {
+          const before = drawnDataById.get(seen)?.addresses ?? alreadyDrawnData.get(e.key)?.addresses;
+          const next = withInterfaceAddresses(before, e.address, e.interfaces ?? [], uid);
+          if (!sameAddresses(next, before)) patch.addresses = next;
         }
         if (e.platform) patch.model = e.platform;
         // The OS the device reported and how it was reached. Both
@@ -756,9 +762,7 @@ export function buildTopology(
         tags: [e.reached ? 'discovered' : 'seen-only'],
         ...(e.role ? { role: ROLE_LABEL[e.role.role], roleEvidence: e.role.reasons.join('; ') } : {}),
         ...(e.evidence && Object.keys(e.evidence).length > 0 ? { evidence: e.evidence } : {}),
-        addresses: e.address
-          ? [{ id: uid(), label: 'Discovered', address: e.address, isPrimary: true }]
-          : [],
+        addresses: withInterfaceAddresses([], e.address, e.interfaces ?? [], uid),
         locked: false,
         maintenance: false,
         showDetails: true,

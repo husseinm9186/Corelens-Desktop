@@ -90,7 +90,7 @@ export const crawlInput = (input: object) => {
 /** `BackupInput` and `BackupTarget`. */
 export const backupInput = (input: object) => {
   const i = input as Obj;
-  const out = pickAll(i, ['credentialId', 'targets', 'kinds', 'secondFactor', 'port', 'showCommands', 'paging', 'filePattern', 'snmpCopy']);
+  const out = pickAll(i, ['credentialId', 'targets', 'kinds', 'secondFactor', 'port', 'showCommands', 'paging', 'filePattern', 'snmpCopy', 'tables']);
   if (Array.isArray(i.targets)) out.targets = i.targets.map((t) => pickAll(t, ['address', 'name', 'commands', 'site']));
   if (i.snmpCopy && typeof i.snmpCopy === 'object') out.snmpCopy = pickAll(i.snmpCopy, ['credentialId', 'port']);
   return out;

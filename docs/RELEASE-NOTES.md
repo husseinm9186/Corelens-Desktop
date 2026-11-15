@@ -2,6 +2,24 @@
 
 Newest first.
 
+## 2.15.3 — 2026-11-15
+
+**A Nexus is read in its own words**
+- A crawl asks a Nexus for its bundles with `show port-channel summary` and
+  reads NX-OS's table, wrapped member lists included. It used to ask
+  `show etherchannel summary`, which NX-OS rejects, so no bundle was drawn.
+- Trunks and port status are asked as `show interface trunk` and
+  `show interface status` — NX-OS rejects the plural — and the trunk table
+  is read in NX-OS's layout, with each trunk's native VLAN and the VLANs it
+  carries.
+- The ARP table is asked for every VRF. `show ip arp` alone is the default
+  VRF's, which on a switch managed through `mgmt0` is often empty.
+- A learned MAC entry keeps its VLAN: NX-OS puts a marker column in front
+  of it.
+- Read against real NX-OS output and against the sample output in Cisco's
+  Nexus 9000 (NX-OS 9.3) and Nexus 7000 references. Not yet checked against
+  a capture from a switch of yours.
+
 ## 2.15.2 — 2026-11-15
 
 **The dock in a window of its own**

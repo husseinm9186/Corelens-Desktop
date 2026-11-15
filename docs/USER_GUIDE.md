@@ -1006,6 +1006,21 @@ or vendor** in the crawl panel does the same for a subnet or for every device a
 neighbour reports as, say, a FortiSwitch. The most specific match is tried first.
 Only the vault's reference is sent; the password never leaves the vault.
 
+**What a device is, without a crawl.** Right-click a device and choose **Get
+device info**. Corelens logs in to that one device — its own address, with
+its own login or the project's, and the project's other saved logins in turn
+if that is refused — asks it what it is, and writes the answer
+into its fields: hostname, model, every chassis serial, software, the base
+MAC where the platform prints one, and the members of a stack with their
+serials. This is not a crawl. The device is asked its version, whatever else
+its platform needs to state a model and serial, and its stack table; it is
+never asked about its neighbours, its ARP or MAC tables or its routes, no
+other address is contacted, and nothing is written to it. The status line
+lists the commands that were sent, so you can tell a network's owner exactly
+what was asked. A field the device did not answer keeps what you typed, and
+the display name is never changed. It works over SSH; a device reached only
+by Telnet or SNMP is not read this way.
+
 **A shell on a device.** Right-click a device and choose **SSH to this
 device**. It logs in with the device's own saved login — the project's other
 saved logins in turn if that is refused — and opens as a tab in

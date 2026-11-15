@@ -850,3 +850,28 @@ async fn an_unreachable_device_is_not_retried_per_login() {
     }
     assert_eq!(connecting, 1, "one attempt, not one per login");
 }
+
+/// One device asked what it is over a real session: the name comes off its
+/// prompt, the family off its version, and nothing sent is a question about
+/// another device.
+#[tokio::test]
+async fn a_device_is_asked_what_it_is_and_nothing_else() {
+    let addr = start_device(AuthStyle::PasswordOnly, "CORE-SW-01").await;
+    let store = Arc::new(std::sync::Mutex::new(HostKeyStore::new()));
+    let mut device = Device::connect("127.0.0.1", &creds("correct-horse"), options(port_of(&addr)), store, None)
+        .await
+        .expect("should connect and log in");
+
+    let info = corelens_discover::deviceinfo::read(&mut device).await;
+    device.close().await;
+
+    assert_eq!(info.hostname, "CORE-SW-01");
+    assert!(info.software.as_deref().unwrap_or("").contains("Cisco IOS Software"), "{info:?}");
+    assert_eq!(info.commands.first().map(String::as_str), Some("show version"));
+    for c in &info.commands {
+        let l = c.to_ascii_lowercase();
+        for word in ["cdp", "lldp", "neighbor", "arp", "mac address", "route"] {
+            assert!(!l.contains(word), "`{c}` was sent");
+        }
+    }
+}

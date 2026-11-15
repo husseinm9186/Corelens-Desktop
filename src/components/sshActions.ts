@@ -4,6 +4,7 @@
  * questions in the same order and report the same refusals.
  */
 import { ipc } from '../lib/ipc';
+import { deviceInfoPatch } from '../lib/deviceInfo';
 import { planSsh, sshAddress } from '../lib/sshLaunch';
 import { t } from '../i18n';
 import { useStore } from '../state/store';
@@ -87,4 +88,43 @@ async function sshUsername(data: DeviceNodeData): Promise<string> {
   if (!id) return '';
   const saved = await ipc.listCredentials().catch(() => []);
   return saved.find((c) => c.id === id)?.username ?? '';
+}
+
+/**
+ * Asks one device what it is and writes what it said into its fields.
+ *
+ * Not a crawl: one login to this device's own address with its own login
+ * (or the project's), identity questions only, and no other device
+ * contacted. The status line says what was asked, so whoever pressed it can
+ * tell a network's owner exactly what was sent.
+ */
+export async function getDeviceInfo(nodeId: string, data: DeviceNodeData) {
+  const store = useStore.getState();
+  const plan = planSsh(data, store.doc.credentialDefaults?.ssh);
+  if (!plan.ok) {
+    store.setStatusMessage(t(plan.reason === 'noAddress' ? 'ssh.noAddress' : 'ssh.noCredential'));
+    return;
+  }
+  store.setStatusMessage(t('deviceInfo.asking', { name: plan.label }));
+  try {
+    const info = await ipc.getDeviceInfo(plan.address, plan.credentialId);
+    // The device as it is now: it may have been edited while this ran.
+    const state = useStore.getState();
+    // On the page in front, which is the one an edit lands on.
+    const node = state.doc.pages.find((p) => p.id === state.doc.activePageId)?.nodes.find((n) => n.id === nodeId);
+    if (!node) {
+      state.setStatusMessage(t('deviceInfo.gone', { name: plan.label }));
+      return;
+    }
+    const { patch, changed } = deviceInfoPatch(info, node.data as DeviceNodeData, Date.now());
+    state.updateNodeData(nodeId, patch);
+    const asked = info.commands.join(', ');
+    state.setStatusMessage(
+      changed.length
+        ? t('deviceInfo.filled', { name: plan.label, fields: changed.join(', '), asked })
+        : t('deviceInfo.nothingNew', { name: plan.label, asked }),
+    );
+  } catch (e: unknown) {
+    useStore.getState().setStatusMessage(t('deviceInfo.failed', { name: plan.label, why: e instanceof Error ? e.message : String(e) }));
+  }
 }

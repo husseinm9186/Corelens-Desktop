@@ -2688,7 +2688,7 @@ pub fn same_interface(a: &str, b: &str) -> bool {
     ha.starts_with(&hb) || hb.starts_with(&ha)
 }
 
-fn first_line(text: &str) -> Option<&str> {
+pub(crate) fn first_line(text: &str) -> Option<&str> {
     text.lines().map(str::trim).find(|l| !l.is_empty())
 }
 
@@ -2786,7 +2786,7 @@ fn looks_like_a_model(word: &str) -> bool {
 }
 
 /// Pulls a model out of a `show version` banner, for classification.
-fn platform_from_version(version: &str) -> Option<String> {
+pub(crate) fn platform_from_version(version: &str) -> Option<String> {
     // A `show version` on a Catalyst runs to sixty lines and puts "Model
     // number" near the bottom, past where a short scan would look.
     for line in version.lines().take(80) {

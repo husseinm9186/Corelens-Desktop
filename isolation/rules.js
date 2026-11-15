@@ -82,6 +82,7 @@
     open_attachment: ["path", "reveal"],
     open_external_url: ["url"],
     ping_from_device: ["device", "credentialId", "target", "count"],
+    get_device_info: ["device", "credentialId", "port"],
     traceroute_from_device: ["device", "credentialId", "target"],
     ecmp_leg_from_device: ["device", "credentialId", "source", "destination", "protocol", "sourcePort", "destinationPort"],
     probe_history: ["probeId", "projectId", "sinceMs", "limit"],

@@ -2,6 +2,21 @@
 
 Newest first.
 
+## 2.17.0 — 2026-11-15
+
+**Get device info: one device asked what it is, with no crawl**
+- Right-click a device and choose **Get device info**. Its model, every
+  chassis serial, software, hostname, base MAC and stack members are read
+  from the device and written into its fields — what an as-built needs.
+- It is separate from discovery and nothing like a crawl: one login to that
+  device's own address, with its own login or the project's. It is asked its
+  version, what its platform needs to state a model and serial, and its
+  stack table. It is never asked about neighbours, ARP, MAC tables or
+  routes, no other address is contacted, and nothing is written to it.
+- The status line lists every command that was sent.
+- What the device does not answer keeps what was typed; the display name is
+  never changed. SSH only.
+
 ## 2.16.0 — 2026-11-15
 
 **A saved password cannot be read back, anywhere**

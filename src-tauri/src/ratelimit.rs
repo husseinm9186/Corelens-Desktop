@@ -32,6 +32,8 @@ pub enum Job {
     DeviceHash,
     /// Asking the devices on a modeled path about one flow.
     LivePath,
+    /// Asking one device what it is.
+    DeviceInfo,
 }
 
 impl Job {
@@ -54,6 +56,8 @@ impl Job {
             Job::DeviceHash => (30, "An ECMP hash from a device"),
             // Each check logs into every device on the path.
             Job::LivePath => (10, "A live path check"),
+            // One login each; a person documenting a site asks a rack at a time.
+            Job::DeviceInfo => (120, "Reading a device's details"),
         }
     }
 }

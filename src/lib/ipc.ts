@@ -344,6 +344,22 @@ export type StackInfo = {
   unverified: boolean;
 };
 
+/** What one device said about itself when asked, and what it was asked. */
+export type DeviceInfo = {
+  hostname: string;
+  family: string;
+  model: string | null;
+  serials: string[];
+  software: string | null;
+  mac: string | null;
+  uptimeSeconds: number | null;
+  stack: StackInfo | null;
+  /** Every command sent, in order. */
+  commands: string[];
+  /** A reader behind some of this has met no real hardware. */
+  unverified: boolean;
+};
+
 export type CrawledDevice = {
   hostname: string;
   address: string;
@@ -1390,6 +1406,13 @@ export const ipc = {
   async pingFromDevice(device: string, credentialId: string, target: string, count = 3): Promise<{ sent: number; received: number; minMs: number | null; avgMs: number | null; maxMs: number | null; output: string }> {
     if (!isDesktop) throw new BackendUnavailable('Pinging from a device');
     return invoke('ping_from_device', { device, credentialId, target, count });
+  },
+
+  /** One device asked what it is, over SSH with a saved login by id. Not a
+   *  crawl: the one address, identity questions only. */
+  async getDeviceInfo(device: string, credentialId: string, port?: number): Promise<DeviceInfo> {
+    if (!isDesktop) throw new BackendUnavailable('Reading a device');
+    return invoke('get_device_info', { device, credentialId, port });
   },
 
   /** A saved snmpwalk of one device, read into what an SNMP crawl

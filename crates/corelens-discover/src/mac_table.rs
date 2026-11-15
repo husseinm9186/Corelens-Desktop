@@ -74,9 +74,13 @@ pub fn parse_mac_table(out: &str) -> Vec<MacEntry> {
         let Some(port) = port.filter(|p| is_real_port(p) && normalise_mac(p).is_none()) else {
             continue;
         };
+        // The VLAN leads the row — after a one-character marker on NX-OS,
+        // which flags each entry (`*` primary, `+` learned over the vPC
+        // peer link) before it.
         let vlan = tokens
-            .first()
-            .filter(|t| t.chars().all(|c| c.is_ascii_digit()))
+            .iter()
+            .take(2)
+            .find(|t| !t.is_empty() && t.chars().all(|c| c.is_ascii_digit()))
             .map(|t| t.to_string());
         found.push(MacEntry { mac, port, vlan });
     }

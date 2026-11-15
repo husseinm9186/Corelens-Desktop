@@ -49,6 +49,16 @@ pub struct PortStatus {
 
 pub const COMMANDS: &[&str] = &["show vlan brief", "show interfaces trunk", "show interfaces status"];
 
+/// The same three questions as the platform spells them: the VLAN list, the
+/// trunks, and every port's status. NX-OS says `show interface …` and
+/// rejects the plural; everything else that reads these is asked as IOS is.
+pub fn commands_for(family: crate::dialect::Family) -> [&'static str; 3] {
+    match family {
+        crate::dialect::Family::CiscoNxOs => ["show vlan brief", "show interface trunk", "show interface status"],
+        _ => ["show vlan brief", "show interfaces trunk", "show interfaces status"],
+    }
+}
+
 /// Expands `1,8,10,14-16` into every VLAN it names. Anything unreadable is
 /// skipped, and `none` is empty.
 pub fn expand_vlan_list(text: &str) -> Vec<u16> {
@@ -108,22 +118,32 @@ fn split_ports(text: &str) -> Vec<String> {
 
 /// Parses `show interfaces trunk`: each trunk with its native VLAN and the
 /// VLANs allowed and active on it.
+///
+/// Two layouts. IOS heads its first table `Port Mode Encapsulation Status
+/// Native vlan`, with the native VLAN fifth. NX-OS heads it `Port Native
+/// Status Port` over a second line `Vlan … Channel`, with the native VLAN
+/// second, capitalises its section headings, and calls the VLANs actually
+/// carried `STP Forwarding`. The header says which it is.
 pub fn parse_trunks(output: &str) -> Vec<PortVlans> {
     let mut native: BTreeMap<String, Option<u16>> = BTreeMap::new();
     let mut active: BTreeMap<String, Vec<u16>> = BTreeMap::new();
     let mut allowed: BTreeMap<String, Vec<u16>> = BTreeMap::new();
     let mut section = "";
+    // Which column of the first table holds the native VLAN.
+    let mut native_at = 4;
     for line in output.lines() {
         let t = line.trim();
-        if t.is_empty() {
+        if t.is_empty() || t.starts_with('-') {
             continue;
         }
         if t.starts_with("Port") {
-            section = if t.contains("Native vlan") {
+            let heading = t.to_ascii_lowercase();
+            section = if heading.contains("native") {
+                native_at = if heading.contains("mode") { 4 } else { 1 };
                 "native"
-            } else if t.contains("allowed and active") {
+            } else if heading.contains("allowed and active") || heading.contains("stp forwarding") {
                 "active"
-            } else if t.contains("allowed on trunk") {
+            } else if heading.contains("allowed on trunk") {
                 "allowed"
             } else {
                 "other"
@@ -132,9 +152,14 @@ pub fn parse_trunks(output: &str) -> Vec<PortVlans> {
         }
         let f: Vec<&str> = t.split_whitespace().collect();
         match section {
-            "native" if f.len() >= 5 => {
-                native.insert(f[0].to_string(), f[4].parse().ok());
+            // The second line of NX-OS's two-line heading is not a port.
+            "native" if f.first() == Some(&"Vlan") => {}
+            "native" if f.len() > native_at => {
+                native.insert(f[0].to_string(), f[native_at].parse().ok());
             }
+            // A bundle's member forwards nothing of its own: `none` leaves
+            // what the port is allowed to stand.
+            "active" if f.len() >= 2 && f[1].eq_ignore_ascii_case("none") => {}
             "active" if f.len() >= 2 => {
                 active.insert(f[0].to_string(), expand_vlan_list(f[1]));
             }

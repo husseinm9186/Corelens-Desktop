@@ -67,6 +67,52 @@ pub fn parse_etherchannel_summary(text: &str) -> Vec<PortChannel> {
     out
 }
 
+/// Reads NX-OS's `show port-channel summary`.
+///
+/// ```text
+/// Group Port-       Type     Protocol  Member Ports
+///       Channel
+/// 1     Po1(RU)     Eth      LACP      Eth1/1(P)    Eth2/1(P)
+/// 811   Po811(RU)   Eth      LACP      Eth15/8(P)   Eth15/28(P)  Eth16/8(P)
+///                                      Eth16/28(P)
+/// ```
+///
+/// One column more than IOS's `show etherchannel summary` — the type — so
+/// the protocol is fourth and the members start fifth; a bundle with many
+/// members wraps onto lines that carry only ports. `NONE` is a static
+/// bundle, written `-` as the IOS reader writes it.
+pub fn parse_nxos_port_channel_summary(text: &str) -> Vec<PortChannel> {
+    let mut out: Vec<PortChannel> = Vec::new();
+    let mut in_table = false;
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if !in_table {
+            if trimmed.starts_with("Group") && trimmed.contains("Port-") {
+                in_table = true;
+            }
+            continue;
+        }
+        if trimmed.is_empty() || trimmed.starts_with('-') || trimmed == "Channel" {
+            continue;
+        }
+        let fields: Vec<&str> = trimmed.split_whitespace().collect();
+        if fields.first().is_some_and(|f| f.chars().all(|c| c.is_ascii_digit())) {
+            let Some(named) = fields.get(1) else { continue };
+            let name = named.split('(').next().unwrap_or(named).to_string();
+            let protocol = match fields.get(3) {
+                Some(p) if p.eq_ignore_ascii_case("NONE") => "-".to_string(),
+                Some(p) => p.to_string(),
+                None => "-".to_string(),
+            };
+            let members = fields.iter().skip(4).filter_map(|p| member(p)).collect();
+            out.push(PortChannel { name, protocol, members });
+        } else if let Some(last) = out.last_mut() {
+            last.members.extend(fields.iter().filter_map(|p| member(p)));
+        }
+    }
+    out
+}
+
 /// `Gi1/0/11(P)` -> `Gi1/0/11`. Anything without a slash is not a port —
 /// it keeps a stray word on a mangled line out of the member list.
 fn member(field: &str) -> Option<String> {

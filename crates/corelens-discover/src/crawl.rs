@@ -2386,9 +2386,11 @@ async fn read_details(device: &mut Session, version: &str, wanted: DetailOptions
         details.spanning_tree = crate::stp::parse_spanning_tree(&out);
     }
     if wanted.vlans {
-        let brief = device.run("show vlan brief").await.unwrap_or_default();
-        let trunks = device.run("show interfaces trunk").await.unwrap_or_default();
-        let status = device.run("show interfaces status").await.unwrap_or_default();
+        // In the platform's own spelling: NX-OS rejects the plural.
+        let [ask_vlans, ask_trunks, ask_status] = crate::vlans::commands_for(platform.family());
+        let brief = device.run(ask_vlans).await.unwrap_or_default();
+        let trunks = device.run(ask_trunks).await.unwrap_or_default();
+        let status = device.run(ask_status).await.unwrap_or_default();
         details.vlans = crate::vlans::parse_vlan_brief(&brief);
         // ArubaOS-Switch spells it `show vlans` and answers with a
         // table, not Cisco's listing.

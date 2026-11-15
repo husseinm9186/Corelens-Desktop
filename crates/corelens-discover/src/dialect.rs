@@ -213,6 +213,11 @@ static LLDP_DELL: &[Reading<Neighbor>] = &[
 // platform on purpose: a device that answered the first with nothing has
 // cost one more command, and a platform string that is wrong costs nothing.
 static ARP: &[&str] = &["show ip arp", "show arp"];
+// A Nexus keeps a table per VRF and `show ip arp` shows the default one
+// alone — which, on a switch reached through `mgmt0` in the management VRF,
+// is often empty. Every VRF first; the plain spelling for a release that
+// refuses the option.
+static ARP_NXOS: &[&str] = &["show ip arp vrf all", "show ip arp"];
 static MAC: &[Reading<MacEntry>] = &[
     Reading { command: "show mac address-table", parse: crate::mac_table::parse_mac_table },
     Reading { command: "show mac-address", parse: crate::arubasw::parse_mac_address_table },
@@ -234,6 +239,9 @@ static MAC_DELL: &[Reading<MacEntry>] = &[
 // empty answer as no bundles.
 static PORT_CHANNELS: &[Reading<PortChannel>] =
     &[Reading { command: "show etherchannel summary", parse: crate::etherchannel::parse_etherchannel_summary }];
+// NX-OS has no `show etherchannel summary`; its own, with one column more.
+static PORT_CHANNELS_NXOS: &[Reading<PortChannel>] =
+    &[Reading { command: "show port-channel summary", parse: crate::etherchannel::parse_nxos_port_channel_summary }];
 // By platform rather than by result, because a Cisco with no
 // bundles is common and should not pay a rejected command for it.
 static PORT_CHANNELS_ARUBA: &[Reading<PortChannel>] = &[
@@ -417,6 +425,7 @@ impl Dialect for Chosen {
         use Family::*;
         match self.known.family {
             Junos => ARP_JUNOS,
+            CiscoNxOs => ARP_NXOS,
             PanOs => ARP_PANOS,
             ArubaOsCx => ARP_ARUBACX,
             CiscoAsa | Vyatta => ARP_ASA,
@@ -449,6 +458,7 @@ impl Dialect for Chosen {
         match self.known.family {
             Junos => PORT_CHANNELS_JUNOS,
             AristaEos => PORT_CHANNELS_ARISTA,
+            CiscoNxOs => PORT_CHANNELS_NXOS,
             Comware => PORT_CHANNELS_COMWARE,
             HuaweiVrp => PORT_CHANNELS_HUAWEI,
             Cumulus => PORT_CHANNELS_CUMULUS,
@@ -764,7 +774,11 @@ mod tests {
                 lldp.push("show lldp neighbors");
             }
             assert_eq!(commands(d.lldp_readings()), lldp, "lldp for {banner}");
-            assert_eq!(d.arp_commands(), ["show ip arp", "show arp"], "arp for {banner}");
+            if d.family() == Family::CiscoNxOs {
+                assert_eq!(d.arp_commands(), ["show ip arp vrf all", "show ip arp"], "arp for {banner}");
+            } else {
+                assert_eq!(d.arp_commands(), ["show ip arp", "show arp"], "arp for {banner}");
+            }
             let mut mac = vec!["show mac address-table", "show mac-address"];
             match dell {
                 Some(DellOs::Os9) => mac.push("show mac-address-table"),
@@ -773,7 +787,10 @@ mod tests {
             }
             assert_eq!(commands(d.mac_table_readings()), mac, "mac table for {banner}");
             let mut bundles = vec!["show etherchannel summary"];
-            if aruba {
+            if d.family() == Family::CiscoNxOs {
+                // Its own spelling, and no other.
+                bundles = vec!["show port-channel summary"];
+            } else if aruba {
                 bundles.push("show trunks");
             } else if dell.is_some() {
                 bundles.push("show port-channel summary");

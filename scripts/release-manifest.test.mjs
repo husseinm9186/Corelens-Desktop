@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -158,7 +159,7 @@ describe('checksums', () => {
     writeFileSync(join(dl, 'mac', 'App.app.tar.gz'), 'update archive');
     writeFileSync(join(dl, 'mac', 'App.app.tar.gz.sig'), sig);
     const out = join(dir, 'release');
-    const printed = execFileSync(process.execPath, [new URL('./release-manifest.mjs', import.meta.url).pathname, '--version', version, '--artifacts', dl, '--repo', 'owner/name', '--out', out], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split('\n');
+    const printed = execFileSync(process.execPath, [fileURLToPath(new URL('./release-manifest.mjs', import.meta.url)), '--version', version, '--artifacts', dl, '--repo', 'owner/name', '--out', out], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split('\n');
     const sums = readFileSync(join(out, 'SHA256SUMS.txt'), 'utf8');
     const sha = (text) => createHash('sha256').update(text).digest('hex');
     expect(sums).toBe(`${sha('windows installer')}  App_x64-setup.exe\n${sha('disk image')}  App_universal.dmg\n${sha('update archive')}  App.app.tar.gz\n`);

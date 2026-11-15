@@ -31,7 +31,11 @@ export const DEVICE_FIELDS: ImportField[] = [
   { key: 'serial', label: 'Serial number', aliases: ['serialnumber', 'serial', 'serialno', 'sn', 's/n'] },
   { key: 'assetTag', label: 'Asset tag', aliases: ['assettag', 'asset', 'assetno', 'assetnumber'] },
   { key: 'site', label: 'Site', aliases: ['site', 'location', 'building', 'campus'] },
-  { key: 'rack', label: 'Rack', aliases: ['rack', 'cabinet'] },
+  { key: 'rack', label: 'Rack', aliases: ['rack', 'cabinet', 'rackname', 'racknumber'] },
+  { key: 'rackU', label: 'Lowest rack unit', aliases: ['racku', 'rackunit', 'ru', 'u', 'bottomru', 'bottomu', 'lowestu', 'startu', 'rackposition', 'position', 'uposition'] },
+  { key: 'rackTop', label: 'Top rack unit', aliases: ['topru', 'topu', 'toprackunit', 'topunit', 'rutop', 'utop', 'topposition'] },
+  { key: 'rackUnits', label: 'Height (U)', aliases: ['heightu', 'height', 'uheight', 'rackunits', 'rusize', 'usize', 'units', 'size', 'ruheight'] },
+  { key: 'uplink', label: 'Connects to', aliases: ['connectsto', 'connectedto', 'uplink', 'uplinkdevice', 'uplinkto', 'managementdevice', 'mgmtdevice', 'managedby', 'upstream', 'upstreamdevice', 'parent', 'parentdevice'] },
   { key: 'tags', label: 'Tags', aliases: ['tags', 'tag', 'labels', 'groups'] },
   { key: 'notes', label: 'Notes', aliases: ['notes', 'note', 'comments', 'comment', 'description'] },
   { key: 'probeType', label: 'Probe type', aliases: ['probetype', 'check', 'checktype'] },
@@ -95,6 +99,27 @@ export interface MappedDevices {
   kind: 'devices';
   rows: NodeCsvRow[];
   errors: string[];
+  /** The heading rows found between the devices, in order: each names the
+   *  site of the rows under it. */
+  headings: string[];
+}
+
+/** A rack unit as people write one: `12`, `U12`, `12U`, `RU 12`. */
+export function rackUnitOf(text: string): number | undefined {
+  const m = /^\s*(?:r?u\s*)?(\d{1,3})\s*(?:r?u)?\s*$/i.exec(text);
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  return n >= 0 && n <= 200 ? n : undefined;
+}
+
+/**
+ * The lowest unit a device occupies, from the top one and its height.
+ * Rack units count up from the bottom, so a 2U device whose top is at 20
+ * sits in 19 and 20. Undefined when that would put it below the rack.
+ */
+export function lowestUnit(top: number, height: number): number | undefined {
+  const lowest = top - Math.max(1, height) + 1;
+  return lowest >= 1 ? lowest : undefined;
 }
 export interface MappedLinks {
   kind: 'links';
@@ -111,8 +136,25 @@ export function mapRows(grid: readonly (readonly string[])[], mapping: ColumnMap
   const blank = (r: readonly string[]) => r.every((c) => !c.trim());
   if (kind === 'devices') {
     const rows: NodeCsvRow[] = [];
+    const headings: string[] = [];
+    // A row with one cell in it, in a sheet whose devices have several, is
+    // a heading over the rows that follow — "Building A", then its devices —
+    // and names their site wherever the sheet gives them none of their own.
+    const mapped = Object.values(mapping).filter((v) => v !== null && v !== undefined).length;
+    const filled = (r: readonly string[]) => r.filter((c) => c.trim()).length;
+    const isHeading = (r: readonly string[], i: number) => {
+      if (mapped < 2 || filled(r) !== 1) return false;
+      const next = body.slice(i + 1).find((x) => !blank(x));
+      return next !== undefined && filled(next) >= 2;
+    };
+    let site: string | undefined;
     body.forEach((r, i) => {
       if (blank(r)) return;
+      if (isHeading(r, i)) {
+        site = r.find((c) => c.trim())!.trim();
+        headings.push(site);
+        return;
+      }
       const name = cell(r, mapping.name);
       if (!name) {
         errors.push(`Row ${rowNo(i)}: no name; skipped.`);
@@ -133,11 +175,31 @@ export function mapRows(grid: readonly (readonly string[])[], mapping: ColumnMap
         serial: optional('serial'),
         assetTag: optional('assetTag'),
         role: optional('role'),
-        site: optional('site'),
+        site: optional('site') ?? site,
         rack: optional('rack'),
+        ...((): Partial<NodeCsvRow> => {
+          const height = rackUnitOf(cell(r, mapping.rackUnits));
+          const lowest = rackUnitOf(cell(r, mapping.rackU));
+          const top = rackUnitOf(cell(r, mapping.rackTop));
+          const out: Partial<NodeCsvRow> = {};
+          if (height !== undefined) out.rackUnits = height;
+          // The lowest unit as given wins; a top unit is kept as it is, and
+          // turned into the lowest where the height is known.
+          if (lowest !== undefined && lowest >= 1) out.rackU = lowest;
+          else if (top !== undefined && top >= 1) {
+            out.rackTop = top;
+            if (height !== undefined) {
+              const from = lowestUnit(top, height);
+              if (from === undefined) errors.push(`Row ${rowNo(i)}: ${height}U with its top at ${top} would start below the rack; position left out.`);
+              else out.rackU = from;
+            }
+          }
+          return out;
+        })(),
+        uplink: optional('uplink'),
       });
     });
-    return { kind, rows, errors };
+    return { kind, rows, errors, headings };
   }
   const rows: LinkCsvRow[] = [];
   body.forEach((r, i) => {

@@ -495,6 +495,117 @@ if (await front.count()) {
   await page.keyboard.press("Escape");
 }
 
+// ------------------------------------------- a filled shape at the back
+// A box drawn behind two devices and the link between them: at the back of
+// the stack it is under the link too, and brought to the front it covers both.
+{
+  await st(() => {
+    const s = window.__cvStore.getState();
+    const node = (id, deviceType, x, y, w, h) => ({ id, type: "device", position: { x, y }, width: w, height: h,
+      data: { label: id, deviceType, tags: [], addresses: [], locked: false, maintenance: false, showDetails: false } });
+    s.addNode(node("zr", "router", 1300, 900, 96, 96));
+    s.addNode(node("zs", "access-switch", 1700, 900, 96, 96));
+    s.addNode(node("zbox", "rounded", 1200, 800, 700, 300));
+    s.updateNodeData("zbox", { style: { background: "#e8e8e8" } });
+    s.addEdge({ id: "zlink", source: "zr", target: "zs", sourceHandle: "r", targetHandle: "l", type: "live",
+      data: { sourcePortLabel: "", targetPortLabel: "", label: "", pathType: "straight", direction: "none", width: 2,
+        color: "#2fbf6b", enabled: true, maintenance: false, healthRule: { type: "manual", manualStatus: "unknown" } } });
+  });
+  await page.waitForTimeout(400);
+  const edgeZ = () => page.locator('.react-flow__edge[data-id="zlink"]').evaluate((el) => Number(getComputedStyle(el.closest("svg")).zIndex) || 0);
+  const zs = async () => ({ box: await zOf("zbox"), link: await edgeZ(), router: await zOf("zr"), sw: await zOf("zs") });
+  let z = await zs();
+  check("a shape drawn last is over the devices and the link", z.box > z.link && z.box > z.router && z.box > z.sw, JSON.stringify(z));
+  await selectOnly("zbox");
+  await blur();
+  await page.keyboard.press("Control+Shift+BracketLeft");
+  await page.waitForTimeout(400);
+  z = await zs();
+  check("sent to the back, it is under the link as well as the devices", z.box < z.link && z.link < z.router && z.link < z.sw, JSON.stringify(z));
+  // On the light box the label is dark, with a halo of the box's colour — not the dark ground's light ink.
+  const labelOf = (id) => page.locator(`.react-flow__node[data-id="${id}"] .cv-glyph-label`).evaluate((el) => {
+    const cs = getComputedStyle(el);
+    const [r, g, b] = cs.color.match(/[\d.]+/g).map(Number);
+    return { light: (r + g + b) / 3 > 128, halo: cs.textShadow.includes("232, 232, 232") };
+  });
+  const onBox = await labelOf("zr");
+  check("a device on a light box is labelled in dark ink with the box's colour as its halo", !onBox.light && onBox.halo, JSON.stringify(onBox));
+  const offBox = await page.locator('.cv-glyph-label').evaluateAll((els) => els.length);
+  check("and there is a label to read", offBox >= 2, String(offBox));
+  await page.keyboard.press("Control+Shift+BracketRight");
+  await page.waitForTimeout(400);
+  const covered = await labelOf("zr");
+  check("under the box again, the label goes back to the ground's ink", covered.light && !covered.halo, JSON.stringify(covered));
+  // A device stands on the page, so the halo behind its name is the page's
+  // colour: the desk's, on the page, is a glow of the wrong colour round
+  // every label.
+  const haloOnPage = await page.evaluate(() => {
+    const probe = (v) => { const e = document.createElement("i"); e.style.color = `var(${v})`; document.querySelector(".cv-canvas").appendChild(e); const c = getComputedStyle(e).color; e.remove(); return c.replace(/^rgb\(|\)$/g, ""); };
+    const shadow = getComputedStyle(document.querySelector('.react-flow__node[data-id="zr"] .cv-glyph-label')).textShadow;
+    return { shadow: shadow.slice(0, 60), page: probe("--page"), desk: probe("--desk") };
+  });
+  check("a device's label is haloed in the page's colour, not the desk's",
+    haloOnPage.shadow.includes(haloOnPage.page) && !haloOnPage.shadow.includes(haloOnPage.desk), JSON.stringify(haloOnPage));
+  z = await zs();
+  check("and brought to the front it covers them again", z.box > z.link && z.box > z.router && z.box > z.sw, JSON.stringify(z));
+  await page.keyboard.press("Control+Shift+BracketLeft");
+  await page.waitForTimeout(300);
+}
+
+// ------------------------------------------- a box round the selection
+// Two devices selected, one menu item: a box that holds both, with room for
+// their names, under them and under the link between them — one undo step.
+{
+  await st(() => {
+    const s = window.__cvStore.getState();
+    const node = (id, x, y) => ({ id, type: "device", position: { x, y }, width: 96, height: 96,
+      data: { label: id, deviceType: "router", tags: [], addresses: [], locked: false, maintenance: false, showDetails: false } });
+    s.addNode(node("gb1", 2400, 1500));
+    s.addNode(node("gb2", 2800, 1700));
+    s.addEdge({ id: "gblink", source: "gb1", target: "gb2", sourceHandle: "r", targetHandle: "l", type: "live",
+      data: { sourcePortLabel: "", targetPortLabel: "", label: "", pathType: "straight", direction: "none", width: 2,
+        color: "#2fbf6b", enabled: true, maintenance: false, healthRule: { type: "manual", manualStatus: "unknown" } } });
+    window.__cvStore.setState((state) => ({ doc: { ...state.doc, pages: state.doc.pages.map((pg) => pg.id === state.doc.activePageId
+      ? { ...pg, nodes: pg.nodes.map((n) => ({ ...n, selected: n.id === "gb1" || n.id === "gb2" })) } : pg) } }));
+  });
+  await page.waitForTimeout(300);
+  await page.locator(".react-flow__pane").focus().catch(() => {});
+  await page.keyboard.press("Shift+F");
+  await page.waitForTimeout(700);
+  const before = await st(() => { const s = window.__cvStore.getState(); return s.doc.pages.find((pg) => pg.id === s.doc.activePageId).nodes.map((n) => n.id); });
+  const gb = await page.locator('.react-flow__node[data-id="gb1"]').boundingBox();
+  let boxedByMenu = false;
+  if (gb && gb.x > 0 && gb.y > 0 && gb.x < 1500 && gb.y < 850) {
+    await page.mouse.click(gb.x + gb.width / 2, gb.y + gb.height / 2, { button: "right" });
+    await page.waitForTimeout(250);
+    const item = page.locator(".cv-menu button", { hasText: "Box around the selection" });
+    boxedByMenu = (await item.count()) === 1;
+    if (boxedByMenu) await item.click();
+    await page.waitForTimeout(350);
+  }
+  check("the menu on a selection offers a box around it", boxedByMenu, JSON.stringify(gb));
+  const after = await st(() => {
+    const s = window.__cvStore.getState();
+    const nodes = s.doc.pages.find((pg) => pg.id === s.doc.activePageId).nodes;
+    const by = (id) => nodes.find((n) => n.id === id);
+    const box = nodes[0];
+    const z = (sel) => Number(getComputedStyle(document.querySelector(sel)).zIndex) || 0;
+    const link = document.querySelector('.react-flow__edge[data-id="gblink"]');
+    return { ids: nodes.map((n) => n.id), box: { type: box.data.deviceType, x: box.position.x, y: box.position.y, w: box.width, h: box.height, label: box.data.label },
+      a: by("gb1").position, b: by("gb2").position,
+      zBox: z(`.react-flow__node[data-id="${box.id}"]`), zDev: z('.react-flow__node[data-id="gb1"]'),
+      zLink: Number(getComputedStyle(link.closest("svg") ?? link).zIndex) || 0 };
+  });
+  check("one box is added, first in the stack", after.ids.length === before.length + 1 && !before.includes(after.ids[0]) && after.box.type === "rounded", JSON.stringify(after.ids.slice(0, 3)));
+  check("it holds both devices with room for their names",
+    after.box.x < after.a.x && after.box.y < after.a.y && after.box.x + after.box.w > after.b.x + 96 && after.box.y + after.box.h > after.b.y + 96 + 40, JSON.stringify(after.box));
+  check("it is drawn under the devices and under the link", after.zBox < after.zLink && after.zLink < after.zDev, JSON.stringify({ box: after.zBox, link: after.zLink, dev: after.zDev }));
+  await page.keyboard.press("Control+z");
+  await page.waitForTimeout(300);
+  const undone = await st(() => { const s = window.__cvStore.getState(); return s.doc.pages.find((pg) => pg.id === s.doc.activePageId).nodes.map((n) => n.id); });
+  check("and one undo takes it away again", undone.length === before.length && undone.every((id, i) => id === before[i]), JSON.stringify(undone.slice(0, 3)));
+}
+
 await browser.close();
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);

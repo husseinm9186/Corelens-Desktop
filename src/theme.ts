@@ -65,15 +65,15 @@ export interface CanvasPalette {
 }
 
 export const CANVAS_DARK: CanvasPalette = {
-  grid: '#1f2733',
+  grid: '#272e39',
   // At full strength: an unprobed node is information, and at 70 % it
   // fell under the 3:1 a mark needs on the page.
   minimapNode: '#5a6b80',
   minimapNote: '#3a4757',
-  minimapMask: 'rgba(8,10,13,0.55)',
+  minimapMask: 'rgba(20,24,30,0.55)',
   // Ink, not the accent: a halo that reads on every family tint.
   selection: '#ffffff',
-  labelBackground: 'rgba(12, 16, 22, 0.92)',
+  labelBackground: 'rgba(20, 24, 30, 0.92)',
   neutralNode: '#8fa2b5',
   linkNeutral: '#5f6f82',
 };
@@ -86,7 +86,7 @@ export const CANVAS_LIGHT: CanvasPalette = {
   minimapNote: '#8a939e',
   minimapMask: 'rgba(228, 228, 228, 0.72)',
   selection: '#0b0e12',
-  labelBackground: 'rgba(255, 255, 255, 0.96)',
+  labelBackground: 'rgba(247, 244, 238, 0.96)',
   neutralNode: '#3d4e63',
   linkNeutral: '#3b4a5e',
 };

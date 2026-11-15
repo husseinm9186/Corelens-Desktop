@@ -3,14 +3,16 @@ import { useMemo, useState } from 'react';
 import { useStore, type TopoEdge } from '../state/store';
 import { ipc, isDesktop } from '../lib/ipc';
 import { parseCsv, type LinkCsvRow, type NodeCsvRow } from '../lib/csv';
-import { fieldsFor, guessKind, guessMapping, headerRowOf, mapRows, type ColumnMapping, type ImportKind } from '../lib/columnMap';
+import { fieldsFor, guessKind, guessMapping, headerRowOf, lowestUnit, mapRows, type ColumnMapping, type ImportKind } from '../lib/columnMap';
+import { placeBySite } from '../lib/importLayout';
+import { frameAround, withBoxAtBack } from '../lib/groupBox';
 import { readNetbox, type NetboxImport } from '../lib/netbox';
 import { makeDeviceNode } from './Canvas';
 import { newProbe } from '../lib/probes';
 import { uid } from '../lib/id';
 import { DEVICE_LABEL } from './icons';
 import type { DeviceNodeData, DeviceType, LinkData } from '../types/domain';
-import { activePage } from '../lib/pages';
+import { activePage, withPage } from '../lib/pages';
 import { t } from '../i18n';
 
 /** Matches a `type` value to a device glyph, by label or by id. */
@@ -81,8 +83,12 @@ export function CsvImportPanel() {
   const addNodes = (rows: NodeCsvRow[]) => {
     const store = useStore.getState();
     const bottom = activePage(store.doc).nodes.reduce((m, n) => Math.max(m, n.position.y + 120), 0);
+    // Each site's devices together, in a block of its own.
+    const { positions, blocks } = placeBySite(rows, { x: 80, y: bottom + 80 });
+    const ids: string[] = [];
     rows.forEach((r, i) => {
-      const node = makeDeviceNode(deviceType(r.type), 80 + (i % 6) * 230, bottom + 80 + Math.floor(i / 6) * 140);
+      const node = makeDeviceNode(deviceType(r.type), positions[i]!.x, positions[i]!.y);
+      ids.push(node.id);
       const d = node.data as DeviceNodeData;
       d.label = r.name;
       d.tags = r.tags;
@@ -94,7 +100,11 @@ export function CsvImportPanel() {
       if (r.role) d.role = r.role;
       if (r.site) d.site = r.site;
       if (r.rack) d.rack = r.rack;
-      if (r.rackU !== undefined && r.rack) d.rackU = r.rackU;
+      if (r.rackUnits !== undefined) d.rackUnits = r.rackUnits;
+      // A sheet that gives the top unit and no height: the height is the
+      // one this kind of device is drawn with.
+      const lowest = r.rackU ?? (r.rackTop !== undefined ? lowestUnit(r.rackTop, d.rackUnits ?? 1) : undefined);
+      if (lowest !== undefined && r.rack) d.rackU = lowest;
       if (r.address) {
         d.addresses = [{ id: uid(), label: 'Imported', address: r.address, isPrimary: true }];
       }
@@ -108,7 +118,27 @@ export function CsvImportPanel() {
         store.upsertProbe(probe);
       }
     });
-    return `Added ${t('plural.device', { count: rows.length })}.`;
+    // More than one site: a titled frame round each, under its devices.
+    if (blocks.length > 1) {
+      for (const block of blocks) {
+        const frame = frameAround(activePage(useStore.getState().doc).nodes, new Set(block.indexes.map((i) => ids[i]!)), { top: 24 });
+        if (!frame) continue;
+        const zone = makeDeviceNode('zone', frame.x, frame.y);
+        zone.width = frame.width;
+        zone.height = frame.height;
+        (zone.data as DeviceNodeData).label = block.site;
+        useStore.setState((st) => ({ doc: withPage(st.doc, { nodes: withBoxAtBack(activePage(st.doc).nodes, zone) }), dirty: true }));
+      }
+    }
+    // A "connects to" column is a link from each row to the device it
+    // names — one already on the page, or one this sheet has just added.
+    const uplinks = rows
+      .filter((r) => r.uplink && r.uplink.trim().toLowerCase() !== r.name.trim().toLowerCase())
+      .map((r): LinkCsvRow => ({ source: r.name, target: r.uplink!, sourcePort: '', targetPort: '', label: '', healthRule: 'both-endpoints' }));
+    return [
+      `Added ${t('plural.device', { count: rows.length })}${blocks.length > 1 ? ` ${t('csvImportPanel.inSites', { count: blocks.length })}` : ''}.`,
+      uplinks.length ? addLinks(uplinks) : '',
+    ].filter(Boolean).join(' ');
   };
 
   const addLinks = (rows: LinkCsvRow[]) => {
@@ -254,6 +284,15 @@ export function CsvImportPanel() {
               </details>
             );
           })()}
+
+          {mapped?.kind === 'devices' && (mapped.headings.length > 0 || mapped.rows.some((r) => r.uplink)) && (
+            <p className="cv-help" role="note">
+              {[
+                mapped.headings.length > 0 ? t('csvImportPanel.headingsRead', { count: mapped.headings.length, first: mapped.headings[0]! }) : '',
+                mapped.rows.some((r) => r.uplink) ? t('csvImportPanel.uplinksRead', { count: mapped.rows.filter((r) => r.uplink).length }) : '',
+              ].filter(Boolean).join(' ')}
+            </p>
+          )}
 
           <div className="cv-discover-actions">
             <button type="button" className="cv-btn cv-btn-start" onClick={apply} disabled={count === 0 || missingRequired.length > 0}>

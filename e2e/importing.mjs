@@ -102,6 +102,18 @@ await page.addInitScript(({ p, walkDevice, drawing, netbox }) => {
         { ip: "192.0.2.5", rttMs: 0.18, hostname: "nas1.example.test", nameSource: "dns", mac: null, vendor: null, ports: [{ port: 22, service: "ssh" }], serial: null, product: "OpenSSH", webServer: null, webTitle: null },
         { ip: "192.0.2.9", rttMs: 3.8, hostname: null, nameSource: null, mac: "00:00:5e:00:53:09", vendor: "ICANN, IANA Department", ports: [{ port: 22, service: "ssh" }, { port: 80, service: "http" }], serial: null, product: "Cisco SSH", webServer: "Cisco IOS http config", webTitle: null },
       ] });
+      // An inventory kept by site: a heading row over each site's devices,
+      // the top rack unit and a height, and the device each one hangs off.
+      if (cmd === "read_spreadsheet" && /by-site/.test(args.path)) return Promise.resolve([
+        { name: "Inventory", rows: [
+          ["Hostname", "Mgmt IP", "Rack", "Top RU", "Height", "Management device"],
+          ["North hall"],
+          ["BS-CORE-1", "192.0.2.71", "R01", "20", "2", ""],
+          ["BS-ACC-1", "192.0.2.72", "R01", "18", "1", "BS-CORE-1"],
+          ["South hall"],
+          ["BS-ACC-2", "192.0.2.73", "R07", "12", "", "BS-CORE-1"],
+        ] },
+      ]);
       if (cmd === "read_spreadsheet") return Promise.resolve([
         { name: "Title", rows: [["Inventory"]] },
         { name: "Devices", rows: [["Lab inventory, level 2"], ["Hostname", "Mgmt IP", "Backup IP", "Location", "Cabinet"], ["XL-SW1", "192.0.2.61", "198.51.100.61", "Lab", "R02"], ["XL-SW2", "192.0.2.62", "198.51.100.62", "Lab", "R02"]] },
@@ -218,6 +230,41 @@ await page.waitForTimeout(400);
 const xl = await nodeByLabel("XL-SW1");
 check("the rows arrive with the mapped fields", xl?.data.addresses?.[0]?.address === "198.51.100.61" && xl.data.site === "Lab" && xl.data.rack === "R02", JSON.stringify(xl?.data));
 
+// ------------------------------------------- an inventory kept by site
+await st(() => { window.__picked = "/home/user/by-site.xlsx"; });
+await panel.locator("button", { hasText: "Choose a file" }).click();
+await page.waitForTimeout(400);
+check("top rack unit, height and the device it connects to are matched from their headers",
+  (await mapper.getByLabel("Column for Top rack unit").inputValue()) === "3" && (await mapper.getByLabel("Column for Height (U)").inputValue()) === "4" &&
+    (await mapper.getByLabel("Column for Connects to").inputValue()) === "5");
+check("the heading rows and the links to come are said before anything is added",
+  /2 heading rows \("North hall", …\)/.test(await panel.textContent()) && /2 rows name a device they connect to/.test(await panel.textContent()), (await panel.textContent()).slice(0, 400));
+{
+  const edgesBefore = await st(() => window.__cvStore.getState().doc.pages.flatMap((pg) => pg.edges).length);
+  await panel.locator("button", { hasText: /^Add 3 to diagram/ }).click();
+  await page.waitForTimeout(500);
+  const core = await nodeByLabel("BS-CORE-1");
+  const acc1 = await nodeByLabel("BS-ACC-1");
+  const acc2 = await nodeByLabel("BS-ACC-2");
+  check("each device takes the heading above it as its site", core?.data.site === "North hall" && acc1?.data.site === "North hall" && acc2?.data.site === "South hall",
+    JSON.stringify([core?.data.site, acc1?.data.site, acc2?.data.site]));
+  check("a 2U device with its top at 20 starts at 19, and a 1U one at 18 stays there", core?.data.rackU === 19 && core.data.rackUnits === 2 && acc1?.data.rackU === 18,
+    JSON.stringify([core?.data.rackU, core?.data.rackUnits, acc1?.data.rackU]));
+  check("a top unit with no height in the sheet uses the device's own height", acc2?.data.rackU === 12 - (acc2.data.rackUnits ?? 1) + 1, JSON.stringify([acc2?.data.rackU, acc2?.data.rackUnits]));
+  const edges = await st(() => window.__cvStore.getState().doc.pages.flatMap((pg) => pg.edges));
+  const linked = (a, b) => edges.some((e) => (e.source === a && e.target === b) || (e.source === b && e.target === a));
+  check("the connects-to column becomes links", edges.length === edgesBefore + 2 && linked(acc1.id, core.id) && linked(acc2.id, core.id));
+  const zones = (await allNodes()).filter((n) => n.data.deviceType === "zone" && ["North hall", "South hall"].includes(n.data.label));
+  const inside = (z, n) => z.position.x < n.position.x && z.position.y < n.position.y && z.position.x + z.width > n.position.x + (n.width ?? 0) && z.position.y + z.height > n.position.y + (n.height ?? 0);
+  const north = zones.find((z) => z.data.label === "North hall");
+  const south = zones.find((z) => z.data.label === "South hall");
+  check("each site gets a titled frame round its own devices and no one else's",
+    zones.length === 2 && inside(north, core) && inside(north, acc1) && !inside(north, acc2) && inside(south, acc2) && !inside(south, core),
+    JSON.stringify(zones.map((z) => [z.data.label, z.position, z.width, z.height])));
+  check("and the frames do not overlap", north && south && (north.position.y + north.height <= south.position.y || south.position.y + south.height <= north.position.y));
+  check("the result says so", /Added 3 devices in 2 sites.*Added 2 links/.test(await panel.textContent()), (await panel.textContent()).slice(0, 300));
+}
+
 // ------------------------------------------------------------ NetBox
 await st(() => { window.__picked = "/home/user/netbox.json"; });
 await panel.locator("button", { hasText: "Choose a file" }).click();
@@ -312,6 +359,14 @@ const asBuiltRows = (asBuilt?.text ?? "").trim().split("\n");
 check("device details for an as-built come out as one row per device",
   asBuiltRows[0]?.startsWith("Device,Hostname,Type,Role,Vendor,Model,Serial number") && asBuiltRows.some((r) => r.startsWith("CORE-SW1,")) && asBuiltRows.filter((r) => r.startsWith("CORE-SW1,")).length === 1,
   JSON.stringify({ name: asBuilt?.name, head: asBuiltRows.slice(0, 2) }));
+
+await clearExports();
+await exportButton("As-built workbook (Excel)");
+const workbook = (await exported())[0];
+check("the as-built workbook comes out as one Excel file with a tab per table",
+  (await calls("pick_export_target")).some((c) => /-as-built\.xlsx$/.test(c.args?.filename ?? "")) && workbook?.text.startsWith("PK") &&
+    ["Devices", "Links", "Ports", "VLANs", "Addresses"].every((n) => workbook.text.includes(`<sheet name="${n}"`)) && workbook.text.includes(">CORE-SW1<"),
+  JSON.stringify({ asked: (await calls("pick_export_target")).map((c) => c.args?.filename).slice(-2), head: workbook?.text.slice(0, 4) }));
 
 await clearExports();
 await exportButton("Validation report (Markdown)");

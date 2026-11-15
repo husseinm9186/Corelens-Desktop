@@ -387,9 +387,8 @@ export interface TerminalSettings {
   /** The command that opens somebody else's terminal, with {user}, {host} and
    *  {port}. Empty means the sensible one for this platform. */
   externalCommand: string;
-  /** Highlighting text copies it, the way PuTTY does. Off until it is
-   *  asked for — it replaces the clipboard every time a line is highlighted
-   *  to read it, which is a nasty surprise for anyone who did not expect it. */
+  /** Highlighting text copies it, the way PuTTY does — on unless it is
+   *  turned off, which is what a terminal's users expect of one. */
   copyOnSelect: boolean;
   /** Right-click pastes into the session instead of opening the menu.
    *  Off until asked for: it types into a live device with no confirmation. */
@@ -404,10 +403,13 @@ export const TERMINAL_DEFAULTS: TerminalSettings = {
   // Long enough not to be chatter, short enough to beat a five-minute idle
   // timer and to hold a NAT translation open.
   keepaliveSeconds: 30,
-  logByDefault: false,
+  // A transcript of every session, kept beside the device's backups: what
+  // an engineer wants after the fact and cannot go back for. Written only
+  // where a configuration folder has been chosen.
+  logByDefault: true,
   openWith: 'panel',
   externalCommand: '',
-  copyOnSelect: false,
+  copyOnSelect: true,
   pasteOnRight: false,
 };
 
@@ -1568,7 +1570,8 @@ export const useStore = create<Store>((set, get) => ({
       updatedAt: now,
       archived: false,
     };
-    const document = doc ?? emptyDocument();
+    // An imported package may be in an older shape than this build draws.
+    const document = doc ? migrateDocument(doc).doc : emptyDocument();
     // Re-key probes so a seeded sample never shares ids with another project.
     document.probes = document.probes.map((p) => ({ ...p, projectId: meta.id }));
     await ipc.saveProject({ meta, documentVersion: 1, document });

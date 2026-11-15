@@ -55,11 +55,13 @@
 
   /* The same named palette on the dark ground, so every rule below is written
      once against the names and neither ground has a set of its own. */
-  --desk: #080a0d;
-  --page: #171d26;
-  --page-border: #343d4a;
-  --grid-minor: #1f2733;
-  --grid-major: #28313e;
+  /* A soft charcoal desk under a slate page, not near-black: bright ink on
+     black makes the eye work at every label, and a long session shows it. */
+  --desk: #14181e;
+  --page: #1f252e;
+  --page-border: #3d4654;
+  --grid-minor: #272e39;
+  --grid-major: #313a47;
   --chrome: #151a21;
   --chrome-edge: #3a4452;
   --ink: #e8edf3;
@@ -160,17 +162,19 @@
  * is also how a drawing reads on a drafting table. Chrome tokens are not
  * remapped here at all — that is the feature, not an omission. */
 .is-light {
+  /* Paper, not a lamp: the page is a warm off-white and the ink a soft
+     black, so neither end of the range is at full strength on a screen. */
   --desk: #e5dccb;
-  --page: #ffffff;
+  --page: #f7f4ee;
   --page-border: #c9bfa9;
-  --grid-minor: #ececec;
-  --grid-major: #dedede;
-  --ink: #1a1a1a;
+  --grid-minor: #ebe7df;
+  --grid-major: #dcd7cc;
+  --ink: #1f2328;
   /* 5.4:1 on the desk and 7.4:1 on the page; #6b6b6b failed on the desk. */
   --ink-muted: #585858;
   --canvas-accent: #0b5fce;
 
-  --label-bg: rgba(255, 255, 255, 0.96);
+  --label-bg: rgba(247, 244, 238, 0.96);
   --zone-fill: rgba(11, 95, 206, 0.045);
   --zone-line: rgba(11, 95, 206, 0.4);
   --zone-title: rgba(11, 95, 206, 0.13);
@@ -819,7 +823,10 @@ select.cv-input option { background: var(--bg-raised); color: var(--text); }
   display: flex; align-items: center;
 }
 .cv-node.is-selected { box-shadow: 0 0 0 1px var(--canvas-accent); }
-.cv-node-shape { background: transparent; }
+/* A drawn shape's own text is written on its own fill, so it takes the ink
+   chosen for that fill. A device drawn as a card keeps the ground's ink: it
+   stands on its own page-coloured card whatever is behind it. */
+.cv-node-shape { background: transparent; color: var(--label-ink); }
 .cv-node[data-shape='circle'] { border-radius: 50%; justify-content: center; text-align: center; }
 .cv-node[data-shape='rounded'] { border-radius: 16px; }
 .cv-node[data-shape='diamond'] { transform: rotate(45deg); }
@@ -898,12 +905,12 @@ select.cv-input option { background: var(--bg-raised); color: var(--text); }
   /* A halo in the page's colour rather than a boxed pill: the text knocks
      the line out behind itself and nothing else is drawn. */
   background: none; border: 0;
-  border-radius: 4px; padding: 1px 4px; font-size: var(--canvas-text-xs); color: var(--ink);
+  border-radius: 4px; padding: 1px 4px; font-size: var(--canvas-text-xs); color: var(--label-ink);
   font-family: var(--mono); white-space: nowrap;
   text-shadow:
-    0 0 3px var(--page), 0 0 3px var(--page),
-    1px 0 2px var(--page), -1px 0 2px var(--page),
-    0 1px 2px var(--page), 0 -1px 2px var(--page);
+    0 0 3px var(--label-halo), 0 0 3px var(--label-halo),
+    1px 0 2px var(--label-halo), -1px 0 2px var(--label-halo),
+    0 1px 2px var(--label-halo), 0 -1px 2px var(--label-halo);
 }
 .cv-edge-dot { width: 6px; height: 6px; border-radius: 50%; border: 1px solid; display: inline-block; flex: none; }
 /* A port label is the thing on a link that is read most and is written
@@ -912,7 +919,7 @@ select.cv-input option { background: var(--bg-raised); color: var(--text); }
    is remapped by the white-background ground, so this follows it without
    knowing which is in use. Muted grey was legible enough on neither. */
 .cv-edge-port {
-  color: var(--ink);
+  color: var(--label-ink);
   font-weight: 600;
 }
 .cv-edge-center { font-family: var(--sans); display: inline-flex; gap: 5px; align-items: center; }
@@ -2208,8 +2215,14 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   pointer-events: none;
 }
 .cv-glyph-label, .cv-glyph-text .cv-inline-edit { pointer-events: auto; }
-.cv-glyph-label { font-weight: 600; font-size: var(--canvas-text-md); color: var(--ink); }
-.cv-glyph-addr { font-family: var(--mono); font-size: var(--canvas-text-xs); color: var(--ink-muted); }
+/* `--label-ink`, `--label-muted` and `--label-halo` are set on a device that
+   stands on a filled shape, to ink that reads on that fill; anywhere else
+   they are the ground's own. The halo is the page's colour, because the
+   page is what a device stands on: the desk's colour there is a glow of the
+   wrong colour round every name. */
+.cv-canvas { --label-ink: var(--ink); --label-muted: var(--ink-muted); --label-halo: var(--page); }
+.cv-glyph-label { font-weight: 600; font-size: var(--canvas-text-md); color: var(--label-ink); }
+.cv-glyph-addr { font-family: var(--mono); font-size: var(--canvas-text-xs); color: var(--label-muted); }
 .cv-glyph-status { font-size: var(--canvas-text-xs); font-weight: 600; }
 /* A device with more links than its port chips can be read round: how many,
    under its name, and the chips wait until the link or the device is
@@ -2339,9 +2352,9 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 .cv-glyph-status,
 .cv-node-maint {
   text-shadow:
-    0 0 3px var(--desk), 0 0 3px var(--desk),
-    1px 0 2px var(--desk), -1px 0 2px var(--desk),
-    0 1px 2px var(--desk), 0 -1px 2px var(--desk);
+    0 0 3px var(--label-halo), 0 0 3px var(--label-halo),
+    1px 0 2px var(--label-halo), -1px 0 2px var(--label-halo),
+    0 1px 2px var(--label-halo), 0 -1px 2px var(--label-halo);
 }
 
 /* ------------------------------------------------------------------- find */

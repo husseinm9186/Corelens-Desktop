@@ -80,6 +80,27 @@ await page.waitForTimeout(500);
   check("a name still opens its sample", /Campus wireless/.test(await page.evaluate(() => window.__cvStore.getState().meta?.name ?? "")));
 }
 
+// A package written before a project had pages keeps its devices and links
+// at the top of the document. It still imports, and draws.
+{
+  const fresh = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+  const errors = [];
+  fresh.on("pageerror", (e) => errors.push(String(e).slice(0, 160)));
+  await fresh.goto(URL, { waitUntil: "networkidle" });
+  const device = (id, label, x) => ({ id, type: "device", position: { x, y: 0 }, width: 176, height: 96,
+    data: { label, deviceType: "router", tags: [], addresses: [], locked: false, maintenance: false, showDetails: true } });
+  const old = {
+    meta: { id: "old", name: "Before pages", customer: "", site: "", ticket: "", engineer: "", description: "", createdAt: 1, updatedAt: 1, archived: false },
+    documentVersion: 1,
+    document: { nodes: [device("r1", "EDGE-1", 0), device("r2", "EDGE-2", 400)], edges: [], probes: [], canvas: {} },
+  };
+  await fresh.locator('input[type=file][accept*=".corelens"]').first().setInputFiles({ name: "before-pages.coreview", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(old)) });
+  await fresh.waitForTimeout(1500);
+  const drawn = await fresh.locator(".react-flow__node").count();
+  check("a package in the single-page shape imports and draws its devices", drawn === 2 && errors.length === 0, JSON.stringify({ drawn, errors: errors.slice(0, 2) }));
+  await fresh.close();
+}
+
 await browser.close();
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);

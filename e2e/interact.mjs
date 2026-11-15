@@ -2110,7 +2110,7 @@ await dismissRecovery();
     (await read(".react-flow__pane", "backgroundColor")) === "rgb(229, 220, 203)",
     await read(".react-flow__pane", "backgroundColor"));
   check("the page is white and has an edge",
-    (await read(".cv-page", "backgroundColor")) === "rgb(255, 255, 255)" &&
+    (await read(".cv-page", "backgroundColor")) === "rgb(247, 244, 238)" &&
       (await read(".cv-page", "borderTopColor")) === "rgb(201, 191, 169)",
     `${await read(".cv-page", "backgroundColor")} / ${await read(".cv-page", "borderTopColor")}`);
   check("the grid is inside the page, not on the desk",
@@ -2129,14 +2129,14 @@ await dismissRecovery();
     (await read(".cv-palette", "backgroundColor")) === darkChrome &&
       (await read(".cv-inspector", "backgroundColor")) === darkChrome);
   check("node labels on the light canvas are dark ink",
-    (await read(".cv-glyph-label", "color")) === "rgb(26, 26, 26)",
+    (await read(".cv-glyph-label", "color")) === "rgb(31, 35, 40)",
     await read(".cv-glyph-label", "color"));
 
   // The dark toggle overrides the same tokens rather than adding a second set.
   await toggle.click();
   await page.waitForTimeout(600);
   check("the dark ground moves the same tokens",
-    (await read(".react-flow__pane", "backgroundColor")) === "rgb(8, 10, 13)" &&
+    (await read(".react-flow__pane", "backgroundColor")) === "rgb(20, 24, 30)" &&
       (await page.locator(".cv-page").count()) === 1,
     await read(".react-flow__pane", "backgroundColor"));
   check("and the chrome never moved at all",

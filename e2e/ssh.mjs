@@ -373,17 +373,15 @@ await page.waitForTimeout(300);
 // --------------------------------------------------- the log
 
 const logging = controls.locator(".cv-check", { hasText: "Save the log" }).locator("input");
-check("saving the log is offered and is off to begin with", !(await logging.isChecked()));
-// Controlled by what the backend says, not by the click: the box ticks when
-// the log is actually open, which is a round trip away.
-await logging.click();
-await page.waitForTimeout(700);
-check("the box ticks once the log is actually open, not when it was asked for",
-  await logging.isChecked());
-const starts = await st(() => window.__logStarts);
+// A session starts with its log being saved, where there is a folder to
+// save it in. The box is controlled by what the backend says, not by a
+// click: it is ticked because the log is actually open.
+check("a session's log is being saved from the start", await logging.isChecked());
+const startsFor = async (device) => (await st(() => window.__logStarts)).filter((x) => x.device === device);
+const starts = await startsFor("CORE-SW1");
 check("it is asked for by device and folder, the same two a backup uses",
-  starts.length === 1 && starts[0].folder === "/tmp/cv-configs" && starts[0].device === "CORE-SW1" &&
-  starts[0].address === "192.0.2.10", JSON.stringify(starts[0]));
+  starts.length === 1 && starts[0].folder === "/tmp/cv-configs" &&
+  starts[0].address === "192.0.2.10", JSON.stringify(starts));
 check("and the footer says where it is being written",
   /Logging to .*CORE-SW1/.test(await foot.textContent()), (await foot.textContent()).slice(0, 160));
 check("with a mark on the tab itself, so it is visible from any other one",
@@ -392,8 +390,14 @@ check("with a mark on the tab itself, so it is visible from any other one",
 await logging.click();
 await page.waitForTimeout(600);
 check("and it can be stopped without ending the session",
-  (await st(() => window.__logStops)).includes("ssh-1") &&
+  (await st(() => window.__logStops)).includes("ssh-1") && !(await logging.isChecked()) &&
   (await page.locator(".cv-ssh-tab", { hasText: "CORE-SW1" }).count()) === 1);
+await logging.click();
+await page.waitForTimeout(700);
+check("and started again, the box ticking once the log is actually open",
+  (await logging.isChecked()) && (await startsFor("CORE-SW1")).length === 2, JSON.stringify(await st(() => window.__logStarts)));
+await logging.click();
+await page.waitForTimeout(600);
 
 // ------------------------------------------------ keepalive
 
@@ -453,18 +457,17 @@ await page.locator(".cv-ssh-find button").last().click();
 await page.waitForTimeout(250);
 check("and closes again", (await page.locator(".cv-ssh-find").count()) === 0);
 
-// Clipboard manners, both off until asked for.
+// Clipboard manners: copying on select is on, pasting on a right-click —
+// which types into a live device — waits to be asked for.
 const copyBox = controls.locator(".cv-check", { hasText: "Copy on select" }).locator("input");
 const pasteBox = controls.locator(".cv-check", { hasText: "Right-click pastes" }).locator("input");
-check("copy on select is offered and is off to begin with", !(await copyBox.isChecked()));
+check("copy on select is offered and is on to begin with", await copyBox.isChecked());
 check("right-click paste is offered and is off to begin with", !(await pasteBox.isChecked()));
-await copyBox.check();
-await page.waitForTimeout(400);
-check("turning copy on select on is remembered on this machine",
-  (await st(() => window.__settings)).sshCopyOnSelect === "true",
-  JSON.stringify(await st(() => window.__settings)));
 await copyBox.uncheck();
-await page.waitForTimeout(300);
+await page.waitForTimeout(400);
+check("turning copy on select off is remembered on this machine",
+  (await st(() => window.__settings)).sshCopyOnSelect === "false",
+  JSON.stringify(await st(() => window.__settings)));
 
 // Sending one command to several sessions, and the guards on it.
 await st(() => { window.__sent.length = 0; });

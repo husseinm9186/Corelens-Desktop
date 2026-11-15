@@ -56,6 +56,9 @@ import { arrangeByLayerMessage, layoutMessage } from './arrangeMessages';
 import { uid } from '../lib/id';
 import { DEVICE_LABEL } from './icons';
 import { shapeDefaultFields } from '../lib/shapeCatalog';
+import { backdropFills, labelInkOn } from '../lib/backdrop';
+import { stackLevels } from '../lib/drawOrder';
+import { frameAround, withBoxAtBack } from '../lib/groupBox';
 import { useDragOverlay } from '../state/dragOverlay';
 import { restack, sameOrder, type Restack } from '../lib/zOrder';
 import { addPoint, lassoed, type Point } from '../lib/lasso';
@@ -550,6 +553,7 @@ export function Canvas() {
         : selectedCount > 1
           ? [{ label: `Group ${selectedCount} objects`, onSelect: () => useStore.getState().groupSelected() }]
           : []),
+      { label: selectedCount > 1 && node?.selected ? t('canvas.boxAroundSelection') : t('canvas.boxAroundThis'), onSelect: () => boxAround(nodeId) },
       // The whole selection when this is part of one.
       { label: 'Bring to front (Ctrl+Shift+])', onSelect: () => reorder(nodeId, 'front') },
       { label: 'Bring forward (Ctrl+])', onSelect: () => reorder(nodeId, 'forward') },
@@ -576,6 +580,25 @@ export function Canvas() {
       if (sameOrder(nodes, pg.nodes)) return;
       useStore.getState().commit();
       useStore.setState((s) => ({ doc: withPage(s.doc, { nodes }), dirty: true }));
+    },
+    [pg.nodes],
+  );
+
+  /** A box round an object — or the selection it belongs to — drawn to fit
+   *  and put under everything, as one undo step. */
+  const boxAround = useCallback(
+    (nodeId: string | null) => {
+      const selected = pg.nodes.filter((n) => n.selected).map((n) => n.id);
+      const ids = new Set(nodeId && !selected.includes(nodeId) ? [nodeId] : selected);
+      const frame = frameAround(pg.nodes, ids, { grid: GRID_STEP });
+      if (!frame) return;
+      const box = makeDeviceNode('rounded', frame.x, frame.y);
+      box.width = frame.width;
+      box.height = frame.height;
+      (box.data as DeviceNodeData).label = '';
+      useStore.getState().commit();
+      useStore.setState((s) => ({ doc: withPage(s.doc, { nodes: withBoxAtBack(activePage(s.doc).nodes, box) }), dirty: true }));
+      useStore.getState().setStatusMessage(t('canvas.boxed', { count: ids.size }));
     },
     [pg.nodes],
   );
@@ -1492,7 +1515,10 @@ export function Canvas() {
     () => pg.nodes.filter((n) => n.type === 'device').length - shownNodes.filter((n) => n.type === 'device' && !isCollapsed(n.id)).length,
     [pg.nodes, shownNodes],
   );
-  const derived = useRef(new WeakMap<TopoNode, { zIndex: number; locked: boolean; dimmed: boolean; holding: number; out: TopoNode }>());
+  const derived = useRef(new WeakMap<TopoNode, { zIndex: number; locked: boolean; dimmed: boolean; holding: number; fill: string | undefined; out: TopoNode }>());
+  const levels = useMemo(() => stackLevels(shownNodes), [shownNodes]);
+  // The fill each device stands on, when it stands on a filled shape.
+  const fills = useMemo(() => backdropFills(shownNodes), [shownNodes]);
   const nodes = useMemo(
     () =>
       shownNodes.map((n, i) => {
@@ -1511,17 +1537,24 @@ export function Canvas() {
         // "Bring forward"/"Send backward" (which only ever reordered the
         // array) were changing nothing anyone could see. An explicit,
         // array-position-derived zIndex is what actually drives paint
-        // order, and it does respond to that reorder.
-        const zIndex = (n.data as { deviceType?: string }).deviceType === 'zone' ? 0 : i + 1;
+        // order, and it does respond to that reorder. The shapes at the very
+        // back go under the links as well; `stackLevels` says which.
+        const zIndex = levels.nodes[i] ?? i + 1;
         // Nothing on the page is dimmed while hiding: what would have been
         // faint is simply not here.
         const dimmed = !hiding && lit !== null && !lit.has(n.id);
         const holding = collapsed.includes(n.id) ? folder(n.id).size : 0;
         const was = derived.current.get(n);
-        if (was && was.zIndex === zIndex && was.locked === locked && was.dimmed === dimmed && was.holding === holding) return was.out;
+        const fill = fills.get(n.id);
+        if (was && was.zIndex === zIndex && was.locked === locked && was.dimmed === dimmed && was.holding === holding && was.fill === fill) return was.out;
         // What a screen reader says for it.
         const ariaLabel = nodeAriaLabel(n, (t) => DEVICE_LABEL[t as DeviceType] ?? t);
-        const base = locked ? { ...n, draggable: false, zIndex, ariaLabel } : { ...n, zIndex, ariaLabel };
+        // On a filled shape the label takes ink that reads on that fill.
+        const ink = labelInkOn(fill);
+        const inked = ink
+          ? { ...n, style: { ...n.style, '--label-ink': ink.ink, '--label-muted': ink.muted, '--label-halo': ink.halo } as TopoNode['style'] }
+          : n;
+        const base = locked ? { ...inked, draggable: false, zIndex, ariaLabel } : { ...inked, zIndex, ariaLabel };
         // A collapsed device is marked, or a folded branch is
         // indistinguishable from a device that was never connected to
         // anything. How many it holds is in the menu item and the status
@@ -1530,15 +1563,15 @@ export function Canvas() {
           .filter(Boolean)
           .join(' ');
         const out = dimmed || holding > 0 ? { ...base, className: classes } : base;
-        derived.current.set(n, { zIndex, locked, dimmed, holding, out });
+        derived.current.set(n, { zIndex, locked, dimmed, holding, fill, out });
         return out;
       }),
-    [shownNodes, pg.canvas.layers, lit, hiding, collapsed, folder],
+    [shownNodes, levels, fills, pg.canvas.layers, lit, hiding, collapsed, folder],
   );
   // Names each link for a screen reader; Dims some. The copy is
   // kept per link object and reused while its label and dimming are unchanged,
   // so a drag does not hand React Flow a new object for every link each frame.
-  const derivedEdges = useRef(new WeakMap<TopoEdge, { ariaLabel: string; dimmed: boolean; out: TopoEdge }>());
+  const derivedEdges = useRef(new WeakMap<TopoEdge, { ariaLabel: string; dimmed: boolean; zIndex: number; out: TopoEdge }>());
   const shownEdges = useMemo(() => {
     const names = new Map(view.nodes.map((n) => [n.id, (n.data as { label?: string; title?: string }).label ?? (n.data as { title?: string }).title ?? 'a note']));
     const nameOf = (id: string) => names.get(id) ?? 'a device';
@@ -1550,12 +1583,14 @@ export function Canvas() {
       const ariaLabel = edgeAriaLabel(e, nameOf);
       const dimmed = !hiding && lit !== null && !(lit.has(e.source) && lit.has(e.target));
       const was = derivedEdges.current.get(e);
-      if (was && was.ariaLabel === ariaLabel && was.dimmed === dimmed) return was.out;
-      const out = dimmed ? { ...e, ariaLabel, className: `${e.className ?? ''} is-dimmed`.trim() } : { ...e, ariaLabel };
-      derivedEdges.current.set(e, { ariaLabel, dimmed, out });
+      // Over the shapes at the back of the stack, under everything else.
+      const zIndex = levels.links;
+      if (was && was.ariaLabel === ariaLabel && was.dimmed === dimmed && was.zIndex === zIndex) return was.out;
+      const out = dimmed ? { ...e, ariaLabel, zIndex, className: `${e.className ?? ''} is-dimmed`.trim() } : { ...e, ariaLabel, zIndex };
+      derivedEdges.current.set(e, { ariaLabel, dimmed, zIndex, out });
       return out;
     });
-  }, [view.edges, view.nodes, lit, hiding, shownNodes]);
+  }, [view.edges, view.nodes, lit, hiding, shownNodes, levels]);
 
   const boxOf = (n: TopoNode): Box => ({
     id: n.id,

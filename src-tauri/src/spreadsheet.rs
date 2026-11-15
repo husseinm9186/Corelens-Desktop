@@ -283,6 +283,25 @@ mod tests {
         }
     }
 
+    /// The workbook the application itself writes for an as-built export:
+    /// stored rather than compressed, text inline in its cells. The front
+    /// end's test holds the file to what its writer produces.
+    #[test]
+    fn the_workbook_the_export_writes_reads_back() {
+        let sheets = read_xlsx(include_bytes!("../fixtures/workbook/written.xlsx")).unwrap();
+        assert_eq!(sheets.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(), vec!["Devices", "Links", "Empty"]);
+        assert_eq!(
+            sheets[0].rows,
+            vec![
+                vec!["Device", "Rack U", "Notes"],
+                vec!["SW-1", "12", "a < b & \"c\""],
+                vec!["=1+1", "3", "é — ü"],
+            ]
+        );
+        assert_eq!(sheets[1].rows, vec![vec!["From", "To"], vec!["SW-1", "SW-2"]]);
+        assert!(sheets[2].rows.is_empty());
+    }
+
     #[test]
     fn other_files_say_what_they_are_not() {
         assert!(read_xlsx(b"Name,IP\n").unwrap_err().contains(".xlsx"));

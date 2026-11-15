@@ -29,7 +29,7 @@ import { reportInput } from '../lib/reportData';
 import { diffCrawls, diffSessions, type DiffRow } from '../lib/runDiff';
 import { ReportDialog } from './ReportDialog';
 import { DEVICE_LABEL } from './icons';
-import { asBuiltCsv, ipamCsv, portsCsv, probeResultsCsv, vlansCsv } from '../lib/tableCsv';
+import { asBuiltCsv, asBuiltWorkbook, ipamCsv, portsCsv, probeResultsCsv, vlansCsv } from '../lib/tableCsv';
 import { t } from '../i18n';
 import type { ProjectPage } from '../state/store';
 import { artworkSummary, vendorSafeDocument, vendorSafeNodes } from '../lib/thirdPartyArt';
@@ -954,6 +954,13 @@ export function TopBar({ onExit }: { onExit: () => void }) {
               title="One row per device: identity, site and rack, addresses, software, and what it is cabled to"
             >
               Device details for as-builts (CSV)
+            </button>
+            <button
+              type="button"
+              onClick={() => void runExport(`${slug(meta.name)}-as-built.xlsx`, () => asBuiltWorkbook(scopedDoc()), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+              title="One Excel file with a tab each for devices, links, ports, VLANs and addresses"
+            >
+              As-built workbook (Excel)
             </button>
             <button type="button" onClick={exportCableSchedule}>
               Cable schedule as CSV

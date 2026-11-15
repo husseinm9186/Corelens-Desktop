@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseCsv } from './csv';
-import { asBuiltCsv, portsCsv, probeResultsCsv, vlansCsv } from './tableCsv';
+import { asBuiltCsv, asBuiltWorkbook, portsCsv, probeResultsCsv, vlansCsv } from './tableCsv';
+import { unzipStored } from './xlsxReadBack';
 import { emptyDocument } from '../state/store';
 import type { TopoEdge, TopoNode } from '../state/store';
 import type { Probe } from '../types/domain';
@@ -87,5 +88,21 @@ describe('table CSVs', () => {
       '1.2.3', '192.0.2.7', 'Loopback0: 198.51.100.7', '', 'Site B', 'R2', '12', '1',
       'stack', '1: SN-0007; 2: SN-0008', '2 of 3', '10,20', 'Gi0/1 to CORE-1 Te1/1; CORE-1', '', 'Page 1', 'Floor 2, east',
     ]);
+  });
+
+  it('puts the as-built tables in one workbook, a tab each', () => {
+    const d = doc();
+    d.pages[0]!.nodes.push({ id: 'c', type: 'device', position: { x: 0, y: 0 }, data: { label: 'CORE-1', deviceType: 'core-switch', tags: [], rackU: 4 } } as unknown as TopoNode);
+    d.pages[0]!.edges = [{ id: 'e', source: 'c', target: 'sw', data: { sourcePortLabel: 'Te1/1', targetPortLabel: 'Gi0/1', cableType: 'fiber-mm' } }] as unknown as TopoEdge[];
+    const files = unzipStored(asBuiltWorkbook(d));
+    const tabs = [...files.get('xl/workbook.xml')!.matchAll(/<sheet name="([^"]+)"/g)].map((m) => m[1]);
+    expect(tabs).toEqual(['Devices', 'Links', 'Ports', 'VLANs', 'Addresses']);
+    expect(files.get('xl/worksheets/sheet1.xml')).toContain('>ACCESS-SW7<');
+    // A rack unit is a number in the sheet, not text that looks like one.
+    expect(files.get('xl/worksheets/sheet1.xml')).toMatch(/<c r="O\d+"><v>4<\/v><\/c>/);
+    expect(files.get('xl/worksheets/sheet2.xml')).toContain('>Te1/1<');
+    expect(files.get('xl/worksheets/sheet2.xml')).toContain('>fiber-mm<');
+    expect(files.get('xl/worksheets/sheet3.xml')).toContain('>Gi0/2<');
+    expect(files.get('xl/worksheets/sheet4.xml')).toContain('>PRINTERS<');
   });
 });

@@ -97,7 +97,16 @@ export interface NodeCsvRow {
   role?: string;
   site?: string;
   rack?: string;
+  /** The lowest unit it occupies. */
   rackU?: number;
+  /** The top unit, where a sheet gives that and no height: the lowest is
+   *  worked out once the device's own height is known. */
+  rackTop?: number;
+  /** Height in rack units. */
+  rackUnits?: number;
+  /** The device this one is cabled to, by name: a sheet's "connects to" or
+   *  "management device" column. */
+  uplink?: string;
 }
 
 export interface LinkCsvRow {

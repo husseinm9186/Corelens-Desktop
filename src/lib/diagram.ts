@@ -17,6 +17,7 @@
  */
 import { noteBlocks, plainLine } from './noteMarkdown';
 import { inkMarkup, type InkStroke } from './ink';
+import { backdropFills, labelInkOn } from './backdrop';
 import {
   SHEET_SECTION_TINT,
   sheetFor,
@@ -52,6 +53,7 @@ import type {
   ProjectMeta,
 } from '../types/domain';
 import { SHAPE_DEVICE_TYPES, STATUS_GLYPH, STATUS_LABEL } from '../types/domain';
+import { stackLevels } from './drawOrder';
 
 /** Default node box, matching what the palette and samples create. */
 const NODE_W = 176;
@@ -195,6 +197,9 @@ function nodeMarkup(
   nodeStyle: 'glyph' | 'card',
   sheet: Sheet,
   glyphVariant: 'outline' | 'solid' = 'outline',
+  /** Ink for the name and the address where the sheet's own would not read:
+   *  on a filled shape the device stands on, or on a shape's own fill. */
+  labelInk?: { ink: string; muted: string } | null,
 ): string {
   const { w, h } = sizeOf(n);
   const { x, y } = n.position;
@@ -229,6 +234,10 @@ function nodeMarkup(
   const bg = d.style?.background ?? sheet.surface;
   const isShape = SHAPE_DEVICE_TYPES.has(d.deviceType);
   const isText = d.deviceType === 'text';
+  // A device drawn as a card stands on its own card, whatever is behind it.
+  const inked = nodeStyle === 'glyph' || isShape ? labelInk : null;
+  const nameInk = inked?.ink ?? sheet.ink;
+  const addressInk = inked?.muted ?? sheet.inkDim;
   const primary =
     d.addresses?.find((a) => a.isPrimary)?.address ?? d.addresses?.[0]?.address ?? '';
 
@@ -265,13 +274,13 @@ function nodeMarkup(
     const nameText = fit(d.label, textW, fs);
     parts.push(
       labelBackground(d.labelStyle, at, ty, nameText, fs) +
-        `<text x="${at.x}" y="${ty}" text-anchor="${at.anchor}"${svgTextAttrs(d.labelStyle, { size: fs, fill: sheet.ink, weight: 600 })}>${esc(nameText)}</text>`,
+        `<text x="${at.x}" y="${ty}" text-anchor="${at.anchor}"${svgTextAttrs(d.labelStyle, { size: fs, fill: nameInk, weight: 600 })}>${esc(nameText)}</text>`,
     );
     if (d.showDetails) {
       if (primary) {
         ty += 13;
         parts.push(
-          `<text x="${cx}" y="${ty}" text-anchor="middle" fill="${sheet.inkDim}" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${esc(fit(primary, textW, 10))}</text>`,
+          `<text x="${cx}" y="${ty}" text-anchor="middle" fill="${addressInk}" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${esc(fit(primary, textW, 10))}</text>`,
         );
       }
       // A third line only when there is something to say.
@@ -375,14 +384,14 @@ function nodeMarkup(
     const nameLine = fit(line, textW, nameSize);
     parts.push(
       labelBackground(d.labelStyle, nameAt, ty, nameLine, nameSize) +
-        `<text x="${nameAt.x}" y="${ty}"${showIcon ? anchorAttr : ` text-anchor="${nameAt.anchor}"`}${svgTextAttrs(d.labelStyle, { size: nameSize, fill: sheet.ink, weight: 600 })}>${esc(nameLine)}</text>`,
+        `<text x="${nameAt.x}" y="${ty}"${showIcon ? anchorAttr : ` text-anchor="${nameAt.anchor}"`}${svgTextAttrs(d.labelStyle, { size: nameSize, fill: nameInk, weight: 600 })}>${esc(nameLine)}</text>`,
     );
   });
   if (detail) {
     if (primaryAddress) {
       ty += 14;
       parts.push(
-        `<text x="${textX}" y="${ty}"${anchorAttr} fill="${sheet.inkDim}" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${esc(fit(primaryAddress, textW, 10))}</text>`,
+        `<text x="${textX}" y="${ty}"${anchorAttr} fill="${addressInk}" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${esc(fit(primaryAddress, textW, 10))}</text>`,
       );
     }
     ty += 14;
@@ -690,17 +699,30 @@ function renderInColour(input: DiagramInput): string {
     const radius = Math.max(5, (data.width ?? 2) * 2.6);
     return (path) => withJumps(path, jumpsFor(e.id, path, plainPaths, radius * 2), radius);
   };
-  const isSection = (n: TopoNode) =>
-    n.type === 'device' && (n.data as DeviceNodeData).deviceType === 'zone';
   const tag = (n: TopoNode, markup: string) => (input.tagNodes ? `<g data-node="${esc(n.id)}">${markup}</g>` : markup);
+  // The same order as the canvas: sections and the shapes at the back of
+  // the stack, then the links, then everything else.
+  const levels = stackLevels(nodes);
+  const behind = (i: number) => (levels.nodes[i] ?? 0) < Math.max(levels.links, 1);
+  // As on the canvas: a name on a filled shape is written in ink chosen
+  // for that fill, not for the sheet.
+  const fills = backdropFills(input.nodes);
+  const draw = (n: TopoNode) => {
+    const fill = fills.get(n.id);
+    return tag(n, nodeMarkup(n, input.nodeStatus(n.id), input.nodeStyle ?? 'glyph', sheet, input.glyphVariant, fill ? labelInkOn(fill) : null));
+  };
+  const under = nodes
+    .map((n, i) => ({ n, i }))
+    .filter(({ i }) => behind(i))
+    .sort((a, b) => (levels.nodes[a.i] ?? 0) - (levels.nodes[b.i] ?? 0) || a.i - b.i);
   const body =
-    nodes.filter(isSection).map((n) => tag(n, nodeMarkup(n, input.nodeStatus(n.id), input.nodeStyle ?? 'glyph', sheet, input.glyphVariant))).join('') +
+    under.map(({ n }) => draw(n)).join('') +
     edges
       .map((e) => edgeMarkup(e, byId, input.linkStatus(e.id), sheet, input.nodeStyle ?? 'glyph', hopFor(e), edges))
       .join('') +
     nodes
-      .filter((n) => !isSection(n))
-      .map((n) => tag(n, nodeMarkup(n, input.nodeStatus(n.id), input.nodeStyle ?? 'glyph', sheet, input.glyphVariant)))
+      .filter((_, i) => !behind(i))
+      .map(draw)
       .join('') +
     // Ink over everything, as on the canvas.
     inkMarkup(input.ink ?? []);

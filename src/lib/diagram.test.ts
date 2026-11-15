@@ -430,6 +430,46 @@ describe('sections in the export', () => {
     expect(svg).toContain('FW-1');
     expect(svg.indexOf('DMZ')).toBeLessThan(svg.indexOf('FW-1'));
   });
+
+  it('draws a shape at the back of the stack under the links, and one brought forward over them', () => {
+    const shape = (id: string, label: string) => ({
+      id, type: 'device', position: { x: -40, y: -40 }, width: 600, height: 300,
+      data: { label, deviceType: 'rounded', tags: [], addresses: [], locked: false, maintenance: false, showDetails: false },
+    }) as unknown as typeof dev;
+    const far = { ...dev, id: 'far', position: { x: 400, y: 0 }, data: { ...dev.data, label: 'SW-9' } } as typeof dev;
+    const link = {
+      id: 'e', source: dev.id, target: 'far',
+      data: { sourcePortLabel: '', targetPortLabel: '', label: 'UPLINK-77', pathType: 'straight', direction: 'none', width: 2, color: '#2fbf6b', enabled: true, maintenance: false, healthRule: { type: 'manual' } },
+    } as unknown as Parameters<typeof renderDiagramSvg>[0]['edges'][number];
+    const svg = renderDiagramSvg({
+      meta, nodes: [shape('back', 'BACK-BOX'), dev, far, shape('front', 'FRONT-BOX')], edges: [link], nodeStatus: () => 'unknown',
+      linkStatus: () => 'unknown', includeTitleBlock: false, now: new Date(0),
+    });
+    const at = (text: string) => svg.indexOf(text);
+    expect(at('BACK-BOX')).toBeGreaterThan(-1);
+    expect(at('BACK-BOX')).toBeLessThan(at('UPLINK-77'));
+    expect(at('UPLINK-77')).toBeLessThan(at('FW-1'));
+    expect(at('FW-1')).toBeLessThan(at('FRONT-BOX'));
+  });
+
+  it('writes a name in ink that reads on the filled shape it stands on, and a shape\'s own text on its own fill', () => {
+    const dark = {
+      id: 'dark', type: 'device', position: { x: -40, y: -40 }, width: 400, height: 300,
+      data: { label: 'DARK-BOX', deviceType: 'rounded', tags: [], addresses: [], locked: false, maintenance: false, showDetails: false, style: { background: '#101820' } },
+    } as unknown as typeof dev;
+    const off = { ...dev, id: 'off', position: { x: 900, y: 0 }, data: { ...dev.data, label: 'OFF-BOX-1' } } as typeof dev;
+    const svg = renderDiagramSvg({
+      meta, nodes: [dark, dev, off], edges: [], nodeStatus: () => 'unknown',
+      linkStatus: () => 'unknown', includeTitleBlock: false, now: new Date(0),
+    });
+    const fillOf = (text: string) => new RegExp(`<text[^>]* fill="([^"]+)"[^>]*>${text}<`).exec(svg)?.[1];
+    // Light ink on the dark box, for the device on it and for the box's own name…
+    expect(fillOf('FW-1')).toBe('#f2f5f8');
+    expect(fillOf('DARK-BOX')).toBe('#f2f5f8');
+    // …and the sheet's own ink for a device standing on the bare page.
+    expect(fillOf('OFF-BOX-1')).not.toBe('#f2f5f8');
+    expect(fillOf('OFF-BOX-1')).toBeTruthy();
+  });
 });
 
 describe('putting the diagram on a sheet', () => {

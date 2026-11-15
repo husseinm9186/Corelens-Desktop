@@ -1,12 +1,16 @@
 //! A Nexus read in NX-OS's own spellings and layouts.
 //!
-//! The port-channel, ARP and interface-status tables are real NX-OS output:
-//! the samples that travel with the vendored ntc-templates
-//! (`resources/templates/tests/cisco_nxos`). Two shapes have no sample
-//! there — `show interface trunk`, and a MAC table with learned entries —
-//! and are **reconstructed from Cisco's NX-OS command reference**, in the
-//! layout of the real samples beside them; each says so where it is used,
-//! and stays unverified until a capture from a switch replaces it.
+//! Two sources, and each test says which it uses:
+//!
+//! * **Real NX-OS output** — the samples that travel with the vendored
+//!   ntc-templates (`resources/templates/tests/cisco_nxos`): the
+//!   port-channel summary, the ARP table, interface status.
+//! * **Cisco's own documentation** — the sample output printed in the Nexus
+//!   9000 Series NX-API CLI Reference, Release 9.3(x) (`show mac
+//!   address-table`, `show port-channel summary`), and in the Nexus 7000
+//!   Series NX-OS Layer 2 Switching Command Reference (`show interface
+//!   trunk`). Documentation, not a capture: these stay unverified until
+//!   output from a switch replaces them.
 
 use corelens_discover::dialect::{dialect_for, Family};
 
@@ -76,9 +80,62 @@ fn its_interface_status_and_arp_are_read() {
     assert!(arp.len() >= 20, "{}", arp.len());
 }
 
-/// Reconstructed from the NX-OS command reference's `show interface trunk`:
-/// the native VLAN is the second column, not the fifth as on IOS, and the
-/// section headings are capitalised differently.
+/// `show interface trunk` as Cisco's Layer 2 Switching Command Reference
+/// prints it for NX-OS. The native VLAN is the second column, not the fifth
+/// as on IOS; the section headings are capitalised differently; and the
+/// VLANs carried are under `STP Forwarding`.
+const TRUNKS_DOCUMENTED: &str = "\
+switch# show interface trunk
+
+--------------------------------------------------------------------------------
+Port          Native  Status        Port
+              Vlan                  Channel
+--------------------------------------------------------------------------------
+Eth1/33       1       trunking      --
+Eth1/34       1       trunking      --
+
+--------------------------------------------------------------------------------
+Port          Vlans Allowed on Trunk
+--------------------------------------------------------------------------------
+Eth1/33       1,10
+Eth1/34       1,10
+
+--------------------------------------------------------------------------------
+Port          Vlans Err-disabled on Trunk
+--------------------------------------------------------------------------------
+Eth1/33       none
+Eth1/34       none
+
+--------------------------------------------------------------------------------
+Port          STP Forwarding
+--------------------------------------------------------------------------------
+Eth1/33       1,10
+Eth1/34       1,10
+
+--------------------------------------------------------------------------------
+Port          VTP in spanning tree forwarding state and not pruned
+--------------------------------------------------------------------------------
+Eth1/33       1
+Eth1/34       1
+switch#
+";
+
+#[test]
+fn the_documented_trunk_table_is_read() {
+    let trunks = corelens_discover::vlans::parse_trunks(TRUNKS_DOCUMENTED);
+    assert_eq!(trunks.len(), 2, "{trunks:?}");
+    for t in &trunks {
+        assert_eq!(t.mode, "trunk");
+        assert_eq!(t.vlan, Some(1), "{t:?}");
+        // What spanning tree forwards — not the shorter list VTP has not pruned.
+        assert_eq!(t.trunk_vlans, [1, 10], "{t:?}");
+    }
+    assert_eq!(trunks[0].port, "Eth1/33");
+}
+
+/// The same layout with what the documented sample does not show: a native
+/// VLAN other than 1, a bundle and its member, a range. Written in the
+/// documented layout rather than captured.
 const TRUNKS: &str = "\
 --------------------------------------------------------------------------------
 Port          Native  Status        Port
@@ -123,19 +180,66 @@ fn its_trunks_are_read_with_their_native_and_carried_vlans() {
     assert_eq!(trunks.len(), 3);
 }
 
-/// The header and legend are the real sample's; the two learned rows are
-/// reconstructed in its layout (the sample holds only static entries, and a
-/// crawl keeps only learned ones).
+/// `show mac address-table vlan 10` as the Nexus 9000 NX-API CLI Reference,
+/// Release 9.3(x), prints it: a marker column ahead of the VLAN — `+` for an
+/// entry learned over the vPC peer link — and two more legend entries than
+/// older releases have.
+const MAC_9K_DOCUMENTED: &str = "\
+Switch# show mac address-table vlan 10
+Legend:
+        * - primary entry, G - Gateway MAC, (R) - Routed MAC, O - Overlay MAC
+        age - seconds since last seen,+ - primary entry using vPC Peer-Link,
+        (T) - True, (F) - False, C - ControlPlane MAC, ~ - vsan
+   VLAN     MAC Address      Type      age     Secure NTFY Ports
+---------+-----------------+--------+---------+------+----+------------------
++   10     0000.0c9f.f00a   dynamic  0         F      F    Po50
+*   10     0002.0233.000a   dynamic  0         F      F    Po50
+";
+
 #[test]
-fn its_learned_mac_entries_keep_their_vlan() {
-    let real = nxos!("show_mac_address-table/cisco_nxos_show_mac_address-table.raw");
-    let header: String = real.lines().take_while(|l| !l.starts_with("G ")).map(|l| format!("{l}\n")).collect();
-    assert!(header.contains("MAC Address") && header.contains("Ports"), "{header}");
-    let table = format!(
-        "{header}*  145     0050.56a1.2b3c   dynamic  0         F      F    Eth1/12\n+  146     0050.56a1.2b3d   dynamic  10        F      F    Po10\n"
-    );
-    let entries = corelens_discover::mac_table::parse_mac_table(&table);
+fn a_nexus_9000s_learned_mac_entries_keep_their_vlan() {
+    let entries = corelens_discover::mac_table::parse_mac_table(MAC_9K_DOCUMENTED);
     assert_eq!(entries.len(), 2, "{entries:?}");
-    assert_eq!((entries[0].mac.as_str(), entries[0].port.as_str(), entries[0].vlan.as_deref()), ("005056a12b3c", "Eth1/12", Some("145")));
-    assert_eq!((entries[1].port.as_str(), entries[1].vlan.as_deref()), ("Po10", Some("146")));
+    for e in &entries {
+        assert_eq!((e.port.as_str(), e.vlan.as_deref()), ("Po50", Some("10")), "{e:?}");
+    }
+    assert_eq!(entries[0].mac, "00000c9ff00a");
+}
+
+/// The real sample from an older release holds only static entries, which a
+/// crawl does not keep: none of its rows — the gateway MAC on `sup-eth1`,
+/// the drop entries — becomes a device.
+#[test]
+fn the_switchs_own_and_static_entries_are_not_devices() {
+    let real = nxos!("show_mac_address-table/cisco_nxos_show_mac_address-table.raw");
+    assert!(real.contains("sup-eth1(R)"));
+    assert!(corelens_discover::mac_table::parse_mac_table(real).is_empty());
+}
+
+/// `show port-channel summary` as the Nexus 9000 NX-API CLI Reference,
+/// Release 9.3(x), prints it: two flags the older samples do not have
+/// (`b`, `p`), the same table.
+const PORT_CHANNELS_9K_DOCUMENTED: &str = "\
+Switch# show port-channel summary
+Flags:  D - Down        P - Up in port-channel (members)
+        I - Individual  H - Hot-standby (LACP only)
+        s - Suspended   r - Module-removed
+        b - BFD Session Wait
+        S - Switched    R - Routed
+        U - Up (port-channel)
+        p - Up in delay-lacp mode (member)
+        M - Not in use. Min-links not met
+--------------------------------------------------------------------------------
+Group Port-       Type     Protocol  Member Ports
+      Channel
+--------------------------------------------------------------------------------
+1     Po1(SU)     Eth      LACP      Eth1/31(P)
+2     Po2(SU)     Eth      LACP      Eth1/39(P)   Eth1/41(P)
+";
+
+#[test]
+fn a_nexus_9000s_port_channel_summary_is_read() {
+    let bundles = corelens_discover::etherchannel::parse_nxos_port_channel_summary(PORT_CHANNELS_9K_DOCUMENTED);
+    let read: Vec<(&str, &str, Vec<&str>)> = bundles.iter().map(|b| (b.name.as_str(), b.protocol.as_str(), b.members.iter().map(String::as_str).collect())).collect();
+    assert_eq!(read, [("Po1", "LACP", vec!["Eth1/31"]), ("Po2", "LACP", vec!["Eth1/39", "Eth1/41"])]);
 }

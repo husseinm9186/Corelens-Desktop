@@ -2,6 +2,40 @@
 
 Newest first.
 
+## 2.15.2 — 2026-11-15
+
+**The dock in a window of its own**
+- A new button on the dock, *Open in its own window*, moves the whole dock —
+  monitored objects, events, backups, the terminal with its open sessions,
+  and the rest — into a second window, so the diagram keeps the main one.
+  Put it on another screen. It is the same dock, drawn from the same
+  project in memory: nothing is copied and nothing can fall out of step.
+  The same button there, or closing that window, brings it back.
+
+**SSH through a neighbour**
+- A device this computer cannot route to opens from its right-click menu's
+  *SSH through* a linked device: Corelens logs in to the neighbour, runs
+  that device's own `ssh` to the target with the same login, and the
+  session is an ordinary terminal tab.
+
+**SSH to older switches**
+- A device that offers only the MAC `hmac-sha1-96` can be reached. The
+  connection used to end at the key exchange with *No common Mac algorithm*.
+  It is offered last, so a device that has anything newer still uses that.
+
+**Releases**
+- A release carries one `SHA256SUMS.txt` for everything in it that is
+  downloaded and run: the Windows installer, the macOS disk image and the
+  macOS update archive.
+
+**Canvas**
+- One element fewer per link: a hit path that duplicated two others is gone.
+  Pointing at and clicking a link are as they were.
+
+**Under the bonnet**
+- The build tools are past their published advisories (`npm audit`: none),
+  and CI builds on Node 22.
+
 ## 2.15.1 — 2026-11-14
 
 **The canvas is easier on the eye**

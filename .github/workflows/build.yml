@@ -37,7 +37,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
@@ -173,7 +173,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
@@ -376,7 +376,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
@@ -442,7 +442,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
@@ -648,7 +648,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
       - name: The version, and whether it is released already
         id: ver

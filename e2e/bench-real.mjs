@@ -10,6 +10,17 @@
 //
 //     npm run dev
 //     PATHS=bezier,auto CPU=4 OUT=real.json node e2e/bench-real.mjs
+//
+// Against a production build, which is the one to measure — the dev
+// server's own checks swamp the numbers. VITE_BENCH=1 leaves the store
+// reachable from the page so the monitoring-on rows run there too:
+//
+//     VITE_BENCH=1 npx vite build --outDir /tmp/cv-bench
+//     npx vite preview --outDir /tmp/cv-bench --port 4174
+//     CV_URL=http://localhost:4174/ PATHS=bezier CPU=4 OUT=real.json node e2e/bench-real.mjs
+//
+// Compare two builds interleaved in one sitting: the same build measured
+// twice differs by more than most changes do.
 import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
 

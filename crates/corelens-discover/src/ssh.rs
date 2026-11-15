@@ -322,7 +322,9 @@ pub fn network_device_algorithms() -> Preferred {
     ]);
 
     let mut mac: Vec<mac::Name> = Preferred::DEFAULT.mac.to_vec();
-    mac.extend([mac::HMAC_SHA1_ETM, mac::HMAC_SHA1]);
+    // The truncated one last: it is only ever chosen by a device that offers
+    // nothing else.
+    mac.extend([mac::HMAC_SHA1_ETM, mac::HMAC_SHA1, mac::HMAC_SHA1_96]);
 
     Preferred {
         kex: kex.into(),

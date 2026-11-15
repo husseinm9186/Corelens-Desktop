@@ -358,9 +358,9 @@ function LiveEdgeInner(props: EdgeProps) {
   }, [id, edgePath]);
   useEffect(() => () => forgetPath(id), [id]);
   // The tooltip's element exists only while the pointer is on the link: a
-  // `<title>` in each of a page's hit paths is two more elements per link
-  // for the engine to carry through every pan, to describe links nobody is
-  // pointing at.
+  // `<title>` in every link's hit band is one more element per link for the
+  // engine to carry through every pan, to describe links nobody is pointing
+  // at.
   const [tipped, setTipped] = useState(false);
   // A link deleted while the pointer was on it would otherwise leave every
   // other link faded with nothing traced.
@@ -952,22 +952,17 @@ function LiveEdgeInner(props: EdgeProps) {
         }}
         markerEnd={double ? undefined : markerEnd}
         markerStart={double ? undefined : markerStart}
+        // The engine's own wide, invisible path is what makes a thin line
+        // practical to point at below the devices; the band in the label
+        // layer does the same above them and carries the tooltip. A third
+        // path here used to duplicate both.
+        interactionWidth={18}
       />
       {/* The arrowheads of a double line go on a path of their own, outside
           the mask that would cut them in half and at the line's own scale. */}
       {double && (markerEnd || markerStart) && (
         <path d={drawnPath} fill="none" stroke="none" strokeWidth={width} markerEnd={markerEnd} markerStart={markerStart} />
       )}
-      {/* Invisible wide path so hovering the thin line is practical. */}
-      <path
-        d={drawnPath} fill="none" stroke="transparent" strokeWidth={18}
-        onPointerEnter={(e) => {
-          if (e.buttons === 0) setTipped(true);
-        }}
-        onPointerLeave={() => setTipped(false)}
-      >
-        {tipped && <title>{tooltip}</title>}
-      </path>
 
       {status === 'down' && (
         <circle cx={labelX} cy={labelY} r={4} fill={STATUS_COLOR.down} opacity={0.9} />

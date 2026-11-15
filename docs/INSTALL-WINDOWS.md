@@ -18,7 +18,7 @@ From a green CI run's `corelens-windows-v<version>` artifact (for example
 | File | What it is |
 | --- | --- |
 | `Corelens-Desktop_<version>_x64-setup.exe` | The installer. Signed, timestamped. |
-| `SHA256SUMS.txt` | The installer's SHA-256, recorded after the VirusTotal scan passed. |
+| `SHA256SUMS.txt` | The installer's SHA-256, recorded after the VirusTotal scan passed. The copy attached to a **GitHub Release** is written over the whole release: the Windows installer, the macOS disk image and the macOS update archive, a line each. |
 | `corelens-root-ca.crt` | The root's **public** certificate — also in the repository at `brand/`, and installed beside the app as `corelens-root-ca.crt` in its folder. |
 | `corelens-desktop-codesign.crt` | The signing certificate's **public** half. |
 | `sbom/*.cdx.json` | CycloneDX software bills of materials: the Rust executable, the collector sidecar's Python, the page's npm packages. |

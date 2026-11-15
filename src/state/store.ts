@@ -4677,7 +4677,10 @@ useStore.subscribe((s) => {
 // The Playwright harness cannot start a real validation session — that needs
 // the Tauri backend — so in dev the store is reachable from the page and the
 // harness stages session state directly. Never present in a build.
-if (import.meta.env.DEV && typeof window !== 'undefined') {
+// For the harnesses, and for a benchmark against a production build made
+// with VITE_BENCH=1. Both conditions are replaced at build time, so an
+// ordinary build carries none of this.
+if ((import.meta.env.DEV || import.meta.env.VITE_BENCH === '1') && typeof window !== 'undefined') {
   (window as unknown as { __cvStore: typeof useStore }).__cvStore = useStore;
 }
 

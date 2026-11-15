@@ -3,10 +3,16 @@
  * reads shaped as it expects, the version's notes cut from the release
  * notes, and a signature's trusted comment read back.
  */
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { assetName } from './asset-names.mjs';
-import { manifest, notesFor, pickArtifacts, trustedComment } from './release-manifest.mjs';
+import { checksums, manifest, notesFor, pickArtifacts, trustedComment } from './release-manifest.mjs';
 
 const NAMES = [
   'Corelens-Desktop_2.9.0_x64-setup.exe',
@@ -28,7 +34,9 @@ describe('pickArtifacts', () => {
     expect(picked.mac).toBe('Corelens-Desktop.app.tar.gz');
     expect(picked.macSig).toBe('Corelens-Desktop.app.tar.gz.sig');
     expect(picked.dmg).toBe('Corelens-Desktop_2.9.0_universal.dmg');
-    expect(picked.extras).toEqual(['SHA256SUMS.txt', 'corelens-rust.cdx.json', 'corelens-root-ca.crt', 'corelens-desktop-codesign.crt']);
+    // One job's own checksum file covers that job's installer alone; the
+    // release carries one written over everything a person downloads.
+    expect(picked.extras).toEqual(['corelens-rust.cdx.json', 'corelens-root-ca.crt', 'corelens-desktop-codesign.crt']);
   });
 
   it('refuses a release the app could not verify', () => {
@@ -122,5 +130,39 @@ describe('trustedComment', () => {
     ).toString('base64');
     expect(trustedComment(sig)).toBe('timestamp:1791601794\tfile:sigtest.bin');
     expect(trustedComment(Buffer.from('nothing here').toString('base64'))).toBe('');
+  });
+});
+
+describe('checksums', () => {
+  it('is a line per file a person downloads, as sha256sum writes and reads them', () => {
+    const files = [
+      { name: 'b-setup.exe', bytes: Buffer.from('windows') },
+      { name: 'a.dmg', bytes: Buffer.from('mac') },
+    ];
+    const sha = (text) => createHash('sha256').update(text).digest('hex');
+    expect(checksums(files)).toBe(`${sha('windows')}  b-setup.exe\n${sha('mac')}  a.dmg\n`);
+  });
+
+  it('is written by the command for every installer, and listed for attaching', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'manifest-'));
+    const dl = join(dir, 'dl');
+    mkdirSync(join(dl, 'windows'), { recursive: true });
+    mkdirSync(join(dl, 'mac'));
+    const version = readFileSync(new URL('../docs/RELEASE-NOTES.md', import.meta.url), 'utf8').match(/^## (\d+\.\d+\.\d+)/m)[1];
+    const sig = Buffer.from('untrusted comment: x\nAAAA\ntrusted comment: file:x\nBBBB\n').toString('base64');
+    writeFileSync(join(dl, 'windows', 'App_x64-setup.exe'), 'windows installer');
+    writeFileSync(join(dl, 'windows', 'App_x64-setup.exe.sig'), sig);
+    // The Windows job's own file: superseded, not attached beside the new one.
+    writeFileSync(join(dl, 'windows', 'SHA256SUMS.txt'), 'stale  App_x64-setup.exe\n');
+    writeFileSync(join(dl, 'mac', 'App_universal.dmg'), 'disk image');
+    writeFileSync(join(dl, 'mac', 'App.app.tar.gz'), 'update archive');
+    writeFileSync(join(dl, 'mac', 'App.app.tar.gz.sig'), sig);
+    const out = join(dir, 'release');
+    const printed = execFileSync(process.execPath, [new URL('./release-manifest.mjs', import.meta.url).pathname, '--version', version, '--artifacts', dl, '--repo', 'owner/name', '--out', out], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split('\n');
+    const sums = readFileSync(join(out, 'SHA256SUMS.txt'), 'utf8');
+    const sha = (text) => createHash('sha256').update(text).digest('hex');
+    expect(sums).toBe(`${sha('windows installer')}  App_x64-setup.exe\n${sha('disk image')}  App_universal.dmg\n${sha('update archive')}  App.app.tar.gz\n`);
+    expect(printed).toContain(join(out, 'SHA256SUMS.txt'));
+    expect(printed.filter((p) => p.endsWith('SHA256SUMS.txt'))).toHaveLength(1);
   });
 });

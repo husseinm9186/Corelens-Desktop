@@ -13,7 +13,7 @@
 [workspace]
 resolver = "2"
 # The patched third-party crate is a dependency, not a member.
-exclude = ["vendor/textfsm-rs"]
+exclude = ["vendor/textfsm-rs", "vendor/russh"]
 members = [
     "crates/corelens-probe",
     "crates/corelens-discover",
@@ -39,3 +39,5 @@ strip = true
 # and why. Removed when a release carries them.
 [patch.crates-io]
 textfsm-rs = { path = "vendor/textfsm-rs" }
+# russh with the MAC `hmac-sha1-96` added: vendor/russh/CORELENS-PATCHES.md.
+russh = { path = "vendor/russh" }

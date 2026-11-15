@@ -904,7 +904,6 @@ one published by SPDX at `https://spdx.org/licenses/`.
 - r-efi 5.3.0 — MIT OR Apache-2.0 OR LGPL-2.1-or-later
 - r-efi 6.0.0 — MIT OR Apache-2.0 OR LGPL-2.1-or-later
 - rsqlite-vfs 0.2.0 — MIT
-- russh 0.65.1 — Apache-2.0
 - russh-cryptovec 0.62.0 — Apache-2.0
 - russh-util 0.52.0 — Apache-2.0
 - rustls-platform-verifier-android 0.2.0 — MIT OR Apache-2.0
@@ -1594,7 +1593,7 @@ SOFTWARE.
 
 ## Rust
 
-### 286 components
+### 287 components
 
 - aead 0.5.2
 - aead 0.6.1
@@ -1794,6 +1793,7 @@ SOFTWARE.
 - regex-syntax 0.8.11
 - roxmltree 0.20.0
 - rsa 0.10.0-rc.18
+- russh 0.65.1
 - russh-sftp 3.0.1
 - rusticata-macros 4.1.0
 - rustix 1.1.4

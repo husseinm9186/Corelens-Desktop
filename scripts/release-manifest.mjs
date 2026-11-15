@@ -12,11 +12,14 @@
  *   node scripts/release-manifest.mjs --version 2.9.0 --artifacts dl \
  *     --repo owner/name --out release
  *
- * Writes `release/latest.json` and `release/notes.md` (the version's section
- * of docs/RELEASE-NOTES.md) and prints the files to attach, one per line.
+ * Writes `release/latest.json`, `release/notes.md` (the version's section
+ * of docs/RELEASE-NOTES.md) and `release/SHA256SUMS.txt` (the SHA-256 of
+ * each installer and the update archive) and prints the files to attach,
+ * one per line.
  * Fails when an installer or its signature is missing: a release the app
  * cannot verify is worse than none.
  */
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
@@ -38,8 +41,15 @@ export function pickArtifacts(names) {
   // GitHub would upload these under another name than the manifest gives.
   const spaced = [...windows, ...windowsSig, ...mac, ...macSig, ...dmg].filter((n) => /\s/.test(n));
   if (spaced.length) throw new Error(`a release file's name has a space (run scripts/asset-names.mjs first): ${spaced.join(', ')}`);
-  const extras = one((n) => /^SHA256SUMS\.txt$|\.cdx\.json$|\.crt$|\.cer$/i.test(n));
+  // A build job's own SHA256SUMS.txt covers that job's installer alone and
+  // is not attached: the release gets one written over all of them.
+  const extras = one((n) => /\.cdx\.json$|\.crt$|\.cer$/i.test(n));
   return { windows: windows[0], windowsSig: windowsSig[0], mac: mac[0], macSig: macSig[0], dmg: dmg[0], extras };
+}
+
+/** `SHA256SUMS.txt`: a line per file, in the form `sha256sum -c` reads. */
+export function checksums(files) {
+  return files.map(({ name, bytes }) => `${createHash('sha256').update(bytes).digest('hex')}  ${name}\n`).join('');
 }
 
 /** `latest.json`, as tauri-plugin-updater reads it. */
@@ -108,10 +118,16 @@ if (process.argv[1] && basename(process.argv[1]) === 'release-manifest.mjs') {
   if (!existsSync(out)) mkdirSync(out, { recursive: true });
   writeFileSync(join(out, 'latest.json'), JSON.stringify(json, null, 2) + '\n');
   writeFileSync(join(out, 'notes.md'), notes);
+  // Everything a person downloads and runs, in one file to check against.
+  writeFileSync(
+    join(out, 'SHA256SUMS.txt'),
+    checksums([picked.windows, picked.dmg, picked.mac].map((name) => ({ name, bytes: readFileSync(byName.get(name)) }))),
+  );
   console.error(`windows signature signed: ${trustedComment(signatures.windows)}`);
   console.error(`macOS signature signed:   ${trustedComment(signatures.mac)}`);
   for (const name of [picked.windows, picked.windowsSig, picked.dmg, picked.mac, picked.macSig, ...picked.extras]) {
     console.log(byName.get(name));
   }
+  console.log(join(out, 'SHA256SUMS.txt'));
   console.log(join(out, 'latest.json'));
 }

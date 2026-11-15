@@ -2,6 +2,61 @@
 
 Newest first.
 
+## 2.16.0 — 2026-11-15
+
+**A saved password cannot be read back, anywhere**
+- The eye beside a saved login is gone, and so is the command behind it. A
+  password, community or key is visible while it is typed and at no other
+  time. To check one, replace it.
+- Saved secrets were already encrypted on disk and still are. What changes
+  is that nothing in the application can ask for one in the clear.
+- A firewall's API login could end up inside an error message when its
+  request failed — kept in the run's log and shown on the Collect tab. The
+  address is now taken off such an error and the log is redacted before it
+  is kept.
+
+**A project's logins and host keys are its own**
+- The start screen no longer lists saved logins or SSH host keys. With no
+  project open there is the vault's lock and passphrase, and nothing else.
+- Each project lists its own logins and its own host keys under Settings,
+  and can use no other project's. A login a project could use before the
+  update is still there after it: where two projects used one login, each
+  now has a copy of its own.
+- A host key remembered for an address belongs to the projects whose
+  diagram or crawl has that address. Two customers who both have a
+  10.1.1.1 no longer share one remembered key for it.
+- Logins that belong to no project — left by earlier versions, or by
+  projects since deleted — are counted on the start screen with one
+  button to delete them. They cannot be listed or used.
+- A duplicated project starts with no saved logins.
+
+**Nothing of one project reaches another**
+- Closing a project ends its crawl, collection, backup and sweep, and
+  clears what they found from the window. A run that finishes late reports
+  to nobody; it used to be handed to the next project opened.
+- What was copied from one project's diagram or racks is not pasteable into
+  another.
+- Deleting a project now deletes everything it had: its collection runs
+  with every table read from the devices, its settings, its saved logins,
+  its host keys, its login-use log, its crash-recovery copy, and the
+  diagnostics and logs its runs wrote. Those files are kept in a folder per
+  project from now on.
+- While a project is open, the backend refuses a request for another
+  project's events, runs, backups or settings.
+
+**Smaller**
+- Diagnostics, debug logs, login transcripts, terminal session logs and
+  Meraki backups are readable by their owner alone on Linux and macOS.
+- A support capture redacts saved SNMP logins and per-device logins as well
+  as the run's own.
+- Exporting a project's logins needs the vault unlocked.
+
+**Not changed, and worth knowing**
+- Diagnostics and logs written by earlier versions are in one folder for
+  the machine (`diagnostics`, `logs`, `logins` under the application's data
+  folder). They are not attributed to a project and are left where they
+  are; delete them by hand if they are no longer needed.
+
 ## 2.15.3 — 2026-11-15
 
 **A Nexus is read in its own words**

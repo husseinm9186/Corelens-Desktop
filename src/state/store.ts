@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { projectLeft } from '../lib/projectLeft';
 import { EMPTY_TREE, type FolderTree } from '../lib/projectFolders';
 import { mapProjectName } from '../lib/startScreen';
 import { create } from 'zustand';
@@ -1105,12 +1106,48 @@ export function moveGroups(changes: NodeChange<TopoNode>[], before: TopoNode[]):
   });
 }
 
-/** What was copied, kept for the session rather than per project, so a chunk
- *  of one diagram can be pasted into another. */
+/** What was copied. Kept while the project is open and dropped when it is
+ *  closed: a copy is one project's devices, with their names and addresses,
+ *  and nothing of one project is carried into another. */
 let clipboard: Clipping | null = null;
 /** The copy as it was taken, which pasting never moves on — paste in
  *  place always puts it back where it came from, however many pastes since. */
 let copiedAt: Clipping | null = null;
+
+/**
+ * Everything in the window that was about the project just closed, back to
+ * how a fresh window has it: the results of its runs, its job strip, what
+ * was asked of its path tools, a drawer pinned on one of its findings, the
+ * status line. Each of these names a customer's devices, and none of it may
+ * be on screen — or handed to a panel — when another project opens.
+ * `store.leaving.test.ts` holds the list against the store's own state.
+ */
+const LEFT_WITH_THE_PROJECT = () => ({
+  jobs: [],
+  drawer: null,
+  drawerPinned: false,
+  editingNodeId: null,
+  canvasHighlight: null,
+  canvasPath: null,
+  requestedSeed: null,
+  tracertRun: { busy: false, began: null, fromDevice: false, hops: null, complete: true, ran: null, problem: null, hadPrevious: false, changed: [] },
+  collectionRun: { busy: false, live: [], finished: null },
+  backupHandover: null,
+  pathQuestion: { to: '', app: '', protocol: 'tcp' as const, port: '', vrf: '' },
+  whereIsRequest: null,
+  statusMessage: null,
+  panelRequest: null,
+  dockFilterRequest: null,
+  pendingCrawlResult: null,
+  discoverRun: null,
+  canvasFilter: null,
+  collapsed: [],
+  autoCollapsed: [],
+  foldedGroups: [],
+  drill: [],
+  focus: null,
+  inkDraft: null,
+});
 
 /** Every device on every page, as a rack sees it. */
 function rackables(doc: ProjectDocument): Rackable[] {
@@ -1739,6 +1776,12 @@ export const useStore = create<Store>((set, get) => ({
     // Nothing that follows may read another project's settings or backups —
     // and what this one chose is dropped rather than left in the form for the
     // next project to inherit, which is the whole.
+    // Every job still running belongs to this project. Rust ends them when
+    // the project changes whatever the page does; asking here as well means
+    // they are already stopping before the screen moves on.
+    if (get().jobs.some((j) => j.state === 'running')) {
+      await Promise.all([ipc.cancelCrawl(), ipc.cancelCollection(), ipc.cancelBackup()].map((p) => p.catch(() => undefined)));
+    }
     await setCurrentProject(null).catch(() => undefined);
     set((s) => ({ settings: { ...s.settings, backupFolder: null, exportFolder: null, projectFolder: null, sftpHost: '', sftpPort: '', sftpFolder: '', sftpCredentialId: '' }, sharedNotice: null }));
     if (recoveryTimer) {
@@ -1751,6 +1794,10 @@ export const useStore = create<Store>((set, get) => ({
     // on somebody's core switch.
     if (get().sshSessions.length) await ipc.sshCloseAll().catch(() => 0);
     dropPendingSamples();
+    // What was copied, and what each panel keeps of its own.
+    clipboard = null;
+    copiedAt = null;
+    projectLeft();
     set({
       meta: null,
       doc: emptyDocument(),
@@ -1764,6 +1811,7 @@ export const useStore = create<Store>((set, get) => ({
       selectedEdgeId: null,
       sshSessions: [],
       sshActive: null,
+      ...LEFT_WITH_THE_PROJECT(),
     });
   },
 
@@ -1887,6 +1935,8 @@ export const useStore = create<Store>((set, get) => ({
 
   async deleteProject(id) {
     forgetSummary(id);
+    // The crash-recovery copy is the whole document; it goes too.
+    clearRecovery(id);
     if (get().meta?.id === id) await get().closeProject();
     await ipc.deleteProject(id);
     await deleteHistory(id);

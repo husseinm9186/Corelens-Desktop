@@ -21,7 +21,7 @@ use corelens_discover::ssh::{Credentials, Secret, SshOptions};
 use corelens_discover::types::{AddressPreference, DeviceClass};
 use corelens_probe::sweep::parse_cidr;
 use serde::Deserialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 
 use crate::commands::AppState;
 use crate::db;
@@ -316,14 +316,37 @@ pub async fn connect_with_project_logins(
     outcome.map(|(session, _)| session).map_err(|e| e.to_string())
 }
 
-/// Loads remembered host keys into a store the transport can use.
+/// What a job says when it would log in with no project open.
+const NO_PROJECT_OPEN: &str = "Open a project first: remembered host keys belong to one project.";
+
+/// Which project each store in flight was loaded for. A job may end after
+/// the window has moved to another project, and what it learned belongs to
+/// the project it ran in — not to whichever is open when it finishes.
+static STORE_PROJECTS: std::sync::Mutex<Vec<(std::sync::Weak<std::sync::Mutex<HostKeyStore>>, String)>> = std::sync::Mutex::new(Vec::new());
+
+/// Loads the open project's remembered host keys into a store the transport
+/// can use. Only that project's: another project's key can neither vouch for
+/// a device here nor refuse one, and two customers may share an address.
 pub fn load_host_keys(state: &AppState) -> CmdResult<Arc<std::sync::Mutex<HostKeyStore>>> {
+    let project = crate::commands::open_project(state).ok_or(NO_PROJECT_OPEN)?;
     let conn = state.db.lock().map_err(db_err)?;
-    let pairs = db::all_host_keys(&conn).map_err(db_err)?;
-    Ok(Arc::new(std::sync::Mutex::new(HostKeyStore::from_pairs(pairs))))
+    let pairs = db::all_host_keys(&conn, &project).map_err(db_err)?;
+    let store = Arc::new(std::sync::Mutex::new(HostKeyStore::from_pairs(pairs)));
+    if let Ok(mut known) = STORE_PROJECTS.lock() {
+        known.retain(|(weak, _)| weak.strong_count() > 0);
+        known.push((Arc::downgrade(&store), project));
+    }
+    Ok(store)
 }
 
-/// Writes back any key learned during a run.
+/// The project a store was loaded for.
+fn project_of(store: &Arc<std::sync::Mutex<HostKeyStore>>) -> Option<String> {
+    let known = STORE_PROJECTS.lock().ok()?;
+    known.iter().find(|(weak, _)| weak.upgrade().is_some_and(|s| Arc::ptr_eq(&s, store))).map(|(_, p)| p.clone())
+}
+
+/// Writes back any key learned during a run, into the project the run's
+/// store was loaded for.
 ///
 /// Called once a run finishes rather than per connection, because the store is
 /// the source of truth while a crawl is in flight and the database only needs
@@ -334,15 +357,20 @@ pub fn load_host_keys(state: &AppState) -> CmdResult<Arc<std::sync::Mutex<HostKe
 /// of being remembered anyway, because the connection was refused.
 pub fn persist_host_keys(app: &AppHandle, store: &Arc<std::sync::Mutex<HostKeyStore>>) {
     use tauri::Manager;
+    let Some(project) = project_of(store) else { return };
     let now_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
     let state = app.state::<AppState>();
     let Ok(conn) = state.db.lock() else { return };
+    // A project deleted while its job ran keeps nothing.
+    if !db::project_exists(&conn, &project).unwrap_or(false) {
+        return;
+    }
     let Ok(guard) = store.lock() else { return };
     for (id, fingerprint) in guard.entries() {
-        let _ = db::remember_host_key(&conn, id, fingerprint, now_ms);
+        let _ = db::remember_host_key(&conn, &project, id, fingerprint, now_ms);
     }
 }
 
@@ -382,6 +410,8 @@ pub async fn start_crawl(
     // account of their own.
     fallback_credentials: Option<Vec<CredentialInput>>,
 ) -> CmdResult<()> {
+    let epoch = crate::commands::project_epoch();
+    crate::commands::not_another_project(&state, input.project_id.as_deref().unwrap_or(""))?;
     state.limiter.allow(crate::ratelimit::Job::Crawl)?;
     // Which saved credentials this crawl offers, kept for the log.
     let input_credential_id = input.credential_id.clone();
@@ -558,7 +588,7 @@ pub async fn start_crawl(
                     }
                 }
             }
-            let _ = emitter.emit("corelens://crawl", &event);
+            crate::commands::emit_in(&emitter, epoch, "corelens://crawl", &event);
         }
     });
 
@@ -575,6 +605,10 @@ pub async fn start_crawl(
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or_default();
+    // Everything this run writes goes under its own project's folder, so it
+    // is deleted with the project and never sits beside another's.
+    let files = crate::db::project_dir(&crate::commands::open_project(&state).ok_or(NO_PROJECT_OPEN)?);
+    let login_files = files.clone();
     if input.support_capture {
         let stamp = run_stamp;
         let mut secrets: Vec<String> = credentials.secrets();
@@ -582,7 +616,20 @@ pub async fn start_crawl(
             secrets.extend(c.secrets());
         }
         secrets.extend(snmp_secrets);
-        let folder = corelens_discover::support::folder_under(&crate::db::data_dir(), stamp);
+        // Saved SNMP logins and the logins bound to a device or a subnet are
+        // sent on this run too, so they are redacted from it too.
+        for auth in &options.snmp {
+            secrets.extend(auth.secrets());
+        }
+        for binding in &options.bindings {
+            if let Some(c) = &binding.ssh {
+                secrets.extend(c.secrets());
+            }
+            if let Some(a) = &binding.snmp {
+                secrets.extend(a.secrets());
+            }
+        }
+        let folder = corelens_discover::support::folder_under(&files, stamp);
         let capture = corelens_discover::support::SupportCapture::open(folder, secrets)
             .map_err(|e| format!("could not open the support capture: {e}"))?;
         options.ssh.support_capture = Some(Arc::new(capture));
@@ -595,9 +642,9 @@ pub async fn start_crawl(
         // Beside the replies, in the run's own diagnostic folder,
         // when both were asked for; on its own otherwise.
         let dir = if input.support_capture {
-            corelens_discover::support::diagnostic_folder(&crate::db::data_dir(), run_stamp)
+            corelens_discover::support::diagnostic_folder(&files, run_stamp)
         } else {
-            crate::db::data_dir().join("logs")
+            files.join("logs")
         };
         let _ = std::fs::create_dir_all(&dir);
         let header = format!(
@@ -640,7 +687,7 @@ pub async fn start_crawl(
         // different machine to the one being diagnosed from, so a Save dialog
         // one has to know to press is no use — the file has to already exist,
         // and the path has to be on screen.
-        write_login_transcripts(&mut result.failures);
+        write_login_transcripts(&login_files, &mut result.failures);
         // Names from reverse DNS where nothing else named a device.
         if reverse_dns && !result.cancelled {
             corelens_discover::ptr::enrich_names(&mut result, |ip| {
@@ -685,7 +732,9 @@ pub async fn start_crawl(
                 eprintln!("could not close crawl run {run_id}: {e}");
             }
         }
-        let _ = handle.emit(
+        crate::commands::emit_in(
+            &handle,
+            epoch,
             "corelens://crawl-result",
             serde_json::json!({
                 "devices": result.devices,
@@ -713,15 +762,15 @@ pub async fn start_crawl(
 /// Writes the login stream of every device that failed with one, and records
 /// where it went.
 ///
-/// Into the app's own data folder — `%LOCALAPPDATA%\Corelens\logins` on
-/// Windows — because that is somewhere the app can always write and somewhere
+/// Into the project's own folder under the app's data folder —
+/// `%LOCALAPPDATA%\Corelens\projects\<id>\logins` on Windows — because that is somewhere the app can always write and somewhere
 /// an operator can be told to look. One file per device per run; the address
 /// and the time are in the name so two runs do not overwrite each other.
 ///
 /// A failure to write is not reported as a crawl failure: the crawl already
 /// failed, and a second error about a log file would bury the first.
-fn write_login_transcripts(failures: &mut [corelens_discover::CrawlFailure]) {
-    write_login_transcripts_into(&crate::db::data_dir().join("logins"), failures);
+fn write_login_transcripts(project_files: &std::path::Path, failures: &mut [corelens_discover::CrawlFailure]) {
+    write_login_transcripts_into(&project_files.join("logins"), failures);
 }
 
 /// The part that does not need to know where the app keeps its data, so that
@@ -763,6 +812,7 @@ fn write_login_transcripts_into(dir: &std::path::Path, failures: &mut [corelens_
             corelens_discover::cli::escape_for_reading(&bytes),
         );
         if std::fs::write(&path, body).is_ok() {
+            crate::db::owner_only(&path);
             failure.transcript_path = Some(path.to_string_lossy().into_owned());
         }
     }
@@ -850,6 +900,7 @@ pub async fn traceroute_from_device(
     credential_id: String,
     target: String,
 ) -> CmdResult<MeasuredTrace> {
+    let epoch = crate::commands::project_epoch();
     state.limiter.allow(crate::ratelimit::Job::DeviceTraceroute)?;
     let target: std::net::Ipv4Addr = target.trim().parse().map_err(|_| format!("{} is not an IPv4 address", target.trim()))?;
     let store = load_host_keys(&state)?;
@@ -871,7 +922,7 @@ pub async fn traceroute_from_device(
             let hops = corelens_discover::trace::parse_traceroute(&corelens_discover::cli::readable(&seen));
             if hops.len() != last {
                 last = hops.len();
-                let _ = app2.emit("corelens://tracert", &TracertProgress { device: from.clone(), target: to.clone(), hops, elapsed_ms: started.elapsed().as_millis() as u64 });
+                crate::commands::emit_in(&app2, epoch, "corelens://tracert", &TracertProgress { device: from.clone(), target: to.clone(), hops, elapsed_ms: started.elapsed().as_millis() as u64 });
             }
         }
     });
@@ -1043,6 +1094,7 @@ pub async fn start_backup(
     stamp: String,
     project_id: String,
 ) -> CmdResult<()> {
+    let epoch = crate::commands::project_epoch();
     state.limiter.allow(crate::ratelimit::Job::Backup)?;
     // This project's folder, so one customer's captures do not land in
     // another's pile.
@@ -1161,7 +1213,7 @@ pub async fn start_backup(
                 }
                 _ => {}
             }
-            let _ = emitter.emit("corelens://backup", &event);
+            crate::commands::emit_in(&emitter, epoch, "corelens://backup", &event);
         }
     });
 
@@ -1211,6 +1263,9 @@ pub struct BackupDevice {
 /// offered their runs for comparison. The folder is a property of the work,
 /// and the work is the project.
 fn backup_root(state: &State<'_, AppState>, project_id: &str) -> CmdResult<std::path::PathBuf> {
+    // Every backup command comes through here, so this is where another
+    // project's captures are refused.
+    crate::commands::not_another_project(state, project_id)?;
     if project_id.is_empty() {
         return Err("No project is open, so there is no backup folder to read.".into());
     }
@@ -1421,11 +1476,13 @@ pub struct HostKeyRow {
     pub fingerprint: String,
 }
 
-/// Every remembered host key, for the settings list.
+/// The open project's remembered host keys, for its settings. With no
+/// project open there are none to show.
 #[tauri::command(async)]
 pub fn list_host_keys(state: State<'_, AppState>) -> CmdResult<Vec<HostKeyRow>> {
+    let Some(project) = crate::commands::open_project(&state) else { return Ok(Vec::new()) };
     let conn = state.db.lock().map_err(db_err)?;
-    let mut rows: Vec<HostKeyRow> = db::all_host_keys(&conn)
+    let mut rows: Vec<HostKeyRow> = db::all_host_keys(&conn, &project)
         .map_err(db_err)?
         .into_iter()
         .map(|(host, fingerprint)| HostKeyRow { host, fingerprint })
@@ -1434,23 +1491,26 @@ pub fn list_host_keys(state: State<'_, AppState>) -> CmdResult<Vec<HostKeyRow>> 
     Ok(rows)
 }
 
-/// Forgets every remembered host key. Returns how many went, for the
-/// confirmation message.
+/// Forgets every host key the open project remembers. Returns how many
+/// went, for the confirmation message.
 #[tauri::command(async)]
 pub fn clear_host_keys(state: State<'_, AppState>) -> CmdResult<usize> {
+    let project = crate::commands::open_project(&state).ok_or(NO_PROJECT_OPEN)?;
     let conn = state.db.lock().map_err(db_err)?;
-    db::clear_host_keys(&conn).map_err(db_err)
+    db::clear_host_keys(&conn, &project).map_err(db_err)
 }
 
-/// Forgets one device's key, so the next connection is treated as first
-/// contact. The narrower answer when a single switch was replaced.
+/// Forgets one device's key in the open project, so the next connection is
+/// treated as first contact. The narrower answer when a single switch was
+/// replaced.
 #[tauri::command(async)]
 pub fn forget_host_key(state: State<'_, AppState>, host: String, port: u16) -> CmdResult<bool> {
+    let project = crate::commands::open_project(&state).ok_or(NO_PROJECT_OPEN)?;
     let conn = state.db.lock().map_err(db_err)?;
     let id = host_id(&host, port);
     // The list shows the stored id directly, so accept either form.
-    let removed = db::forget_host_key(&conn, &host).map_err(db_err)?
-        + db::forget_host_key(&conn, &id).map_err(db_err)?;
+    let removed = db::forget_host_key(&conn, &project, &host).map_err(db_err)?
+        + db::forget_host_key(&conn, &project, &id).map_err(db_err)?;
     Ok(removed > 0)
 }
 

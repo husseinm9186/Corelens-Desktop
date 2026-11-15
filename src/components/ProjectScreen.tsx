@@ -8,7 +8,6 @@ import { TEMPLATES, templateById } from '../lib/templates';
 import { ipc, isDesktop } from '../lib/ipc';
 import { FolderSettings } from './FolderSettings';
 import { SharedProjectsSection } from './SharedProjects';
-import { HostKeySettings } from './HostKeySettings';
 import { VaultSettings } from './VaultSettings';
 import type { ProjectMeta } from '../types/domain';
 import { t } from '../i18n';
@@ -592,9 +591,9 @@ export function ProjectScreen() {
         <SharedProjectsSection />
         <FolderSettings />
 
-        <VaultSettings />
-
-        <HostKeySettings />
+        {/* The vault's own lock and passphrase. No login and no host key is
+            listed with no project open: each belongs to a project. */}
+        <VaultSettings scope="machine" />
 
         <footer className="cv-welcome-foot">
           {t('projectScreen.corelensRunsEveryCheck')}

@@ -943,6 +943,14 @@ the port, the hop limit, which credentials were chosen. **No password is ever
 remembered outside the vault.** The settings store is plain text beside your
 projects, so it holds the shape of a scan and never its secrets.
 
+**A saved secret is never shown again.** A password, community or key can be
+seen while you type it and at no other time: there is no eye beside a saved
+login and no way to read one back. If you are not sure what is saved, replace
+it. **Logins belong to the project** they were typed into. They are listed
+under that project's **Settings**, with the SSH host keys it has remembered,
+and nowhere else — the start screen lists neither, and another project can
+neither see nor use them. Deleting a project deletes its logins.
+
 **Open the vault by itself.** Once it is unlocked, tick **Open by itself on this
 computer** to keep the vault's key in the system keychain (Credential Manager,
 Keychain, or the Secret Service on Linux). The passphrase is never kept. Anyone

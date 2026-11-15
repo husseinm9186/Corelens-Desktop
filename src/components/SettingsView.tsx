@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { VaultSettings } from './VaultSettings';
+import { HostKeySettings } from './HostKeySettings';
 import { t } from '../i18n';
 import { CredentialOverride } from './CredentialOverride';
 import { FolderSettings } from './FolderSettings';
 import { SharedSettings } from './SharedProjects';
 import { MerakiSettings } from './MerakiSettings';
-import { credentialsUsedBy } from '../lib/credentialScope';
 import { ipc, isDesktop, type CredentialSummary } from '../lib/ipc';
 import { useStore } from '../state/store';
 import { TIME_FORMATS, isLocalFormat, zoneLabel, type TimeFormat } from '../lib/timeFormat';
@@ -28,12 +29,12 @@ import { TIME_FORMATS, isLocalFormat, zoneLabel, type TimeFormat } from '../lib/
  * The rest of the vault is one disclosure away and says plainly that it is the
  * whole machine.
  */
-type SectionId = 'display' | 'terminal' | 'updates' | 'shared' | 'logins' | 'folders' | 'sftp' | 'meraki' | 'credentials';
+type SectionId = 'display' | 'terminal' | 'updates' | 'shared' | 'logins' | 'folders' | 'sftp' | 'meraki' | 'credentials' | 'hostkeys';
 
 /** The sections, in the order they are shown, grouped by whose they are. */
 const NAV: { key: 'application' | 'project'; sections: SectionId[] }[] = [
   { key: 'application', sections: ['display', 'terminal', 'updates', 'shared'] },
-  { key: 'project', sections: ['logins', 'folders', 'sftp', 'meraki', 'credentials'] },
+  { key: 'project', sections: ['logins', 'folders', 'sftp', 'meraki', 'credentials', 'hostkeys'] },
 ];
 
 export function SettingsView() {
@@ -69,9 +70,6 @@ export function SettingsView() {
   };
   const settings = useStore((s) => s.settings);
   const projectDefaults = useStore((s) => s.doc.credentialDefaults);
-  // Only what the scope reads.
-  const pages = useStore((s) => s.doc.pages);
-  const credentialRules = useStore((s) => s.doc.credentialRules);
   const vaultRevision = useStore((s) => s.vaultRevision);
   const terminal = useStore((s) => s.settings.terminal);
   const setTerminal = useStore((s) => s.setTerminalSettings);
@@ -106,8 +104,6 @@ export function SettingsView() {
     void ipc.setSetting(key, value.trim() || null).catch(() => {});
   };
 
-  const used = credentialsUsedBy({ pages, credentialDefaults: projectDefaults, credentialRules });
-  const mine = saved.filter((c) => used.has(c.id));
 
   /** Where the check for a newer release has got to, in one line. */
   const updateStatus = (() => {
@@ -371,32 +367,12 @@ export function SettingsView() {
       <section id="settings-credentials" data-settings-section="credentials" className="cv-settings-block" data-region="project-credentials">
         <h2>{t('settings.projectCredentials')}</h2>
         <p className="cv-help">{t('settings.projectCredentialsHint')}</p>
-        {mine.length === 0 ? (
-          <p className="cv-help">{t('settings.noneForProject')}</p>
-        ) : (
-          <table className="cv-table cv-vault-table">
-            <thead>
-              <tr>
-                <th>{t('settings.colName')}</th>
-                <th>{t('settings.colFor')}</th>
-                <th>{t('settings.colUser')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mine.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.label}</td>
-                  <td>{c.kind.toUpperCase()}</td>
-                  <td className="cv-mono">{c.username || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {/* Another project's logins are not this project's business —
-            not listed, not revealed, and refused by Rust if asked for. The
-            whole vault is managed from the start screen, with no project open. */}
-        <p className="cv-help cv-settings-elsewhere">{t('settings.otherProjects')}</p>
+        {/* This project's logins and no other's: named, never shown. */}
+        <VaultSettings scope="project" />
+      </section>
+
+      <section id="settings-hostkeys" data-settings-section="hostkeys" className="cv-settings-block" data-region="project-hostkeys">
+        <HostKeySettings />
       </section>
         </div>
       </div>

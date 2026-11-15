@@ -162,7 +162,14 @@ impl ApiRun {
 }
 
 /// Send a request, turning a refused certificate into the error that says so.
+///
+/// The request's address is taken off the error first. An error's text
+/// otherwise ends "for url (…)", and three requests carry a secret in their
+/// query — the AOS-CX login its password, PAN-OS's keygen its password and
+/// every PAN-OS call its key — so a timeout would have written that secret
+/// into the device's log, the database and the screen.
 pub(crate) fn transport(e: reqwest::Error, pin: &CertPin) -> ApiError {
+    let e = e.without_url();
     let text = chain(&e);
     if let (Some(pos), PinPolicy::Pinned(was)) = (text.find("presented "), &pin.policy_ref()) {
         let now = text[pos + "presented ".len()..].split([' ', ':', ')']).next().unwrap_or("").to_string();
@@ -391,4 +398,32 @@ pub async fn collect_for(run: &mut crate::run::DeviceRun, catalogs: &[corelens_c
         run.results.push(sr);
     }
     first
+}
+
+#[cfg(test)]
+mod no_secret_in_an_error {
+    use super::*;
+
+    /// A request that carries its secret in the query — as the AOS-CX
+    /// login and every PAN-OS call do — and fails before an answer: the error
+    /// that is logged, stored and shown names neither the secret nor the
+    /// address it was in.
+    #[tokio::test]
+    async fn a_failed_request_does_not_quote_its_query() {
+        let client = reqwest::Client::new();
+        // Port 1 on loopback: refused at once, nothing leaves the machine.
+        let sent = client
+            .get("http://127.0.0.1:1/api/")
+            .query(&[("type", "keygen"), ("user", "reader"), ("password", "not-a-real-secret-0001"), ("key", "not-a-real-key-0002")])
+            .send()
+            .await;
+        let failed = sent.expect_err("nothing listens on port 1");
+        assert!(failed.to_string().contains("not-a-real-secret-0001"), "the error as the library words it does quote the query — which is what this guards");
+        let pin = CertPin::new(PinPolicy::TrustOnFirstUse);
+        let text = match transport(failed, &pin) {
+            ApiError::Transport(t) => t,
+            other => panic!("not a transport error: {other:?}"),
+        };
+        assert!(!text.contains("not-a-real-secret-0001") && !text.contains("not-a-real-key-0002") && !text.contains("password="), "{text}");
+    }
 }

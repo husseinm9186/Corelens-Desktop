@@ -840,7 +840,12 @@ export type CredentialUse = { credentialId: string; label: string; purpose: stri
 export type VaultStatus = {
   exists: boolean;
   unlocked: boolean;
+  /** How many logins the open project has. */
   credentials: number;
+  /** Every login on this machine, as a number only. */
+  allCredentials?: number;
+  /** Logins left belonging to no project; nothing can list or use them. */
+  unownedCredentials?: number;
   minimumPassphrase: number;
   /** This machine keeps the vault key in its system keychain. */
   keptInKeychain?: boolean;
@@ -872,9 +877,6 @@ export type CredentialSummary = {
   username: string;
   detail: string;
   hasSecondSecret: boolean;
-  /** The project that owns it; listed on the start screen only. */
-  ownerProjectId?: string | null;
-  ownerProjectName?: string | null;
 };
 
 /* ── Meraki. What the Dashboard answers with, as Rust hands it
@@ -971,13 +973,6 @@ export type MerakiBackupWritten = {
   asked: number;
 };
 
-/** Only ever returned by revealCredential, which is the one call that hands
- *  back a stored secret. */
-export type RevealedCredential = {
-  username: string;
-  secret: string;
-  secondSecret: string | null;
-};
 
 export type BackupDevice = { name: string; captures: number; latest: string | null; changedAtLatest: boolean | null };
 /** One capture in a device's history, flagged against the previous of its kind. */
@@ -1771,8 +1766,8 @@ export const ipc = {
     });
   },
 
-  /** The credential vault. Every call here takes secrets in; only
-   *  revealCredential returns one, and only while unlocked. */
+  /** The credential vault. Every call here takes secrets in and none hands
+   *  one back: a saved secret never returns to the page. */
   vaultStatus() {
     return isDesktop
       ? invoke<VaultStatus>('vault_status')
@@ -1812,9 +1807,9 @@ export const ipc = {
   }) {
     return invoke<string>('save_credential', { credential: saveCredential(credential) });
   },
-  /** Hands a login to a project, or to none. Start screen only. */
-  async assignCredential(id: string, projectId: string | null): Promise<void> {
-    await invoke('assign_credential', { id, projectId });
+  /** Removes the logins that belong to no project. */
+  deleteUnownedCredentials() {
+    return invoke<number>('delete_unowned_credentials');
   },
   listCredentials() {
     return isDesktop ? invoke<CredentialSummary[]>('list_credentials') : Promise.resolve([]);
@@ -1842,9 +1837,6 @@ export const ipc = {
    *  crawl returns so the merge path is shared. */
   merakiDiscover(credentialId: string, organizationId: string, networkIds: string[]) {
     return invoke<MerakiDiscovered>('meraki_discover', { credentialId, organizationId, networkIds });
-  },
-  revealCredential(id: string) {
-    return invoke<RevealedCredential>('reveal_credential', { id });
   },
   /** The vault as ciphertext, for moving it to another machine. Opening it
    *  elsewhere still needs the passphrase. */

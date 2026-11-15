@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { onProjectLeft } from '../lib/projectLeft';
 import { ipc, type TracerouteHopDto } from '../lib/ipc';
 import { changedHops } from '../lib/tracerouteDiff';
 import { t } from '../i18n';
@@ -7,6 +8,8 @@ import { t } from '../i18n';
  *  not persisted, not a history, just "what did this look like last time"
  *  so the next run against the same target can be compared against it. */
 const lastRunByTarget = new Map<string, TracerouteHopDto[]>();
+// One project's hops are not the next project's "last time".
+onProjectLeft(() => lastRunByTarget.clear());
 
 /**
  * An on-demand path snapshot for one target — not a scheduled probe,

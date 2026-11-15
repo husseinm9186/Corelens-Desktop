@@ -477,7 +477,10 @@ pub async fn ssh_log_start(
 /// — or three in an afternoon — writes on after what is there,
 /// never over it.
 pub fn open_session_log(path: &std::path::Path) -> std::io::Result<std::fs::File> {
-    std::fs::OpenOptions::new().create(true).append(true).open(path)
+    let file = std::fs::OpenOptions::new().create(true).append(true).open(path)?;
+    // A transcript is what a device said: its owner's to read.
+    crate::db::owner_only(path);
+    Ok(file)
 }
 
 /// Stops writing the transcript. What is already on disk stays.

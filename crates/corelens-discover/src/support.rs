@@ -68,6 +68,7 @@ impl SupportCapture {
             redact(output, &self.secrets)
         );
         let result = std::fs::create_dir_all(&folder).and_then(|()| std::fs::write(&path, body));
+        owner_only(&path);
         if let Err(e) = result {
             if let Ok(mut p) = self.problem.lock() {
                 p.get_or_insert_with(|| format!("could not write {}: {e}", path.display()));
@@ -160,6 +161,18 @@ pub fn folder_under(root: &Path, stamp: u64) -> PathBuf {
 /// The run's diagnostic folder, which holds the debug log and the replies.
 pub fn diagnostic_folder(root: &Path, stamp: u64) -> PathBuf {
     root.join("diagnostics").join(format!("crawl-{stamp}"))
+}
+
+/// Makes a file readable by its owner alone, where the system has such a
+/// thing. A reply is redacted, and is still a customer's device talking.
+pub fn owner_only(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+    }
+    #[cfg(not(unix))]
+    let _ = path;
 }
 
 #[cfg(test)]

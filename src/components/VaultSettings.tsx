@@ -5,18 +5,6 @@ import { ipc, isDesktop, type CredentialSummary, type CredentialUse, type VaultS
 import { dtg } from '../lib/dtg';
 import { t } from '../i18n';
 
-/** The eye, drawn rather than imported so the app ships no third-party art. */
-function Eye({ open }: { open: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
-      strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M1.5 12S5 5.5 12 5.5 22.5 12 22.5 12 19 18.5 12 18.5 1.5 12 1.5 12Z" />
-      <circle cx="12" cy="12" r="3.2" />
-      {!open && <path d="M3 21 21 3" />}
-    </svg>
-  );
-}
-
 /**
  * Saved credentials, and the passphrase that protects them.
  *
@@ -24,20 +12,23 @@ function Eye({ open }: { open: boolean }) {
  * stored, so forgetting it means re-entering them — there is no recovery path,
  * because a recovery path is a second way in.
  *
- * A stored secret can be revealed, deliberately and one at a time. That is a
- * real cost, and the copy says so rather than implying the value is unreachable
- * when it is one click away.
+ * A stored secret is never shown again — not here, not anywhere. It is
+ * visible while it is typed; after that the only things to do with it are use
+ * it and replace it.
+ *
+ * `scope` is where this is drawn. On the start screen (`machine`) it is the
+ * vault alone: its passphrase, its lock, whether this computer opens it. No
+ * login is listed there, because a login belongs to a project. Inside a
+ * project (`project`) it is that project's logins and no other's.
  */
-export function VaultSettings() {
-  // The projects a login can be handed to.
-  const projects = useStore((s) => s.projects);
+export function VaultSettings({ scope }: { scope: 'machine' | 'project' }) {
+  const inProject = scope === 'project';
   const [status, setStatus] = useState<VaultStatus | null>(null);
   const [credentials, setCredentials] = useState<CredentialSummary[]>([]);
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState<Record<string, { secret: string; second: string | null }>>({});
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   // The use log, for one credential or all of them.
   const [usage, setUsage] = useState<CredentialUse[] | null>(null);
@@ -59,10 +50,15 @@ export function VaultSettings() {
 
   const refresh = () => {
     void ipc.vaultStatus().then(setStatus).catch(() => setStatus(null));
-    void ipc.listCredentials().then(setCredentials).catch(() => setCredentials([]));
+    if (inProject) void ipc.listCredentials().then(setCredentials).catch(() => setCredentials([]));
   };
 
-  useEffect(refresh, []);
+  // Again whenever a login is saved or deleted anywhere in the project.
+  const vaultRevision = useStore((st) => st.vaultRevision);
+  useEffect(() => {
+    void ipc.vaultStatus().then(setStatus).catch(() => setStatus(null));
+    if (inProject) void ipc.listCredentials().then(setCredentials).catch(() => setCredentials([]));
+  }, [inProject, vaultRevision]);
 
   const act = (p: Promise<unknown>, done: string) => {
     setProblem(null);
@@ -84,24 +80,6 @@ export function VaultSettings() {
     act(ipc.createVault(passphrase), 'Vault created and unlocked for this session.');
   };
 
-  const toggleReveal = (id: string) => {
-    if (revealed[id]) {
-      setRevealed((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      return;
-    }
-    setProblem(null);
-    void ipc
-      .revealCredential(id)
-      .then((c) =>
-        setRevealed((prev) => ({ ...prev, [id]: { secret: c.secret, second: c.secondSecret } })),
-      )
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : String(e)));
-  };
-
   const save = () => {
     act(
       ipc
@@ -116,6 +94,7 @@ export function VaultSettings() {
           detail: kind === 'api' && apiPort.trim() ? apiPort.trim() : undefined,
         })
         .then(() => {
+          useStore.getState().bumpVault();
           setAdding(false);
           setLabel('');
           setUsername('');
@@ -163,7 +142,7 @@ export function VaultSettings() {
       ) : !status.unlocked ? (
         <>
           <p className="cv-help">
-            Locked. {t('plural.credential', { count: status.credentials })} saved.
+            {inProject ? t('vaultSettings.lockedWith', { count: status.credentials }) : t('vaultSettings.locked')}
           </p>
           <div className="cv-discover-form">
             <label className="cv-field">
@@ -182,7 +161,7 @@ export function VaultSettings() {
         <>
           <div className="cv-vault-bar">
             <span className="cv-help">
-              Unlocked for this session. {credentials.length} saved.
+              {inProject ? t('vaultSettings.unlockedWith', { count: credentials.length }) : t('vaultSettings.unlocked')}
             </span>
             <button type="button" className="cv-btn cv-btn-small"
               onClick={() => act(ipc.lockVault(), 'Locked.')}>
@@ -195,12 +174,15 @@ export function VaultSettings() {
                   e.target.checked ? 'The vault will open by itself on this computer.' : 'The key is no longer kept; the passphrase is needed again.')} />
               {t('vaultSettings.openByItselfOn')}
             </label>
-            <button type="button" className="cv-btn cv-btn-small" onClick={() => setAdding((a) => !a)}>
-              {adding ? 'Cancel' : 'Add credential'}
-            </button>
+            {inProject && (
+              <button type="button" className="cv-btn cv-btn-small" data-action="add-credential" onClick={() => setAdding((a) => !a)}>
+                {adding ? 'Cancel' : 'Add credential'}
+              </button>
+            )}
           </div>
+          {!inProject && <p className="cv-help" data-region="logins-live-in-projects">{t('vaultSettings.inProjects')}</p>}
 
-          {adding && (
+          {inProject && adding && (
             <div className="cv-discover-form cv-vault-add">
               <label className="cv-field cv-field-narrow">
                 <span>{t('vaultSettings.name')}</span>
@@ -255,64 +237,37 @@ export function VaultSettings() {
             </div>
           )}
 
-          {credentials.length > 0 && (
+          {inProject && credentials.length > 0 && (
             <table className="cv-table cv-vault-table">
               <thead>
                 <tr>
                   <th>{t('vaultSettings.name')}</th>
                   <th>{t('vaultSettings.for')}</th>
                   <th>{t('vaultSettings.user')}</th>
-                  <th>{t('vaultSettings.project')}</th>
-                  <th>{t('vaultSettings.secret')}</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {credentials.map((c) => {
-                  const shown = revealed[c.id];
-                  return (
-                    <tr key={c.id}>
-                      <td>{c.label}</td>
-                      <td>{c.kind.toUpperCase()}</td>
-                      <td className="cv-mono">{c.username || '—'}</td>
-                      {/* Whose it is; an unowned one can be handed to a project. */}
-                      <td>
-                        <select className="cv-input cv-vault-owner" value={c.ownerProjectId ?? ''}
-                          aria-label={t('vaultSettings.ownerOf', { name: c.label })}
-                          onChange={(e) => act(ipc.assignCredential(c.id, e.target.value || null), t('vaultSettings.handed'))}>
-                          <option value="">{t('vaultSettings.noProject')}</option>
-                          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                          {c.ownerProjectId && !projects.some((p) => p.id === c.ownerProjectId) && (
-                            <option value={c.ownerProjectId}>{c.ownerProjectName ?? t('vaultSettings.deletedProject')}</option>
-                          )}
-                        </select>
-                      </td>
-                      <td className="cv-mono cv-secret-cell">
-                        <span>{shown ? shown.secret : '••••••••'}</span>
-                        {shown?.second && <span className="cv-second-secret"> · {shown.second}</span>}
-                        {!shown && c.hasSecondSecret && <span className="cv-second-secret"> · ••••••••</span>}
-                        <button type="button" className="cv-eye" onClick={() => toggleReveal(c.id)}
-                          title={shown ? 'Hide' : 'Show'}
-                          aria-label={shown ? `Hide the secret for ${c.label}` : `Show the secret for ${c.label}`}>
-                          <Eye open={!shown} />
-                        </button>
-                      </td>
-                      <td>
-                        <button type="button" className="cv-btn cv-btn-small"
-                          onClick={() => act(ipc.deleteCredential(c.id), 'Deleted.')}>
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {credentials.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.label}</td>
+                    <td>{c.kind.toUpperCase()}</td>
+                    <td className="cv-mono">{c.username || '—'}</td>
+                    <td>
+                      <button type="button" className="cv-btn cv-btn-small"
+                        onClick={() => act(ipc.deleteCredential(c.id).then(() => useStore.getState().bumpVault()), 'Deleted.')}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
         </>
       )}
 
-      {credentials.length > 0 && (
+      {inProject && credentials.length > 0 && (
         <details className="cv-credential-use" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && !usage) loadUsage(''); }}>
           <summary>{t('vaultSettings.whereTheyWereUsed')}</summary>
           <p className="cv-help">
@@ -353,12 +308,22 @@ export function VaultSettings() {
         </details>
       )}
 
-      {status.exists && (
+      {!inProject && (status.unownedCredentials ?? 0) > 0 && (
+        <div className="cv-hostkey-actions" data-region="unowned-logins">
+          <span className="cv-help">{t('vaultSettings.unowned', { count: status.unownedCredentials ?? 0 })}</span>
+          <button type="button" className="cv-btn cv-btn-small cv-btn-danger" data-action="delete-unowned"
+            onClick={() => act(ipc.deleteUnownedCredentials(), t('vaultSettings.unownedGone'))}>
+            {t('vaultSettings.deleteUnowned')}
+          </button>
+        </div>
+      )}
+
+      {!inProject && status.exists && (
         <div className="cv-hostkey-actions">
           {confirmDiscard ? (
             <>
               <span className="cv-help">
-                Discard the vault and all {t('plural.credential', { count: status.credentials })}? Without the passphrase they cannot be read,
+                Discard the vault and all {t('plural.credential', { count: status.allCredentials ?? status.credentials })} — every project's? Without the passphrase they cannot be read,
                 so there is nothing to keep. This cannot be undone.
               </span>
               <button type="button" className="cv-btn cv-btn-small" onClick={() => setConfirmDiscard(false)}>

@@ -1,19 +1,17 @@
 //! IPC for the credential vault.
 //!
-//! **Exactly one command returns a secret**, and it is `reveal_credential`.
-//! Everything else takes credentials in and hands back references.
+//! **No command returns a secret.** Credentials go in and references come
+//! back; a stored password, community or key never crosses to the interface
+//! again, in any form. A secret is visible while it is being typed and at no
+//! other time. Someone who needs to know what is stored replaces it.
 //!
-//! That one exception is deliberate and was asked for: an administrator has to
-//! be able to check what is stored, and a vault you cannot read from is a
-//! vault people work around by keeping a spreadsheet. The cost is real and
-//! worth stating — once a secret can cross to the interface, "not visible from
-//! the GUI" is a rendering promise rather than an architectural one, and a
-//! rendering promise does not survive a devtools window.
+//! That is an architectural promise rather than a rendering one, and a test
+//! holds it: `no_command_returns_a_secret` reads this file and fails if any
+//! command's return type could carry one.
 //!
-//! What survives is the narrower guarantee, and a test enforces it: no *other*
-//! command may return a secret. Listing, saving, status and deletion cannot
-//! leak one by accident; revealing is a single, named, deliberate act that
-//! requires the vault to be unlocked first.
+//! **A login belongs to one project.** Every lookup names the project, the
+//! project is the one the window has open, and with none open nothing is
+//! listed, saved or opened.
 //!
 //! The unlocked key lives in memory for the length of the app session and is
 //! zeroed when it is dropped. It is never written anywhere.
@@ -28,6 +26,19 @@ use crate::commands::AppState;
 use crate::db;
 
 type CmdResult<T> = Result<T, String>;
+
+/// What every login command says with no project open.
+const NO_PROJECT_OPEN: &str = "Open a project first: a saved login belongs to one project.";
+
+/// The open project's login `id`, sealed. The one way this file reaches a
+/// stored secret, so the one place the project is checked.
+fn own_login(state: &AppState, id: &str) -> CmdResult<db::StoredCredential> {
+    let conn = state.db.lock().map_err(db_err)?;
+    let project = db::may_use_credential(&conn, crate::commands::open_project(state).as_deref(), id)?;
+    db::credential(&conn, &project, id)
+        .map_err(db_err)?
+        .ok_or_else(|| "That saved credential no longer exists.".to_string())
+}
 
 pub fn db_err(e: impl std::fmt::Display) -> String {
     format!("Local database error: {e}")
@@ -46,7 +57,14 @@ fn now_ms() -> i64 {
 pub struct VaultStatus {
     pub exists: bool,
     pub unlocked: bool,
+    /// How many logins the open project has; none with no project open.
     pub credentials: usize,
+    /// Every login on this machine, as a number only — what discarding the
+    /// vault would discard.
+    pub all_credentials: usize,
+    /// Logins that belong to no project: left from before a login had an
+    /// owner, or by a project deleted before deleting took them along.
+    pub unowned_credentials: usize,
     pub minimum_passphrase: usize,
     /// Whether this machine keeps the vault key in its keychain.
     pub kept_in_keychain: bool,
@@ -128,21 +146,23 @@ pub struct CredentialSummary {
     /// privacy password. Whether one exists is not itself a secret, and the
     /// interface needs it to render honestly.
     pub has_second_secret: bool,
-    /// The project that owns it, and its name, for the start screen.
-    pub owner_project_id: Option<String>,
-    pub owner_project_name: Option<String>,
 }
 
 #[tauri::command(async)]
 pub fn vault_status(state: State<'_, AppState>) -> CmdResult<VaultStatus> {
     let conn = state.db.lock().map_err(db_err)?;
     let exists = db::vault_header(&conn).map_err(db_err)?.is_some();
-    let credentials = db::list_credentials(&conn).map_err(db_err)?.len();
+    let credentials = match crate::commands::open_project(&state) {
+        Some(project) => db::list_credentials(&conn, &project).map_err(db_err)?.len(),
+        None => 0,
+    };
     let unlocked = state.vault_key.lock().map_err(db_err)?.is_some();
     Ok(VaultStatus {
         exists,
         unlocked,
         credentials,
+        all_credentials: db::count_credentials(&conn).map_err(db_err)?,
+        unowned_credentials: db::unowned_credentials(&conn).map_err(db_err)?,
         minimum_passphrase: vault::MIN_PASSPHRASE,
         kept_in_keychain: kept_in_keychain(&conn)?,
     })
@@ -257,34 +277,21 @@ pub fn save_credential(state: State<'_, AppState>, credential: SaveCredential) -
         detail: credential.detail.unwrap_or_default(),
     };
 
+    // Into the open project, and only there. An id that another project
+    // also uses is that project's own row and is not touched.
+    let project = crate::commands::open_project(&state).ok_or(NO_PROJECT_OPEN)?;
     let conn = state.db.lock().map_err(db_err)?;
-    // Replacing another project's login is refused like opening it.
-    if db::credential_owner(&conn, &id).map_err(db_err)?.is_some() {
-        db::may_use_credential(&conn, crate::commands::open_project(&state).as_deref(), &id)?;
-    }
-    let is_new = db::credential_owner(&conn, &id).map_err(db_err)?.is_none();
-    db::save_credential(&conn, &stored, now_ms()).map_err(db_err)?;
-    // A login saved inside a project is that project's.
-    if is_new {
-        db::set_credential_owner(&conn, &id, crate::commands::open_project(&state).as_deref()).map_err(db_err)?;
-    }
+    db::save_credential(&conn, &project, &stored, now_ms()).map_err(db_err)?;
     Ok(id)
 }
 
-/// Hands a credential to a project, or back to none. Only from the
-/// start screen, where the whole vault is managed — inside a project this
-/// would be a way to take another project's login.
+/// Removes the logins that belong to no project. They cannot be listed,
+/// used or handed to a project — a login is typed into the project it is
+/// for — so the one thing left to do with them is this. Returns how many went.
 #[tauri::command(async)]
-pub fn assign_credential(state: State<'_, AppState>, id: String, project_id: Option<String>) -> CmdResult<()> {
-    if crate::commands::open_project(&state).is_some() {
-        return Err("Close the project first: logins are handed between projects from the start screen.".into());
-    }
+pub fn delete_unowned_credentials(state: State<'_, AppState>) -> CmdResult<usize> {
     let conn = state.db.lock().map_err(db_err)?;
-    let changed = db::set_credential_owner(&conn, &id, project_id.as_deref().filter(|p| !p.is_empty())).map_err(db_err)?;
-    if changed == 0 {
-        return Err("That saved credential no longer exists.".into());
-    }
-    Ok(())
+    db::delete_unowned_credentials(&conn).map_err(db_err)
 }
 
 /// The saved credentials, without their secrets.
@@ -293,81 +300,30 @@ pub fn assign_credential(state: State<'_, AppState>, id: String, project_id: Opt
 /// switches" exists is not the same as knowing its password, and a list that
 /// vanished when locked would make the vault unusable to reason about.
 ///
-/// Inside a project, only the ones it owns or its diagram refers to;
-/// on the start screen, every one, each with the project that owns it.
+/// The open project's, and no other's. With no project open there are none
+/// to list: the start screen is not a project.
 #[tauri::command(async)]
 pub fn list_credentials(state: State<'_, AppState>) -> CmdResult<Vec<CredentialSummary>> {
-    let open = crate::commands::open_project(&state);
+    let Some(project) = crate::commands::open_project(&state) else { return Ok(Vec::new()) };
     let conn = state.db.lock().map_err(db_err)?;
-    let rows = db::list_credentials_for(&conn, open.as_deref()).map_err(db_err)?;
+    let rows = db::list_credentials(&conn, &project).map_err(db_err)?;
     let mut out = Vec::with_capacity(rows.len());
-    for row in rows {
+    for (id, label, kind, username, detail) in rows {
         // Only to report whether one exists — the value is not read.
-        let has_second_secret = db::credential(&conn, &row.id)
+        let has_second_secret = db::credential(&conn, &project, &id)
             .map_err(db_err)?
             .map(|c| c.extra.is_some())
             .unwrap_or(false);
-        out.push(CredentialSummary {
-            id: row.id,
-            label: row.label,
-            kind: row.kind,
-            username: row.username,
-            detail: row.detail,
-            has_second_secret,
-            owner_project_id: row.owner_id,
-            owner_project_name: row.owner_name,
-        });
+        out.push(CredentialSummary { id, label, kind, username, detail, has_second_secret });
     }
     Ok(out)
-}
-
-/// What a stored credential actually contains.
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RevealedCredential {
-    pub username: String,
-    pub secret: String,
-    pub second_secret: Option<String>,
-}
-
-/// Shows a stored credential in the clear.
-///
-/// The single command that returns a secret. It exists because an
-/// administrator has to be able to verify what is saved — the alternative is
-/// people keeping the real copy somewhere else.
-///
-/// Requires the vault to be unlocked, so revealing always costs the
-/// passphrase at least once per session rather than being available to anyone
-/// who reaches the running app.
-#[tauri::command(async)]
-pub fn reveal_credential(
-    state: State<'_, AppState>,
-    id: String,
-) -> CmdResult<RevealedCredential> {
-    let guard = state.vault_key.lock().map_err(db_err)?;
-    let key = guard.as_ref().ok_or_else(|| vault::VaultError::Locked.to_string())?;
-    let stored = {
-        let conn = state.db.lock().map_err(db_err)?;
-        db::may_use_credential(&conn, crate::commands::open_project(&state).as_deref(), &id)?;
-        db::credential(&conn, &id)
-            .map_err(db_err)?
-            .ok_or("That saved credential no longer exists.")?
-    };
-    Ok(RevealedCredential {
-        username: stored.username,
-        secret: open_secret(key, &stored.secret)?,
-        second_secret: match &stored.extra {
-            None => None,
-            Some(e) => Some(open_secret(key, e)?),
-        },
-    })
 }
 
 #[tauri::command(async)]
 pub fn delete_credential(state: State<'_, AppState>, id: String) -> CmdResult<()> {
     let conn = state.db.lock().map_err(db_err)?;
-    db::may_use_credential(&conn, crate::commands::open_project(&state).as_deref(), &id)?;
-    db::delete_credential(&conn, &id).map_err(db_err)?;
+    let project = db::may_use_credential(&conn, crate::commands::open_project(&state).as_deref(), &id)?;
+    db::delete_credential(&conn, &project, &id).map_err(db_err)?;
     Ok(())
 }
 
@@ -375,27 +331,33 @@ pub fn delete_credential(state: State<'_, AppState>, id: String) -> CmdResult<()
 ///
 /// Exists so credentials can move to another machine deliberately. What comes
 /// out is ciphertext and the salt needed to derive the key again — importing it
-/// requires the same passphrase, so this is not a way to read secrets, and the
-/// vault does not even need to be unlocked to produce it.
+/// requires the same passphrase, so this is not a way to read secrets.
 ///
 /// It is still the most dangerous thing the app can write: it is every stored
 /// credential in one file, and its safety rests entirely on the passphrase. The
 /// interface defaults to leaving it out and says so plainly.
 ///
-/// `ids` names the credentials the project being exported refers to; only
-/// those travel. A package exported from one project once carried every
-/// credential the vault held, other projects' included.
+/// Only the open project's logins travel, and of those only the ones `ids`
+/// names when it is given. A package exported from one project once carried
+/// every credential the vault held, other projects' included.
 #[tauri::command(async)]
 pub fn export_vault(state: State<'_, AppState>, ids: Option<Vec<String>>) -> CmdResult<serde_json::Value> {
+    // Only with the vault open. It hands out ciphertext and the salt, which
+    // is everything a passphrase would be guessed against — not something to
+    // give to whoever reaches a locked app.
+    if state.vault_key.lock().map_err(db_err)?.is_none() {
+        return Err(vault::VaultError::Locked.to_string());
+    }
     let conn = state.db.lock().map_err(db_err)?;
     let (salt, verifier) = db::vault_header(&conn)
         .map_err(db_err)?
         .ok_or("There is no vault to export.")?;
 
-    let all: Vec<String> = db::list_credentials(&conn).map_err(db_err)?.into_iter().map(|(id, ..)| id).collect();
+    let project = crate::commands::open_project(&state).ok_or(NO_PROJECT_OPEN)?;
+    let all: Vec<String> = db::list_credentials(&conn, &project).map_err(db_err)?.into_iter().map(|(id, ..)| id).collect();
     let mut items = Vec::new();
     for id in chosen(&all, ids.as_deref()) {
-        if let Some(c) = db::credential(&conn, &id).map_err(db_err)? {
+        if let Some(c) = db::credential(&conn, &project, &id).map_err(db_err)? {
             items.push(serde_json::json!({
                 "id": c.id,
                 "label": c.label,
@@ -455,6 +417,8 @@ pub fn import_vault(
         .as_array()
         .ok_or("That package has no credentials to import.")?;
 
+    // Into the open project: an imported login is that project's.
+    let project = crate::commands::open_project(&state).ok_or(NO_PROJECT_OPEN)?;
     let conn = state.db.lock().map_err(db_err)?;
     let mut imported = 0usize;
     for item in items {
@@ -486,7 +450,7 @@ pub fn import_vault(
             extra,
             detail: text("detail"),
         };
-        db::save_credential(&conn, &stored, now_ms()).map_err(db_err)?;
+        db::save_credential(&conn, &project, &stored, now_ms()).map_err(db_err)?;
         imported += 1;
     }
 
@@ -501,14 +465,7 @@ pub fn import_vault(
 pub fn ssh_credentials(state: &AppState, id: &str) -> CmdResult<Credentials> {
     let guard = state.vault_key.lock().map_err(db_err)?;
     let key = guard.as_ref().ok_or_else(|| vault::VaultError::Locked.to_string())?;
-    let stored = {
-        let conn = state.db.lock().map_err(db_err)?;
-        // The one place an SSH secret is opened, so the one check.
-        db::may_use_credential(&conn, crate::commands::open_project(state).as_deref(), id)?;
-        db::credential(&conn, id)
-            .map_err(db_err)?
-            .ok_or("That saved credential no longer exists.")?
-    };
+    let stored = own_login(state, id)?;
 
     let password = open_secret(key, &stored.secret)?;
     let enable_password = match &stored.extra {
@@ -530,13 +487,7 @@ pub fn ssh_credentials(state: &AppState, id: &str) -> CmdResult<Credentials> {
 pub fn sftp_credentials(state: &AppState, id: &str) -> CmdResult<(String, Secret)> {
     let guard = state.vault_key.lock().map_err(db_err)?;
     let key = guard.as_ref().ok_or_else(|| vault::VaultError::Locked.to_string())?;
-    let stored = {
-        let conn = state.db.lock().map_err(db_err)?;
-        db::may_use_credential(&conn, crate::commands::open_project(state).as_deref(), id)?;
-        db::credential(&conn, id)
-            .map_err(db_err)?
-            .ok_or("That saved credential no longer exists.")?
-    };
+    let stored = own_login(state, id)?;
     if stored.kind != "sftp" {
         return Err("That saved credential is not an SFTP login.".into());
     }
@@ -549,12 +500,7 @@ pub fn sftp_credentials(state: &AppState, id: &str) -> CmdResult<(String, Secret
 pub fn api_credentials(state: &AppState, id: &str) -> CmdResult<corelens_collect::api::ApiLogin> {
     let guard = state.vault_key.lock().map_err(db_err)?;
     let key = guard.as_ref().ok_or_else(|| vault::VaultError::Locked.to_string())?;
-    let stored = {
-        let conn = state.db.lock().map_err(db_err)?;
-        // As for every kind of secret.
-        db::may_use_credential(&conn, crate::commands::open_project(state).as_deref(), id)?;
-        db::credential(&conn, id).map_err(db_err)?.ok_or("That saved credential no longer exists.")?
-    };
+    let stored = own_login(state, id)?;
     if stored.kind != "api" {
         return Err("That saved credential is not an API login.".into());
     }
@@ -568,7 +514,10 @@ pub fn api_credentials(state: &AppState, id: &str) -> CmdResult<corelens_collect
 /// the credential was opened for.
 pub fn note_use(state: &AppState, credential_id: &str, purpose: &str, target: &str) {
     if let Ok(conn) = state.db.lock() {
-        let _ = db::record_credential_use(&conn, credential_id, purpose, target, db::now_ms());
+        // In the open project's log; with none open there is no log to write to.
+        if let Some(project) = crate::commands::open_project(state) {
+            let _ = db::record_credential_use(&conn, &project, credential_id, purpose, target, db::now_ms());
+        }
     }
 }
 
@@ -576,26 +525,27 @@ pub fn note_use(state: &AppState, credential_id: &str, purpose: &str, target: &s
 /// machine and never sent anywhere.
 #[tauri::command(async)]
 pub fn list_credential_use(state: State<'_, AppState>, credential_id: Option<String>, limit: Option<i64>) -> CmdResult<Vec<db::CredentialUseRow>> {
+    let Some(project) = crate::commands::open_project(&state) else { return Ok(Vec::new()) };
     let conn = state.db.lock().map_err(db_err)?;
-    db::list_credential_use(&conn, credential_id.as_deref(), limit.unwrap_or(500).clamp(1, 5_000)).map_err(db_err)
+    db::list_credential_use(&conn, &project, credential_id.as_deref(), limit.unwrap_or(500).clamp(1, 5_000)).map_err(db_err)
 }
 
 #[tauri::command(async)]
 pub fn clear_credential_use(state: State<'_, AppState>) -> CmdResult<usize> {
+    let Some(project) = crate::commands::open_project(&state) else { return Ok(0) };
     let conn = state.db.lock().map_err(db_err)?;
-    db::clear_credential_use(&conn).map_err(db_err)
+    db::clear_credential_use(&conn, &project).map_err(db_err)
 }
 
-/// Every SSH login the open project keeps — owned by it or referred
-/// to by it — in the order a run tries them after its first login:
+/// Every SSH login the open project has, in the order a run tries them after its first login:
 /// the ids the page sent, in their order (the project's default and its
 /// other logins), then every other one the project keeps, by label.
 /// The login the run starts with is never repeated, and with no project open
-/// nothing is added: the vault is the machine's, the project is the scope.
+/// nothing is added.
 pub fn project_login_order(state: &AppState, sent: &[String], first: Option<&str>) -> Vec<String> {
     let kept: Vec<String> = match crate::commands::open_project(state) {
         Some(p) => match state.db.lock() {
-            Ok(conn) => db::list_credentials_for(&conn, Some(&p)).map(|rows| rows.into_iter().filter(|c| c.kind == "ssh").map(|c| c.id).collect()).unwrap_or_default(),
+            Ok(conn) => db::list_credentials(&conn, &p).map(|rows| rows.into_iter().filter(|(_, _, kind, ..)| kind == "ssh").map(|(id, ..)| id).collect()).unwrap_or_default(),
             Err(_) => Vec::new(),
         },
         None => Vec::new(),
@@ -633,24 +583,19 @@ pub fn login_order(sent: &[String], kept: &[String], first: Option<&str>) -> Vec
     out
 }
 
-/// Whether the vault still holds this credential.
+/// Whether the open project still has this login.
 ///
-/// A project stores credential *ids*, and the vault is machine-wide and
-/// outlives any one project. So an id can go stale — the credential
-/// was wiped, or the project was opened on a machine whose vault never had it
-/// — and a stale id must never be fatal to anything.
+/// A project's document stores login *ids*. An id can go stale — the login
+/// was deleted, the project is a copy of another (a copy gets no logins), or
+/// it was opened on a machine that never had it — and a stale id must never
+/// be fatal to anything.
 pub fn credential_exists(state: &AppState, id: &str) -> bool {
-    let Ok(conn) = state.db.lock() else { return false };
-    matches!(db::credential(&conn, id), Ok(Some(_)))
+    own_login(state, id).is_ok()
 }
 
 /// What kind a saved credential is — `ssh` or `snmp` — without opening it.
 pub fn credential_kind(state: &AppState, id: &str) -> CmdResult<String> {
-    let conn = state.db.lock().map_err(db_err)?;
-    Ok(db::credential(&conn, id)
-        .map_err(db_err)?
-        .ok_or("That saved credential no longer exists.")?
-        .kind)
+    Ok(own_login(state, id)?.kind)
 }
 
 /// Rebuilds SNMP credentials from the vault. Also not a command, for the same
@@ -658,14 +603,7 @@ pub fn credential_kind(state: &AppState, id: &str) -> CmdResult<String> {
 pub fn snmp_credentials(state: &AppState, id: &str) -> CmdResult<SnmpAuth> {
     let guard = state.vault_key.lock().map_err(db_err)?;
     let key = guard.as_ref().ok_or_else(|| vault::VaultError::Locked.to_string())?;
-    let stored = {
-        let conn = state.db.lock().map_err(db_err)?;
-        // As for SSH.
-        db::may_use_credential(&conn, crate::commands::open_project(state).as_deref(), id)?;
-        db::credential(&conn, id)
-            .map_err(db_err)?
-            .ok_or("That saved credential no longer exists.")?
-    };
+    let stored = own_login(state, id)?;
 
     let secret = open_secret(key, &stored.secret)?;
     // "sha|aes 256" — algorithm words, which are not secret and so are stored
@@ -737,69 +675,78 @@ mod tests {
         assert_eq!(super::login_order(&s(&["x", "x", " "]), &s(&[]), Some("y")), s(&["x"]));
     }
 
-    /// Only `reveal_credential` may return a secret, checked against the
-    /// source rather than by inspection.
-    ///
-    /// Revealing is a deliberate act with a name that says so. A future edit
-    /// that quietly returned plaintext from `list_credentials` or
-    /// `vault_status` would look perfectly reasonable in review and would undo
-    /// the arrangement without anybody noticing.
-    #[test]
-    fn only_the_reveal_command_returns_a_secret() {
+    /// The commands of this file, each as (name, return type).
+    fn commands() -> Vec<(String, String)> {
         let source = include_str!("vault_commands.rs");
         let source = source.split("#[cfg(test)]").next().unwrap();
+        source
+            .split("#[tauri::command")
+            .skip(1)
+            .map(|block| {
+                let signature: String = block.chars().take(600).collect();
+                let name = signature.split("pub fn ").nth(1).and_then(|s| s.split('(').next()).unwrap_or("?").to_string();
+                let returns = signature.split("->").nth(1).and_then(|s| s.split('{').next()).unwrap_or("").to_string();
+                (name, returns)
+            })
+            .collect()
+    }
+
+    /// No command hands a stored secret to the interface, checked against the
+    /// source rather than by inspection.
+    ///
+    /// A future edit that quietly returned plaintext from `list_credentials`
+    /// or `vault_status` would look perfectly reasonable in review. This
+    /// fails on it — and on a command written to show a secret on purpose,
+    /// which is the thing that must not come back.
+    #[test]
+    fn no_command_returns_a_secret() {
+        let commands = commands();
+        // The check once split on an attribute spelling no command used, saw
+        // no commands, and passed whatever they returned.
+        assert!(commands.len() >= 12, "the commands were not found: {commands:?}");
+        assert!(commands.iter().any(|(n, _)| n == "list_credentials") && commands.iter().any(|(n, _)| n == "save_credential"));
+
         let mut offenders = Vec::new();
-
-        for block in source.split("#[tauri::command]").skip(1) {
-            let signature: String = block.chars().take(400).collect();
-            let name = signature
-                .split("pub fn ")
-                .nth(1)
-                .and_then(|s| s.split('(').next())
-                .unwrap_or("?")
-                .to_string();
-            if name == "reveal_credential" {
-                continue;
-            }
-
-            // The return type, up to the opening brace.
-            let returns = signature
-                .split("->")
-                .nth(1)
-                .and_then(|s| s.split('{').next())
-                .unwrap_or("")
-                .to_string();
-
-            for forbidden in [
-                "Credentials",
-                "SnmpAuth",
-                "VaultKey",
-                "SealedSecret",
-                "StoredCredential",
-                "RevealedCredential",
-            ] {
+        for (name, returns) in &commands {
+            for forbidden in ["Credentials", "SnmpAuth", "VaultKey", "SealedSecret", "StoredCredential", "Revealed", "Secret", "ApiLogin"] {
                 if returns.contains(forbidden) {
                     offenders.push(format!("{name} returns {forbidden}"));
                 }
             }
+            for word in ["reveal", "show_secret", "read_secret", "plaintext"] {
+                if name.contains(word) {
+                    offenders.push(format!("{name} is named for reading a secret"));
+                }
+            }
         }
-
-        assert!(
-            offenders.is_empty(),
-            "a command other than reveal_credential returns something secret: {offenders:?}"
-        );
+        assert!(offenders.is_empty(), "a command returns something secret: {offenders:?}");
     }
 
+    /// What the interface is told about a login has no field a secret could
+    /// travel in.
     #[test]
-    fn revealing_is_a_single_named_command() {
-        // If a second way to read a secret appears, it should be a deliberate
-        // decision rather than something that accumulated.
-        // Only the code above the test module — otherwise this test's own
-        // text counts as a match and the check passes for the wrong reason.
+    fn what_a_listing_carries_has_no_secret_in_it() {
         let source = include_str!("vault_commands.rs");
         let code = source.split("#[cfg(test)]").next().unwrap();
-        let revealers = code.matches("RevealedCredential> {").count();
-        assert_eq!(revealers, 1, "there should be exactly one way to read a secret");
+        let at = code.find("pub struct CredentialSummary").expect("the listing's shape");
+        let shape = &code[at..at + code[at..].find("\n}").unwrap()];
+        for field in ["secret:", "password", "community", "cipher", "nonce"] {
+            assert!(!shape.contains(&format!("pub {field}")), "CredentialSummary has a field `{field}`");
+        }
+    }
+
+    /// Every command that lists, saves, opens, deletes, exports or imports a
+    /// login asks which project is open.
+    #[test]
+    fn every_login_command_is_scoped_to_the_open_project() {
+        let source = include_str!("vault_commands.rs");
+        let code = source.split("#[cfg(test)]").next().unwrap();
+        for name in ["save_credential", "list_credentials", "delete_credential", "export_vault", "import_vault", "list_credential_use", "clear_credential_use"] {
+            let at = code.find(&format!("pub fn {name}(")).unwrap_or_else(|| panic!("{name} is missing"));
+            let body = &code[at..at + code[at..].find("\n}\n").unwrap()];
+            assert!(body.contains("open_project("), "{name} does not ask which project is open");
+        }
+        assert!(!code.contains("fn assign_credential"), "a login is not handed from one project to another");
     }
 
     #[test]
@@ -807,11 +754,11 @@ mod tests {
         // ssh_credentials and snmp_credentials exist and hand back plaintext;
         // the point is that they are plain Rust functions.
         let source = include_str!("vault_commands.rs");
-        for name in ["fn ssh_credentials", "fn snmp_credentials"] {
+        for name in ["fn ssh_credentials", "fn snmp_credentials", "fn sftp_credentials", "fn api_credentials", "fn own_login", "fn open_secret"] {
             let at = source.find(name).expect("function missing");
             let before = &source[at.saturating_sub(200)..at];
             assert!(
-                !before.contains("#[tauri::command]"),
+                !before.contains("#[tauri::command"),
                 "{name} has become reachable from the interface"
             );
         }

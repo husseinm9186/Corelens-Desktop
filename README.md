@@ -454,9 +454,14 @@ machine or run by a device itself, each hop named by the crawled device
 that answered, drawn onto a page of its own like a calculated path. A
 device can also be asked which equal-cost leg it hashes a given flow onto.
 
-**Logins are a project's.** A saved login belongs to the project it was
-saved in and cannot be listed, shown or used from another; the whole vault
-is managed from the start screen with no project open. A project keeps as
+**Logins are a project's, and a saved secret is never shown again.** A
+saved login belongs to the project it was typed into: it is listed, used and
+deleted there, and nowhere else — not from another project, and not from the
+start screen, which lists none. A password, community or key is visible
+while it is typed and at no other time; no part of the application can read
+one back. The same goes for the SSH host keys a project has remembered, its
+runs, its diagnostics and its settings: closing a project ends its jobs and
+clears the window, and deleting it deletes all of them. A project keeps as
 many SSH logins and SNMP credentials as it needs, tried in order.
 
 **Import.** A Corelens project package, a CSV of devices, or a Visio `.vsdx`

@@ -54,7 +54,7 @@ pub async fn keygen(client: &ApiClient, user: &str, password: &str) -> Result<St
         .query(&[("type", "keygen"), ("user", user), ("password", password)])
         .send().await.map_err(|e| super::transport(e, &client.pin))?;
     let status = resp.status().as_u16();
-    let text = resp.text().await.map_err(|e| ApiError::Body(e.to_string()))?;
+    let text = resp.text().await.map_err(|e| ApiError::Body(e.without_url().to_string()))?;
     if status >= 400 {
         return Err(ApiError::Auth(format!("HTTP {status}")));
     }
@@ -75,7 +75,7 @@ pub async fn op(client: &ApiClient, key: &str, command: &str, vsys: Option<&str>
     }
     let resp = client.client.get(client.url("/api/")).query(&query).send().await.map_err(|e| super::transport(e, &client.pin))?;
     let status = resp.status().as_u16();
-    let text = resp.text().await.map_err(|e| ApiError::Body(e.to_string()))?;
+    let text = resp.text().await.map_err(|e| ApiError::Body(e.without_url().to_string()))?;
     let ms = started.elapsed().as_millis() as u64;
     if status == 401 || status == 403 {
         return Err(ApiError::Auth(format!("HTTP {status}")));

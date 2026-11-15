@@ -12,6 +12,7 @@
  * that did not answer is drawn as one that did not answer.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { onProjectLeft } from '../lib/projectLeft';
 
 import { t } from '../i18n';
 import { applicationPageName, buildApplicationPage, type Application } from '../lib/appPath';
@@ -24,6 +25,8 @@ import { TraceHopRow } from './TraceroutePanel';
 
 /** The last run per source and target, this session only. */
 const lastRun = new Map<string, TracerouteHopDto[]>();
+// One project's hops are not the next project's "last time".
+onProjectLeft(() => lastRun.clear());
 
 /** A device's own traceroute in the shape this machine's is reported in. */
 export function hopsFromDevice(hops: { ttl: number; address: string | null; rttsMs: number[] }[]): TracerouteHopDto[] {

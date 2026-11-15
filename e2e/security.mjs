@@ -48,7 +48,9 @@ await page.addInitScript(({ p }) => {
       if (cmd === "get_settings") return Promise.resolve({});
       if (cmd === "unlock_vault_from_keychain") return Promise.resolve(window.__keychain);
       if (cmd === "vault_status") return Promise.resolve({ exists: true, unlocked: window.__keychain === "opened", credentials: 1, minimumPassphrase: 12, keptInKeychain: window.__kept });
-      if (cmd === "list_credentials") return Promise.resolve([{ id: "cred-ssh", label: "Read-only SSH", kind: "ssh", username: "reader", detail: "", hasSecondSecret: false }]);
+      if (cmd === "set_open_project") { window.__open = args.projectId ?? null; return Promise.resolve(null); }
+      // As the backend answers: a project's logins inside it, none outside.
+      if (cmd === "list_credentials") return Promise.resolve(!window.__open ? [] : [{ id: "cred-ssh", label: "Read-only SSH", kind: "ssh", username: "reader", detail: "", hasSecondSecret: false }]);
       if (cmd === "remember_vault_key") { window.__kept = true; return Promise.resolve(null); }
       if (cmd === "forget_vault_key") { window.__kept = false; return Promise.resolve(null); }
       if (cmd === "list_credential_use") return Promise.resolve([
@@ -77,16 +79,16 @@ await keep.click();
 await page.waitForTimeout(400);
 check("ticking keeps it again", (await calls("remember_vault_key")).length === 1 && (await keep.isChecked()));
 
-// ------------------------------------------------------- the use log
-await page.getByText("Where they were used").click();
-await page.waitForTimeout(400);
-const log = page.locator(".cv-credential-use");
-check("the use log lists where each credential went", (await log.locator("tr", { hasText: "CORE-SW1 (192.0.2.10)" }).count()) === 1 && /Crawl/.test(await log.textContent()));
-check("a deleted credential is still named in the log", (await log.locator("td", { hasText: "Retired SNMP (deleted)" }).count()) === 1);
-check("and it says the log stays on this machine", /never sent anywhere/.test(await log.textContent()));
-await log.locator("select").selectOption("cred-ssh");
-await page.waitForTimeout(300);
-check("one credential's use can be picked out", (await calls("list_credential_use")).at(-1)?.args.credentialId === "cred-ssh");
+// --------------------------------- nothing of a project on the start screen
+// A saved login and a remembered host key each belong to a project. With no
+// project open there is no list of either, no way to show a secret, and the
+// backend is not even asked for them.
+check("the start screen lists no saved login", (await page.locator(".cv-vault-table").count()) === 0 && !/Read-only SSH|reader/.test(await page.locator(".cv-vault").textContent()));
+check("there is no way to show a saved secret", (await page.locator(".cv-eye").count()) === 0 && (await page.locator('[aria-label^="Show the secret"]').count()) === 0);
+check("no host key is listed either", (await page.locator(".cv-hostkeys").count()) === 0 && (await calls("list_host_keys")).length === 0);
+check("no login can be added from there", (await page.locator('[data-action="add-credential"]').count()) === 0);
+check("and it says where logins are kept", /kept inside the project/.test(await page.locator('[data-region="logins-live-in-projects"]').textContent()));
+check("no command that reads a secret back is ever called", (await calls("reveal_credential")).length === 0 && (await calls("assign_credential")).length === 0);
 
 // --------------------------------------------- what the backend is sent
 await page.locator(".cv-project-open").first().click();
@@ -98,6 +100,21 @@ check("a probe is sent with the engine's fields only", sent && sent.target === "
 // ------------------------------------------------------- rate limit
 const shown = await page.locator(".cv-panel-message, [role=status], .cv-topbar").allTextContents();
 check("a start the backend refuses for coming too often says why", shown.some((t) => /more than a person does\. Wait 42 s/.test(t)), JSON.stringify(shown).slice(0, 400));
+
+// ------------------------------------------------------- the use log
+await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
+await page.waitForTimeout(500);
+check("inside the project its logins are named, with no secret and no eye", (await page.locator('[data-region="project-credentials"] .cv-vault-table tr', { hasText: "Read-only SSH" }).count()) === 1 && (await page.locator(".cv-eye").count()) === 0 && !/Secret/.test(await page.locator('[data-region="project-credentials"] .cv-vault-table thead').textContent()));
+check("and its host keys have a section of their own", (await page.locator('[data-region="project-hostkeys"]').count()) === 1 && (await calls("list_host_keys")).length >= 1);
+await page.getByText("Where they were used").click();
+await page.waitForTimeout(400);
+const log = page.locator(".cv-credential-use");
+check("the use log lists where each credential went", (await log.locator("tr", { hasText: "CORE-SW1 (192.0.2.10)" }).count()) === 1 && /Crawl/.test(await log.textContent()));
+check("a deleted credential is still named in the log", (await log.locator("td", { hasText: "Retired SNMP (deleted)" }).count()) === 1);
+check("and it says the log stays on this machine", /never sent anywhere/.test(await log.textContent()));
+await log.locator("select").selectOption("cred-ssh");
+await page.waitForTimeout(300);
+check("one credential's use can be picked out", (await calls("list_credential_use")).at(-1)?.args.credentialId === "cred-ssh");
 
 await browser.close();
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");

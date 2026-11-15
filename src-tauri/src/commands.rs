@@ -46,10 +46,62 @@ pub fn open_project(state: &AppState) -> Option<String> {
     state.open_project.lock().ok().and_then(|g| g.clone()).filter(|p| !p.is_empty())
 }
 
+/// Refuses a project that is not the one the window has open.
+///
+/// Every command that reads or writes one project's data — its events, its
+/// crawl and collection runs, its backups, its settings — is handed the
+/// project by the page. The page is ours, but a run that started in one
+/// project can finish after another is opened, and its follow-up call then
+/// names the first project from inside the second. This is where that stops:
+/// while a project is open, only that project's data is reachable.
+///
+/// With none open — the start screen, which lists the projects themselves —
+/// nothing is refused here; saved logins and host keys have their own,
+/// stricter rule and are not reachable from there at all.
+pub fn not_another_project(state: &AppState, project_id: &str) -> CmdResult<()> {
+    match open_project(state) {
+        Some(open) if open != project_id.trim() => Err("That belongs to a project other than the one that is open.".into()),
+        _ => Ok(()),
+    }
+}
+
+/// Counts every change of the open project. A job notes it when it starts.
+static PROJECT_EPOCH: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// The count now, for a job to keep.
+pub fn project_epoch() -> u64 {
+    PROJECT_EPOCH.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+/// Tells the page about a job's progress or result — unless the window has
+/// moved to another project since the job began (`epoch`). A crawl, a
+/// collection or a backup started in one project names that customer's
+/// devices in everything it reports; once the project is closed there is
+/// nobody on the page those reports are for, and the next project must not
+/// be shown them.
+pub fn emit_in<S: serde::Serialize + Clone>(app: &tauri::AppHandle, epoch: u64, event: &str, payload: S) {
+    use tauri::Emitter;
+    if project_epoch() == epoch {
+        let _ = app.emit(event, payload);
+    }
+}
+
 /// The page says which project is open, or that none is.
+///
+/// A change of project ends every job still running — a crawl, a
+/// collection, a backup, a sweep: each belongs to the project it was started
+/// in, and from here on reports to nobody.
 #[tauri::command(async)]
 pub fn set_open_project(state: State<'_, AppState>, project_id: Option<String>) -> CmdResult<()> {
-    *state.open_project.lock().map_err(db_err)? = project_id.filter(|p| !p.trim().is_empty());
+    let next = project_id.filter(|p| !p.trim().is_empty());
+    let mut open = state.open_project.lock().map_err(db_err)?;
+    if *open != next {
+        PROJECT_EPOCH.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        for job in state.jobs.list() {
+            state.jobs.cancel_id(job.id);
+        }
+    }
+    *open = next;
     Ok(())
 }
 
@@ -166,7 +218,25 @@ pub fn load_project(state: State<'_, AppState>, id: String) -> CmdResult<Option<
 #[tauri::command(async)]
 pub fn delete_project(state: State<'_, AppState>, id: String) -> CmdResult<()> {
     let conn = state.db.lock().map_err(db_err)?;
-    db::delete_project(&conn, &id).map_err(db_err)
+    // The diagnostic folders its collections kept, from when those were
+    // written into one folder for the machine.
+    let kept: Vec<String> = crate::collection_db::list_runs(&conn, &id).map(|runs| runs.into_iter().filter_map(|r| r.diagnostic_dir).collect()).unwrap_or_default();
+    db::delete_project(&conn, &id).map_err(db_err)?;
+    drop(conn);
+    // Its files go with it: a deleted project leaves no customer's device
+    // output behind. Only folders under the app's own data folder are
+    // removed — never a path taken on trust from a row.
+    let data = db::data_dir();
+    for dir in kept {
+        let dir = std::path::PathBuf::from(dir);
+        if dir.starts_with(data.join("diagnostics")) || dir.starts_with(data.join("projects")) {
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+    }
+    if !id.trim().is_empty() {
+        let _ = std::fs::remove_dir_all(db::project_dir(&id));
+    }
+    Ok(())
 }
 
 #[tauri::command(async)]
@@ -324,6 +394,7 @@ pub async fn start_validation(
     operator: String,
     probes: Vec<ProbeConfig>,
 ) -> CmdResult<SessionInfo> {
+    not_another_project(&state, &project_id)?;
     state.limiter.allow(crate::ratelimit::Job::Validation)?;
     // Switching projects always stops the prior session first.
     stop_internal(&state).await?;
@@ -431,6 +502,7 @@ pub fn list_events(
     project_id: String,
     limit: Option<i64>,
 ) -> CmdResult<Vec<EventRow>> {
+    crate::commands::not_another_project(&state, &project_id)?;
     let conn = state.db.lock().map_err(db_err)?;
     db::list_events(&conn, &project_id, limit.unwrap_or(2000)).map_err(db_err)
 }
@@ -439,6 +511,7 @@ pub fn list_events(
 /// engine only knows ids.
 #[tauri::command(async)]
 pub fn record_event(state: State<'_, AppState>, event: EventRow) -> CmdResult<()> {
+    crate::commands::not_another_project(&state, &event.project_id)?;
     let conn = state.db.lock().map_err(db_err)?;
     db::insert_event(&conn, &event).map_err(db_err)?;
     // The table is capped per project, the way samples are per probe.
@@ -486,6 +559,7 @@ pub fn pump_events(app: AppHandle, mut rx: tokio::sync::mpsc::UnboundedReceiver<
 /// A project's validation sessions, newest first.
 #[tauri::command(async)]
 pub fn list_sessions(state: State<'_, AppState>, project_id: String) -> CmdResult<Vec<db::SessionRow>> {
+    crate::commands::not_another_project(&state, &project_id)?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::list_sessions(&conn, &project_id).map_err(|e| e.to_string())
 }
@@ -493,6 +567,13 @@ pub fn list_sessions(state: State<'_, AppState>, project_id: String) -> CmdResul
 /// What each probe did in one session.
 #[tauri::command(async)]
 pub fn session_summary(state: State<'_, AppState>, session_id: String) -> CmdResult<Vec<db::ProbeSummary>> {
+    {
+        let conn = state.db.lock().map_err(db_err)?;
+        let owner: Option<String> = conn.query_row("SELECT project_id FROM validation_sessions WHERE id = ?1", [&session_id], |r| r.get(0)).ok();
+        if let Some(owner) = owner {
+            not_another_project(&state, &owner)?;
+        }
+    }
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::session_summary(&conn, &session_id).map_err(|e| e.to_string())
 }
@@ -502,12 +583,14 @@ pub fn session_summary(state: State<'_, AppState>, session_id: String) -> CmdRes
 /// no command to save one — see `discovery::start_crawl`.
 #[tauri::command(async)]
 pub fn list_crawl_runs(state: State<'_, AppState>, project_id: String) -> CmdResult<Vec<db::CrawlRunRow>> {
+    crate::commands::not_another_project(&state, &project_id)?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::list_crawl_runs(&conn, &project_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
 pub fn crawl_run_result(state: State<'_, AppState>, id: String, project_id: String) -> CmdResult<serde_json::Value> {
+    crate::commands::not_another_project(&state, &project_id)?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::crawl_run_result(&conn, &id, &project_id).map_err(|e| e.to_string())?.ok_or_else(|| "That crawl is no longer kept.".into())
 }
@@ -515,6 +598,7 @@ pub fn crawl_run_result(state: State<'_, AppState>, id: String, project_id: Stri
 /// A probe's recorded results since `since_ms`, oldest first.
 #[tauri::command(async)]
 pub fn probe_history(state: State<'_, AppState>, probe_id: String, project_id: String, since_ms: i64, limit: Option<i64>) -> CmdResult<Vec<db::SampleRow>> {
+    crate::commands::not_another_project(&state, &project_id)?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::samples_for(&conn, &probe_id, &project_id, since_ms, limit.unwrap_or(2_000).clamp(1, 20_000)).map_err(|e| e.to_string())
 }
@@ -911,6 +995,7 @@ pub fn get_settings(
     state: State<'_, AppState>,
     project_id: Option<String>,
 ) -> CmdResult<std::collections::HashMap<String, String>> {
+    crate::commands::not_another_project(&state, project_id.as_deref().unwrap_or(""))?;
     let conn = state.db.lock().map_err(db_err)?;
     // This computer's preferences, then this project's on top. The
     // two key sets do not overlap — `is_project_key` decides which table a key
@@ -930,6 +1015,7 @@ pub fn set_setting(
     value: Option<String>,
     project_id: Option<String>,
 ) -> CmdResult<()> {
+    crate::commands::not_another_project(&state, project_id.as_deref().unwrap_or(""))?;
     // A fixed key list rather than an open map: this table is read on startup
     // and fed straight into the UI, and an unbounded key space invites it
     // becoming a dumping ground for things that belong in a typed column.
@@ -1071,6 +1157,7 @@ pub async fn start_sweep(
     subnets: Vec<String>,
     options: SweepOptions,
 ) -> CmdResult<u32> {
+    let epoch = crate::commands::project_epoch();
     state.limiter.allow(crate::ratelimit::Job::Sweep)?;
     // Parsed here, before anything is spawned, so a typo comes back as an
     // error on the button press rather than as a sweep that finds nothing.
@@ -1109,7 +1196,7 @@ pub async fn start_sweep(
                 SweepEvent::Progress { done, total } => progress.set("Sweeping", u64::from(*done), Some(u64::from(*total))),
                 _ => {}
             }
-            let _ = emitter.emit("corelens://sweep", &event);
+            emit_in(&emitter, epoch, "corelens://sweep", &event);
         }
     });
 
@@ -1138,6 +1225,7 @@ type LoadedRun = (String, i64, Vec<serde_json::Value>);
 
 #[tauri::command(async)]
 pub fn crawl_timeline(state: State<'_, AppState>, project_id: String, device: Option<String>) -> CmdResult<CrawlTimeline> {
+    crate::commands::not_another_project(&state, &project_id)?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     // Newest first from the database; the timeline wants oldest first.
     let mut rows = db::list_crawl_runs(&conn, &project_id).map_err(|e| e.to_string())?;

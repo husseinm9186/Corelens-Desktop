@@ -19,6 +19,7 @@
  * groups them so. Zoom with Ctrl+wheel or the buttons.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { onProjectLeft } from '../lib/projectLeft';
 
 import { saveExport, slug } from '../lib/exports';
 import { allEdges, allNodes } from '../lib/pages';
@@ -88,6 +89,8 @@ const stackColour = (index: number) => GROUP_WHEEL_DARK[index % GROUP_WHEEL_DARK
 const faceOfView = (view: View): RackFace => (view === 'rear' ? 'rear' : 'front');
 /** The rack layout Ctrl+C took, until Ctrl+V. Lives for the window, like a clipboard. */
 let layoutClip: RackLayout | null = null;
+// A copied rack is one project's equipment; it is not carried into another.
+onProjectLeft(() => { layoutClip = null; });
 
 export function RackPanel() {
   // The racks and the pages, not the whole document.

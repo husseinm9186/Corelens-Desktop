@@ -78,6 +78,20 @@ pub enum SnmpAuth {
     },
 }
 
+impl SnmpAuth {
+    /// The secret strings in this login, for a redaction list: anything
+    /// written to disk about a run has these taken out of it.
+    pub fn secrets(&self) -> Vec<String> {
+        match self {
+            SnmpAuth::V2c { community } => vec![community.clone()],
+            SnmpAuth::V3 { auth_password, privacy_password, .. } => vec![auth_password.clone(), privacy_password.clone()],
+        }
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect()
+    }
+}
+
 impl std::fmt::Debug for SnmpAuth {
     /// Community strings and passwords are credentials; a `Debug` that printed
     /// them would put them in the first error message that formatted one.

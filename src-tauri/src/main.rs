@@ -256,7 +256,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::list_projects,
             commands::set_open_project,
-            vault_commands::assign_credential,
+            vault_commands::delete_unowned_credentials,
             commands::save_project,
             commands::load_project,
             commands::delete_project,
@@ -384,7 +384,6 @@ fn main() {
             meraki::meraki_health_check,
             meraki::meraki_discover,
             vault_commands::list_credentials,
-            vault_commands::reveal_credential,
             vault_commands::export_vault,
             vault_commands::import_vault,
             vault_commands::delete_credential,

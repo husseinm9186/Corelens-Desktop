@@ -80,6 +80,8 @@ await page.addInitScript(({ p, o }) => {
   // A vault that behaves like the real one: locked until made, and only then
   // does it list anything.
   const vault = { exists: false, unlocked: false, kept: false, creds: [] };
+  // A login is one project's, as the backend keeps it.
+  const mine = () => vault.creds.filter((c) => c.project === (vault.open ?? null) && vault.open);
   window.__TAURI_INTERNALS__ = {
     transformCallback(cb) { const id = next++; callbacks[id] = cb; return id; },
     invoke(cmd, args) {
@@ -102,24 +104,25 @@ await page.addInitScript(({ p, o }) => {
       if (cmd === "get_settings") return Promise.resolve({});
       if (cmd === "vault_status")
         return Promise.resolve({ exists: vault.exists, unlocked: vault.unlocked,
-          credentials: vault.creds.length, minimumPassphrase: 12, keptInKeychain: vault.kept });
+          credentials: mine().length, minimumPassphrase: 12, keptInKeychain: vault.kept });
+      if (cmd === "set_open_project") { vault.open = args.projectId ?? null; return Promise.resolve(null); }
       if (cmd === "create_vault") { vault.exists = true; vault.unlocked = true; return Promise.resolve(); }
       if (cmd === "unlock_vault") { vault.unlocked = true; return Promise.resolve(); }
       if (cmd === "remember_vault_key") { vault.kept = true; return Promise.resolve(); }
       if (cmd === "unlock_vault_from_keychain") return Promise.resolve(vault.kept ? "opened" : "off");
       if (cmd === "list_credentials")
-        return Promise.resolve(vault.unlocked ? vault.creds.map(({ secret, ...rest }) => rest) : []);
+        return Promise.resolve(vault.unlocked ? mine().map(({ secret, project, ...rest }) => rest) : []);
       if (cmd === "save_credential") {
         const c = args.credential;
         window.__saved.push(JSON.stringify(c));
-        const existing = c.id && vault.creds.find((x) => x.id === c.id);
+        const existing = c.id && mine().find((x) => x.id === c.id);
         if (existing) {
           Object.assign(existing, { label: c.label, username: c.username, secret: c.secret, detail: c.detail ?? "" });
           return Promise.resolve(existing.id);
         }
         const id = `cred-${vault.creds.length + 1}`;
         vault.creds.push({ id, label: c.label, kind: c.kind, username: c.username,
-          detail: c.detail ?? "", hasSecondSecret: Boolean(c.secondSecret), secret: c.secret });
+          detail: c.detail ?? "", hasSecondSecret: Boolean(c.secondSecret), secret: c.secret, project: vault.open });
         return Promise.resolve(id);
       }
       if (cmd === "ssh_test_credential") {
@@ -374,16 +377,16 @@ await settings();
 const theirs = await page.locator('[data-region="project-credentials"]').textContent();
 check("another project does not show the first one's logins",
   !/netadmin/.test(theirs ?? ""), (theirs ?? "").slice(0, 200));
-check("it says it refers to none of its own instead",
-  /refers to no saved login/.test(theirs ?? ""), (theirs ?? "").slice(0, 200));
+check("it says it has none of its own instead",
+  /0 logins saved in this project/.test(theirs ?? ""), (theirs ?? "").slice(0, 200));
 // (superseding the shut disclosure): no other project's login is
 // reachable from inside this one at all — no vault table, no reveal — and
 // the page says where the whole vault is managed.
 check("and no other project's login can be listed or revealed from here",
   (await page.locator(".cv-settings-vault").count()) === 0 &&
-  (await page.locator(".cv-tools .cv-vault-table").count()) === 0 &&
-  (await page.locator(".cv-tools .cv-eye").count()) === 0 &&
-  /managed from the start screen/.test(await page.locator('[data-region="project-credentials"]').textContent()));
+  (await page.locator(".cv-vault-table").count()) === 0 &&
+  (await page.locator(".cv-eye").count()) === 0 &&
+  /cannot be used here/.test(await page.locator('[data-region="project-credentials"]').textContent()));
 check("the SSH and SNMP boxes are empty for it, not carrying the other project's",
   !/Saved as/.test(await page.locator('.cv-cred-override[data-kind="ssh"]').textContent()));
 

@@ -12,7 +12,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-pub const SCHEMA_VERSION: i64 = 8;
+pub const SCHEMA_VERSION: i64 = 9;
 /// Bumped whenever the diagram document shape changes; the frontend migrates.
 pub const DOCUMENT_VERSION: i64 = 1;
 
@@ -282,6 +282,21 @@ fn dirs_next_local() -> Option<PathBuf> {
 /// the salt to work on offline at their leisure. Best effort: on Windows the
 /// file inherits the folder's ACL, which is that platform's answer to the same
 /// question.
+/// Where one project's own files are kept — diagnostics, debug logs, login
+/// transcripts: everything a run writes that names that customer's devices.
+/// One folder per project so that deleting the project deletes them, and so
+/// that no run's files sit beside another customer's.
+pub fn project_dir(project: &str) -> PathBuf {
+    let safe: String = project.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).collect();
+    data_dir().join("projects").join(if safe.is_empty() { "_".to_string() } else { safe })
+}
+
+/// Makes a file readable by its owner alone, where the system has such a
+/// thing. For anything that holds what a device said.
+pub fn owner_only(path: &Path) {
+    restrict(path)
+}
+
 fn restrict(path: &Path) {
     #[cfg(unix)]
     {
@@ -350,10 +365,6 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
             PRIMARY KEY (project_id, key)
         );
 
-        -- SSH host keys, remembered on first contact so a later change can be
-        -- refused. Fingerprints only: a public key fingerprint is not a secret,
-        -- and storing it here rather than in a project keeps it out of anything
-        -- that gets exported or shared.
         -- The credential vault. Nothing here is readable without the
         -- passphrase, which is not stored: `salt` and `verifier` let a key be
         -- re-derived and checked, and neither reveals anything on its own.
@@ -369,7 +380,7 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
         -- credential from a list, and encrypting them would only make the
         -- interface unusable while locked.
         CREATE TABLE IF NOT EXISTS credentials (
-            id TEXT PRIMARY KEY,
+            id TEXT NOT NULL,
             label TEXT NOT NULL,
             kind TEXT NOT NULL,
             username TEXT NOT NULL,
@@ -382,15 +393,26 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
             -- Algorithm words for SNMPv3, which are not secret.
             detail TEXT NOT NULL DEFAULT '',
             created_ms INTEGER NOT NULL,
-            -- The project it was saved in. NULL for one saved before
-            -- owners existed, or from the start screen.
-            project_id TEXT
+            -- The project it belongs to, and part of its key: a login is
+            -- looked up as (project, id), so no query can come back with
+            -- another project's. '' is one left over from before logins had
+            -- owners, which nothing lists or opens.
+            project_id TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (project_id, id)
         );
 
+        -- SSH host keys and pinned certificates, remembered on first contact
+        -- so a later change can be refused. Fingerprints only, and each
+        -- project's own: the addresses a project has logged in to are that
+        -- customer's, and two customers may both have a 10.1.1.1. In this
+        -- database rather than the document, so they stay out of anything
+        -- exported or shared.
         CREATE TABLE IF NOT EXISTS host_keys (
-            host_id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            host_id TEXT NOT NULL,
             fingerprint TEXT NOT NULL,
-            first_seen_ms INTEGER NOT NULL
+            first_seen_ms INTEGER NOT NULL,
+            PRIMARY KEY (project_id, host_id)
         );
 
         CREATE TABLE IF NOT EXISTS projects (
@@ -494,7 +516,9 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
             target TEXT NOT NULL,
             first_ms INTEGER NOT NULL,
             last_ms INTEGER NOT NULL,
-            uses INTEGER NOT NULL DEFAULT 1
+            uses INTEGER NOT NULL DEFAULT 1,
+            -- The project the login was used in; the log is read per project.
+            project_id TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS idx_credential_use ON credential_use(credential_id, last_ms DESC);
 
@@ -525,7 +549,7 @@ type Migration = (i64, fn(&Connection) -> rusqlite::Result<()>);
 /// Every migration ever written, oldest first. Adding a column is a new entry
 /// here and a bump of `SCHEMA_VERSION`, never an edit to an old one — a
 /// database in the field may be at any version in this list.
-const MIGRATIONS: &[Migration] = &[(2, split_settings_per_project), (3, crawl_runs_written_as_they_go), (4, projects_in_folders), (5, credentials_have_owners), (6, crate::collection_db::discovery_tables), (7, crate::collection_db::shadow_columns), (8, crate::collection_db::topology_tables)];
+const MIGRATIONS: &[Migration] = &[(2, split_settings_per_project), (3, crawl_runs_written_as_they_go), (4, projects_in_folders), (5, credentials_have_owners), (6, crate::collection_db::discovery_tables), (7, crate::collection_db::shadow_columns), (8, crate::collection_db::topology_tables), (9, logins_and_host_keys_per_project)];
 
 /// The steps that take a database from its version to
 /// `SCHEMA_VERSION`, in one transaction with the version bump last.
@@ -647,6 +671,147 @@ fn credentials_have_owners(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+fn columns_of(conn: &Connection, table: &str) -> rusqlite::Result<Vec<(String, i64)>> {
+    conn.prepare(&format!("PRAGMA table_info({table})"))?
+        .query_map([], |r| Ok((r.get::<_, String>(1)?, r.get::<_, i64>(5)?)))?
+        .collect()
+}
+
+/// Schema 9: a saved login, a remembered host key and a line of the use log
+/// each belong to exactly one project.
+///
+/// Before this a login had an owner but could also be used by any project
+/// whose diagram named it, the start screen listed every one, and host keys
+/// were one list for the machine. Now the project is part of the key.
+///
+/// What an upgrade keeps, so that nothing a project could do yesterday stops
+/// working today:
+/// - a login stays with the project that owns it;
+/// - every other project whose document or settings name it gets a copy of
+///   its own (the same sealed bytes — the vault key is the machine's);
+/// - a login with no living owner that no project names is kept under no
+///   project, where nothing lists or opens it; the start screen says how
+///   many there are and can delete them;
+/// - a host key goes to each project whose document, settings or crawl
+///   results name that address, and to no other. One that no project names
+///   is dropped: the next connection to it is first contact.
+fn logins_and_host_keys_per_project(conn: &Connection) -> rusqlite::Result<()> {
+    let projects: Vec<String> = conn
+        .prepare("SELECT id FROM projects")?
+        .query_map([], |r| r.get::<_, String>(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    let names = |project: &str, needle: &str| -> rusqlite::Result<bool> {
+        if needle.is_empty() {
+            return Ok(false);
+        }
+        let in_document = conn
+            .query_row("SELECT 1 FROM projects WHERE id = ?1 AND instr(document, ?2) > 0", params![project, needle], |_| Ok(()))
+            .optional()?
+            .is_some();
+        if in_document {
+            return Ok(true);
+        }
+        let in_settings = conn
+            .query_row("SELECT 1 FROM project_settings WHERE project_id = ?1 AND instr(value, ?2) > 0 LIMIT 1", params![project, needle], |_| Ok(()))
+            .optional()?
+            .is_some();
+        if in_settings {
+            return Ok(true);
+        }
+        Ok(conn
+            .query_row(
+                "SELECT 1 FROM crawl_runs r LEFT JOIN crawl_run_devices d ON d.run_id = r.id
+                  WHERE r.project_id = ?1 AND (instr(r.result, ?2) > 0 OR instr(d.device, ?2) > 0) LIMIT 1",
+                params![project, needle],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some())
+    };
+
+    // ---- logins
+    let keyed_by_project = columns_of(conn, "credentials")?.iter().any(|(name, pk)| name == "project_id" && *pk > 0);
+    if !keyed_by_project {
+        conn.execute_batch(
+            "CREATE TABLE credentials_per_project (
+                id TEXT NOT NULL, label TEXT NOT NULL, kind TEXT NOT NULL, username TEXT NOT NULL,
+                secret_nonce BLOB NOT NULL, secret_cipher BLOB NOT NULL, extra_nonce BLOB, extra_cipher BLOB,
+                detail TEXT NOT NULL DEFAULT '', created_ms INTEGER NOT NULL,
+                project_id TEXT NOT NULL DEFAULT '', PRIMARY KEY (project_id, id));",
+        )?;
+        let copy = "INSERT OR IGNORE INTO credentials_per_project
+                      (id, label, kind, username, secret_nonce, secret_cipher, extra_nonce, extra_cipher, detail, created_ms, project_id)
+                    SELECT id, label, kind, username, secret_nonce, secret_cipher, extra_nonce, extra_cipher, detail, created_ms, ?2
+                      FROM credentials WHERE id = ?1";
+        let logins: Vec<(String, Option<String>)> = conn
+            .prepare("SELECT id, project_id FROM credentials")?
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+            .collect::<rusqlite::Result<_>>()?;
+        for (id, owner) in logins {
+            let owner = owner.filter(|o| projects.iter().any(|p| p == o));
+            let mut placed = false;
+            for project in &projects {
+                if owner.as_deref() == Some(project) || names(project, &id)? {
+                    conn.execute(copy, params![id, project])?;
+                    placed = true;
+                }
+            }
+            if !placed {
+                conn.execute(copy, params![id, ""])?;
+            }
+        }
+        conn.execute_batch("DROP TABLE credentials; ALTER TABLE credentials_per_project RENAME TO credentials;")?;
+    }
+
+    // ---- the use log
+    if !columns_of(conn, "credential_use")?.iter().any(|(name, _)| name == "project_id") {
+        conn.execute("ALTER TABLE credential_use ADD COLUMN project_id TEXT NOT NULL DEFAULT ''", [])?;
+    }
+    // A line goes to the project the login is in when that is one project;
+    // a line whose project cannot be told names a customer's devices to
+    // nobody in particular, and is removed.
+    conn.execute(
+        "UPDATE credential_use SET project_id = (SELECT c.project_id FROM credentials c WHERE c.id = credential_use.credential_id)
+          WHERE project_id = '' AND (SELECT count(*) FROM credentials c WHERE c.id = credential_use.credential_id AND c.project_id <> '') = 1",
+        [],
+    )?;
+    conn.execute("DELETE FROM credential_use WHERE project_id = ''", [])?;
+
+    // ---- host keys
+    if !columns_of(conn, "host_keys")?.iter().any(|(name, _)| name == "project_id") {
+        conn.execute_batch(
+            "CREATE TABLE host_keys_per_project (
+                project_id TEXT NOT NULL, host_id TEXT NOT NULL, fingerprint TEXT NOT NULL,
+                first_seen_ms INTEGER NOT NULL, PRIMARY KEY (project_id, host_id));",
+        )?;
+        let keys: Vec<(String, String, i64)> = conn
+            .prepare("SELECT host_id, fingerprint, first_seen_ms FROM host_keys")?
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+            .collect::<rusqlite::Result<_>>()?;
+        for (host_id, fingerprint, first_seen) in keys {
+            // "address:port", or "tls:address" for a pinned certificate. The
+            // address is looked for between quotes, as JSON writes it, so
+            // 10.1.1.1 is not found inside 10.1.1.10.
+            let address = host_id.strip_prefix("tls:").unwrap_or(&host_id);
+            let address = match address.rsplit_once(':') {
+                Some((host, port)) if port.parse::<u16>().is_ok() => host,
+                _ => address,
+            };
+            let quoted = format!("\"{address}\"");
+            for project in &projects {
+                if names(project, &quoted)? {
+                    conn.execute(
+                        "INSERT OR IGNORE INTO host_keys_per_project (project_id, host_id, fingerprint, first_seen_ms) VALUES (?1,?2,?3,?4)",
+                        params![project, host_id, fingerprint, first_seen],
+                    )?;
+                }
+            }
+        }
+        conn.execute_batch("DROP TABLE host_keys; ALTER TABLE host_keys_per_project RENAME TO host_keys;")?;
+    }
+    Ok(())
+}
+
 pub fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -740,8 +905,26 @@ pub fn load_project(conn: &Connection, id: &str) -> rusqlite::Result<Option<Proj
 /// its history behind would leave exactly the details someone deletes a
 /// project to be rid of. `deleting_a_project_takes_its_history_with_it` pins
 /// it, because a dropped pragma would break it silently.
+///
+/// Its saved logins, its remembered host keys and its lines of the use log go
+/// as well. Those tables have no foreign key — a login's project is part of
+/// its key — so they are removed here by name, and
+/// `deleting_a_project_takes_its_logins_and_host_keys` pins it.
 pub fn delete_project(conn: &Connection, id: &str) -> rusqlite::Result<()> {
+    // Samples hang off a session with no key of their own to cascade on.
+    conn.execute("DELETE FROM probe_samples WHERE session_id IN (SELECT id FROM validation_sessions WHERE project_id = ?1)", params![id])?;
     conn.execute("DELETE FROM projects WHERE id = ?1", params![id])?;
+    if !id.is_empty() {
+        // A collection run names its project without referring to it, so
+        // nothing cascaded: every device, command log and table a collection
+        // read — addresses, routes, firewall policy — outlived its project.
+        // The run's own cascade takes those once the run goes.
+        conn.execute("DELETE FROM collection_runs WHERE project_id = ?1", params![id])?;
+        conn.execute("DELETE FROM project_settings WHERE project_id = ?1", params![id])?;
+        conn.execute("DELETE FROM credentials WHERE project_id = ?1", params![id])?;
+        conn.execute("DELETE FROM host_keys WHERE project_id = ?1", params![id])?;
+        conn.execute("DELETE FROM credential_use WHERE project_id = ?1", params![id])?;
+    }
     Ok(())
 }
 
@@ -766,6 +949,10 @@ pub fn purge_orphans(conn: &Connection) -> rusqlite::Result<usize> {
         [],
     )?;
     removed += tx.execute("DELETE FROM crawl_runs WHERE project_id NOT IN (SELECT id FROM projects)", [])?;
+    // What deleting a project used to leave: its collection runs with every
+    // table under them, and its settings.
+    removed += tx.execute("DELETE FROM collection_runs WHERE project_id NOT IN (SELECT id FROM projects)", [])?;
+    removed += tx.execute("DELETE FROM project_settings WHERE project_id NOT IN (SELECT id FROM projects)", [])?;
     tx.commit()?;
     Ok(removed)
 }
@@ -1208,15 +1395,15 @@ pub const CREDENTIAL_USE_ROLLUP_MS: i64 = 60 * 60 * 1000;
 /// How many lines the log keeps.
 pub const CREDENTIAL_USE_KEPT: i64 = 20_000;
 
-pub fn record_credential_use(conn: &Connection, credential_id: &str, purpose: &str, target: &str, now: i64) -> rusqlite::Result<()> {
+pub fn record_credential_use(conn: &Connection, project: &str, credential_id: &str, purpose: &str, target: &str, now: i64) -> rusqlite::Result<()> {
     let label: String = conn
-        .query_row("SELECT label FROM credentials WHERE id = ?1", params![credential_id], |r| r.get(0))
+        .query_row("SELECT label FROM credentials WHERE project_id = ?1 AND id = ?2", params![project, credential_id], |r| r.get(0))
         .optional()?
         .unwrap_or_default();
     let recent: Option<i64> = conn
         .query_row(
-            "SELECT id FROM credential_use WHERE credential_id = ?1 AND purpose = ?2 AND target = ?3 AND last_ms > ?4 ORDER BY last_ms DESC LIMIT 1",
-            params![credential_id, purpose, target, now - CREDENTIAL_USE_ROLLUP_MS],
+            "SELECT id FROM credential_use WHERE project_id = ?5 AND credential_id = ?1 AND purpose = ?2 AND target = ?3 AND last_ms > ?4 ORDER BY last_ms DESC LIMIT 1",
+            params![credential_id, purpose, target, now - CREDENTIAL_USE_ROLLUP_MS, project],
             |r| r.get(0),
         )
         .optional()?;
@@ -1226,32 +1413,34 @@ pub fn record_credential_use(conn: &Connection, credential_id: &str, purpose: &s
         }
         None => {
             conn.execute(
-                "INSERT INTO credential_use (credential_id, label, purpose, target, first_ms, last_ms) VALUES (?1,?2,?3,?4,?5,?5)",
-                params![credential_id, label, purpose, target, now],
+                "INSERT INTO credential_use (credential_id, label, purpose, target, first_ms, last_ms, project_id) VALUES (?1,?2,?3,?4,?5,?5,?6)",
+                params![credential_id, label, purpose, target, now, project],
             )?;
+            // Each project keeps its own most recent lines, so a busy
+            // project cannot push a quiet one's history out.
             conn.execute(
-                "DELETE FROM credential_use WHERE id NOT IN (SELECT id FROM credential_use ORDER BY last_ms DESC LIMIT ?1)",
-                params![CREDENTIAL_USE_KEPT],
+                "DELETE FROM credential_use WHERE project_id = ?2 AND id NOT IN (SELECT id FROM credential_use WHERE project_id = ?2 ORDER BY last_ms DESC LIMIT ?1)",
+                params![CREDENTIAL_USE_KEPT, project],
             )?;
         }
     }
     Ok(())
 }
 
-/// The log, newest first; one credential's, or every one's.
-pub fn list_credential_use(conn: &Connection, credential_id: Option<&str>, limit: i64) -> rusqlite::Result<Vec<CredentialUseRow>> {
+/// One project's log, newest first; one credential's, or every one of its.
+pub fn list_credential_use(conn: &Connection, project: &str, credential_id: Option<&str>, limit: i64) -> rusqlite::Result<Vec<CredentialUseRow>> {
     let mut stmt = conn.prepare(
         "SELECT credential_id, label, purpose, target, first_ms, last_ms, uses FROM credential_use
-          WHERE ?1 IS NULL OR credential_id = ?1 ORDER BY last_ms DESC LIMIT ?2",
+          WHERE project_id = ?3 AND (?1 IS NULL OR credential_id = ?1) ORDER BY last_ms DESC LIMIT ?2",
     )?;
-    let rows = stmt.query_map(params![credential_id, limit], |r| {
+    let rows = stmt.query_map(params![credential_id, limit, project], |r| {
         Ok(CredentialUseRow { credential_id: r.get(0)?, label: r.get(1)?, purpose: r.get(2)?, target: r.get(3)?, first_ms: r.get(4)?, last_ms: r.get(5)?, uses: r.get(6)? })
     })?;
     rows.collect()
 }
 
-pub fn clear_credential_use(conn: &Connection) -> rusqlite::Result<usize> {
-    conn.execute("DELETE FROM credential_use", [])
+pub fn clear_credential_use(conn: &Connection, project: &str) -> rusqlite::Result<usize> {
+    conn.execute("DELETE FROM credential_use WHERE project_id = ?1", params![project])
 }
 
 /// One probe result, for the history sparklines.
@@ -1498,10 +1687,17 @@ pub fn set_setting(conn: &Connection, key: &str, value: Option<&str>) -> rusqlit
 
 // ---------------------------------------------------------------- host keys
 
-/// Every remembered host key, for rebuilding the in-memory store on startup.
-pub fn all_host_keys(conn: &Connection) -> rusqlite::Result<Vec<(String, String)>> {
-    let mut stmt = conn.prepare("SELECT host_id, fingerprint FROM host_keys")?;
-    let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+/// Whether a project of this id is on the machine.
+pub fn project_exists(conn: &Connection, id: &str) -> rusqlite::Result<bool> {
+    conn.query_row("SELECT 1 FROM projects WHERE id = ?1", params![id], |_| Ok(())).optional().map(|r| r.is_some())
+}
+
+/// One project's remembered host keys, for building the store a job checks
+/// against. Another project's are not in it, so they can neither vouch for a
+/// device here nor refuse one.
+pub fn all_host_keys(conn: &Connection, project: &str) -> rusqlite::Result<Vec<(String, String)>> {
+    let mut stmt = conn.prepare("SELECT host_id, fingerprint FROM host_keys WHERE project_id = ?1")?;
+    let rows = stmt.query_map(params![project], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
     rows.collect()
 }
 
@@ -1510,27 +1706,28 @@ pub fn all_host_keys(conn: &Connection) -> rusqlite::Result<Vec<(String, String)
 /// quietly replacing it here would defeat the whole mechanism.
 pub fn remember_host_key(
     conn: &Connection,
+    project: &str,
     host_id: &str,
     fingerprint: &str,
     now_ms: i64,
 ) -> rusqlite::Result<()> {
     conn.execute(
-        "INSERT INTO host_keys (host_id, fingerprint, first_seen_ms) VALUES (?1, ?2, ?3)
-         ON CONFLICT(host_id) DO NOTHING",
-        params![host_id, fingerprint, now_ms],
+        "INSERT INTO host_keys (project_id, host_id, fingerprint, first_seen_ms) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(project_id, host_id) DO NOTHING",
+        params![project, host_id, fingerprint, now_ms],
     )?;
     Ok(())
 }
 
-/// Forgets everything, so every device is first contact again. The way back
-/// after a switch is genuinely replaced.
-pub fn clear_host_keys(conn: &Connection) -> rusqlite::Result<usize> {
-    conn.execute("DELETE FROM host_keys", [])
+/// Forgets every key of one project, so each of its devices is first contact
+/// again. The way back after a switch is genuinely replaced.
+pub fn clear_host_keys(conn: &Connection, project: &str) -> rusqlite::Result<usize> {
+    conn.execute("DELETE FROM host_keys WHERE project_id = ?1", params![project])
 }
 
-/// Forgets one device.
-pub fn forget_host_key(conn: &Connection, host_id: &str) -> rusqlite::Result<usize> {
-    conn.execute("DELETE FROM host_keys WHERE host_id = ?1", params![host_id])
+/// Forgets one device, in one project.
+pub fn forget_host_key(conn: &Connection, project: &str, host_id: &str) -> rusqlite::Result<usize> {
+    conn.execute("DELETE FROM host_keys WHERE project_id = ?1 AND host_id = ?2", params![project, host_id])
 }
 
 // ------------------------------------------------------------------- vault
@@ -1580,12 +1777,15 @@ pub fn destroy_vault(conn: &Connection) -> rusqlite::Result<usize> {
     Ok(removed)
 }
 
-pub fn save_credential(conn: &Connection, c: &StoredCredential, now_ms: i64) -> rusqlite::Result<()> {
+/// Saves a login into one project, replacing that project's login of the same
+/// id. Another project's login with that id is a different row and is not
+/// touched.
+pub fn save_credential(conn: &Connection, project: &str, c: &StoredCredential, now_ms: i64) -> rusqlite::Result<()> {
     conn.execute(
         "INSERT INTO credentials
-           (id, label, kind, username, secret_nonce, secret_cipher, extra_nonce, extra_cipher, detail, created_ms)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
-         ON CONFLICT(id) DO UPDATE SET
+           (id, label, kind, username, secret_nonce, secret_cipher, extra_nonce, extra_cipher, detail, created_ms, project_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+         ON CONFLICT(project_id, id) DO UPDATE SET
            label = excluded.label, kind = excluded.kind, username = excluded.username,
            secret_nonce = excluded.secret_nonce, secret_cipher = excluded.secret_cipher,
            extra_nonce = excluded.extra_nonce, extra_cipher = excluded.extra_cipher,
@@ -1594,7 +1794,7 @@ pub fn save_credential(conn: &Connection, c: &StoredCredential, now_ms: i64) -> 
             c.id, c.label, c.kind, c.username,
             c.secret.0, c.secret.1,
             c.extra.as_ref().map(|e| &e.0), c.extra.as_ref().map(|e| &e.1),
-            c.detail, now_ms
+            c.detail, now_ms, project
         ],
     )?;
     Ok(())
@@ -1608,21 +1808,23 @@ pub fn save_credential(conn: &Connection, c: &StoredCredential, now_ms: i64) -> 
 /// except its secrets.
 pub type CredentialListing = (String, String, String, String, String);
 
-pub fn list_credentials(conn: &Connection) -> rusqlite::Result<Vec<CredentialListing>> {
+pub fn list_credentials(conn: &Connection, project: &str) -> rusqlite::Result<Vec<CredentialListing>> {
     let mut stmt = conn.prepare(
-        "SELECT id, label, kind, username, detail FROM credentials ORDER BY label",
+        "SELECT id, label, kind, username, detail FROM credentials WHERE project_id = ?1 ORDER BY label",
     )?;
-    let rows = stmt.query_map([], |r| {
+    let rows = stmt.query_map(params![project], |r| {
         Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
     })?;
     rows.collect()
 }
 
-pub fn credential(conn: &Connection, id: &str) -> rusqlite::Result<Option<StoredCredential>> {
+/// One project's login. There is no way to ask for a login without saying
+/// whose: that is what keeps a project out of another's.
+pub fn credential(conn: &Connection, project: &str, id: &str) -> rusqlite::Result<Option<StoredCredential>> {
     conn.query_row(
         "SELECT id, label, kind, username, secret_nonce, secret_cipher, extra_nonce, extra_cipher, detail
-           FROM credentials WHERE id = ?1",
-        params![id],
+           FROM credentials WHERE project_id = ?2 AND id = ?1",
+        params![id, project],
         |r| {
             let extra_nonce: Option<Vec<u8>> = r.get(6)?;
             let extra_cipher: Option<Vec<u8>> = r.get(7)?;
@@ -1640,94 +1842,47 @@ pub fn credential(conn: &Connection, id: &str) -> rusqlite::Result<Option<Stored
     .optional()
 }
 
-pub fn delete_credential(conn: &Connection, id: &str) -> rusqlite::Result<usize> {
-    conn.execute("DELETE FROM credentials WHERE id = ?1", params![id])
+pub fn delete_credential(conn: &Connection, project: &str, id: &str) -> rusqlite::Result<usize> {
+    conn.execute("DELETE FROM credentials WHERE project_id = ?1 AND id = ?2", params![project, id])
 }
 
 // --------------------------------------------------------- owners
 
-/// Sets the project a credential belongs to — at save, or when the start
-/// screen hands an unowned one to a project.
-pub fn set_credential_owner(conn: &Connection, id: &str, project: Option<&str>) -> rusqlite::Result<usize> {
-    conn.execute("UPDATE credentials SET project_id = ?2 WHERE id = ?1", params![id, project])
-}
+/// The project that owns no project's logins: the ones left from before a
+/// login had an owner, or whose project was deleted before deleting took
+/// them along. Nothing lists or opens these.
+pub const NO_PROJECT: &str = "";
 
-/// The project a credential belongs to: `None` when there is no such
-/// credential, `Some(None)` when it has no owner.
-pub fn credential_owner(conn: &Connection, id: &str) -> rusqlite::Result<Option<Option<String>>> {
-    conn.query_row("SELECT project_id FROM credentials WHERE id = ?1", params![id], |r| r.get(0)).optional()
-}
-
-/// Whether a project's diagram names a credential — a device's own login, the
-/// project's defaults, a rule. Read from the stored document itself, which is
-/// where every such reference lives.
-pub fn project_refers_to(conn: &Connection, project: &str, credential: &str) -> rusqlite::Result<bool> {
-    if credential.is_empty() {
-        return Ok(false);
+/// Whether the open project has this login. With no project open nothing
+/// may be used: a login is one project's, and the start screen is not one.
+pub fn may_use_credential(conn: &Connection, open: Option<&str>, id: &str) -> Result<String, String> {
+    let project = open.filter(|p| !p.is_empty()).ok_or("Open a project first: a saved login belongs to one project.")?;
+    let has = conn
+        .query_row("SELECT 1 FROM credentials WHERE project_id = ?1 AND id = ?2", params![project, id], |_| Ok(()))
+        .optional()
+        .map_err(|e| e.to_string())?
+        .is_some();
+    if has {
+        Ok(project.to_string())
+    } else {
+        Err("This project has no such saved login.".into())
     }
-    conn.query_row(
-        "SELECT 1 FROM projects WHERE id = ?1 AND instr(document, ?2) > 0",
-        params![project, credential],
-        |_| Ok(()),
-    )
-    .optional()
-    .map(|r| r.is_some())
 }
 
-/// Whether the open project may list or open a credential. With no
-/// project open — the start screen — everything may, because that is where
-/// the vault is managed. Inside a project: its own, and any its diagram
-/// already refers to.
-pub fn may_use_credential(conn: &Connection, open: Option<&str>, id: &str) -> Result<(), String> {
-    let Some(project) = open.filter(|p| !p.is_empty()) else { return Ok(()) };
-    let owner = credential_owner(conn, id).map_err(|e| e.to_string())?.ok_or("That saved credential no longer exists.")?;
-    if owner.as_deref() == Some(project) || project_refers_to(conn, project, id).map_err(|e| e.to_string())? {
-        return Ok(());
-    }
-    Err("That saved login belongs to another project.".into())
+/// How many logins belong to no project.
+pub fn unowned_credentials(conn: &Connection) -> rusqlite::Result<usize> {
+    conn.query_row("SELECT count(*) FROM credentials WHERE project_id = ?1", params![NO_PROJECT], |r| r.get::<_, i64>(0)).map(|n| n as usize)
 }
 
-/// One credential as a listing shows it, with who owns it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OwnedListing {
-    pub id: String,
-    pub label: String,
-    pub kind: String,
-    pub username: String,
-    pub detail: String,
-    pub owner_id: Option<String>,
-    pub owner_name: Option<String>,
+/// Removes the logins that belong to no project.
+pub fn delete_unowned_credentials(conn: &Connection) -> rusqlite::Result<usize> {
+    conn.execute("DELETE FROM credentials WHERE project_id = ?1", params![NO_PROJECT])
 }
 
-/// The credentials the open project may see (every one on the start screen),
-/// each with the project that owns it.
-pub fn list_credentials_for(conn: &Connection, open: Option<&str>) -> rusqlite::Result<Vec<OwnedListing>> {
-    let mut stmt = conn.prepare(
-        "SELECT c.id, c.label, c.kind, c.username, c.detail, c.project_id, p.name
-           FROM credentials c LEFT JOIN projects p ON p.id = c.project_id
-          ORDER BY c.label",
-    )?;
-    let all = stmt
-        .query_map([], |r| {
-            Ok(OwnedListing {
-                id: r.get(0)?,
-                label: r.get(1)?,
-                kind: r.get(2)?,
-                username: r.get(3)?,
-                detail: r.get(4)?,
-                owner_id: r.get(5)?,
-                owner_name: r.get(6)?,
-            })
-        })?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    let Some(project) = open.filter(|p| !p.is_empty()) else { return Ok(all) };
-    let mut out = Vec::with_capacity(all.len());
-    for c in all {
-        if c.owner_id.as_deref() == Some(project) || project_refers_to(conn, project, &c.id)? {
-            out.push(c);
-        }
-    }
-    Ok(out)
+/// Every saved login on the machine, whoever's — only for the count beside
+/// "discard the vault", which discards them all.
+pub fn count_credentials(conn: &Connection) -> rusqlite::Result<usize> {
+    conn.query_row("SELECT count(*) FROM credentials", [], |r| r.get::<_, i64>(0)).map(|n| n as usize)
 }
 
 #[cfg(test)]
@@ -1881,9 +2036,9 @@ mod tests {
         // from the one that reads a secret, so this path cannot carry
         // ciphertext towards the front end even by mistake.
         let conn = mem();
-        save_credential(&conn, &cred("a", "Core switches"), 1).unwrap();
+        save_credential(&conn, "p", &cred("a", "Core switches"), 1).unwrap();
 
-        let listed = list_credentials(&conn).unwrap();
+        let listed = list_credentials(&conn, "p").unwrap();
         assert_eq!(listed.len(), 1);
         let (id, label, kind, username, _detail) = &listed[0];
         assert_eq!((id.as_str(), label.as_str(), kind.as_str(), username.as_str()),
@@ -1898,18 +2053,18 @@ mod tests {
         // built on this returning `None` rather than erroring, and a whole
         // crawl used to die on the `?` that followed.
         let conn = mem();
-        save_credential(&conn, &cred("a", "Core"), 1).unwrap();
-        assert!(credential(&conn, "a").unwrap().is_some());
-        assert!(credential(&conn, "never-existed").unwrap().is_none());
-        delete_credential(&conn, "a").unwrap();
-        assert!(credential(&conn, "a").unwrap().is_none());
+        save_credential(&conn, "p", &cred("a", "Core"), 1).unwrap();
+        assert!(credential(&conn, "p", "a").unwrap().is_some());
+        assert!(credential(&conn, "p", "never-existed").unwrap().is_none());
+        delete_credential(&conn, "p", "a").unwrap();
+        assert!(credential(&conn, "p", "a").unwrap().is_none());
     }
 
     #[test]
     fn a_credential_round_trips_with_both_secrets() {
         let conn = mem();
-        save_credential(&conn, &cred("a", "Core"), 1).unwrap();
-        let got = credential(&conn, "a").unwrap().unwrap();
+        save_credential(&conn, "p", &cred("a", "Core"), 1).unwrap();
+        let got = credential(&conn, "p", "a").unwrap().unwrap();
         assert_eq!(got.secret, (vec![1, 2, 3], vec![9, 9, 9]));
         assert_eq!(got.extra, Some((vec![4, 5, 6], vec![8, 8, 8])));
     }
@@ -1920,16 +2075,16 @@ mod tests {
         let conn = mem();
         let mut c = cred("a", "Core");
         c.extra = None;
-        save_credential(&conn, &c, 1).unwrap();
-        assert_eq!(credential(&conn, "a").unwrap().unwrap().extra, None);
+        save_credential(&conn, "p", &c, 1).unwrap();
+        assert_eq!(credential(&conn, "p", "a").unwrap().unwrap().extra, None);
     }
 
     #[test]
     fn saving_the_same_id_updates_rather_than_duplicating() {
         let conn = mem();
-        save_credential(&conn, &cred("a", "Old name"), 1).unwrap();
-        save_credential(&conn, &cred("a", "New name"), 2).unwrap();
-        let listed = list_credentials(&conn).unwrap();
+        save_credential(&conn, "p", &cred("a", "Old name"), 1).unwrap();
+        save_credential(&conn, "p", &cred("a", "New name"), 2).unwrap();
+        let listed = list_credentials(&conn, "p").unwrap();
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].1, "New name");
     }
@@ -1941,12 +2096,12 @@ mod tests {
         // like it had contents.
         let conn = mem();
         create_vault(&conn, b"salt", b"verifier", 1).unwrap();
-        save_credential(&conn, &cred("a", "One"), 1).unwrap();
-        save_credential(&conn, &cred("b", "Two"), 1).unwrap();
+        save_credential(&conn, "p", &cred("a", "One"), 1).unwrap();
+        save_credential(&conn, "p", &cred("b", "Two"), 1).unwrap();
 
         assert_eq!(destroy_vault(&conn).unwrap(), 2);
         assert!(vault_header(&conn).unwrap().is_none());
-        assert!(list_credentials(&conn).unwrap().is_empty());
+        assert!(list_credentials(&conn, "p").unwrap().is_empty());
         // And a new vault can be created afterwards.
         assert!(create_vault(&conn, b"new", b"new", 2).is_ok());
     }
@@ -1954,10 +2109,10 @@ mod tests {
     #[test]
     fn one_credential_can_be_deleted_without_touching_the_rest() {
         let conn = mem();
-        save_credential(&conn, &cred("a", "One"), 1).unwrap();
-        save_credential(&conn, &cred("b", "Two"), 1).unwrap();
-        assert_eq!(delete_credential(&conn, "a").unwrap(), 1);
-        let listed = list_credentials(&conn).unwrap();
+        save_credential(&conn, "p", &cred("a", "One"), 1).unwrap();
+        save_credential(&conn, "p", &cred("b", "Two"), 1).unwrap();
+        assert_eq!(delete_credential(&conn, "p", "a").unwrap(), 1);
+        let listed = list_credentials(&conn, "p").unwrap();
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].0, "b");
     }
@@ -1965,9 +2120,9 @@ mod tests {
     #[test]
     fn host_keys_round_trip() {
         let conn = mem();
-        remember_host_key(&conn, "10.1.1.1:22", "SHA256:aaa", 1).unwrap();
-        remember_host_key(&conn, "10.1.1.2:22", "SHA256:bbb", 2).unwrap();
-        let all = all_host_keys(&conn).unwrap();
+        remember_host_key(&conn, "p", "10.1.1.1:22", "SHA256:aaa", 1).unwrap();
+        remember_host_key(&conn, "p", "10.1.1.2:22", "SHA256:bbb", 2).unwrap();
+        let all = all_host_keys(&conn, "p").unwrap();
         assert_eq!(all.len(), 2);
         assert!(all.contains(&("10.1.1.1:22".into(), "SHA256:aaa".into())));
     }
@@ -1977,9 +2132,9 @@ mod tests {
         // The case the whole mechanism exists for. If a second sighting could
         // silently replace the first, a changed key would never be detected.
         let conn = mem();
-        remember_host_key(&conn, "10.1.1.1:22", "SHA256:original", 1).unwrap();
-        remember_host_key(&conn, "10.1.1.1:22", "SHA256:different", 2).unwrap();
-        let all = all_host_keys(&conn).unwrap();
+        remember_host_key(&conn, "p", "10.1.1.1:22", "SHA256:original", 1).unwrap();
+        remember_host_key(&conn, "p", "10.1.1.1:22", "SHA256:different", 2).unwrap();
+        let all = all_host_keys(&conn, "p").unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].1, "SHA256:original", "the stored key must not move");
     }
@@ -1988,20 +2143,20 @@ mod tests {
     fn clearing_reports_how_many_were_forgotten() {
         // The count is what the confirmation message needs.
         let conn = mem();
-        remember_host_key(&conn, "a:22", "SHA256:a", 1).unwrap();
-        remember_host_key(&conn, "b:22", "SHA256:b", 1).unwrap();
-        assert_eq!(clear_host_keys(&conn).unwrap(), 2);
-        assert!(all_host_keys(&conn).unwrap().is_empty());
-        assert_eq!(clear_host_keys(&conn).unwrap(), 0, "clearing an empty store is not an error");
+        remember_host_key(&conn, "p", "a:22", "SHA256:a", 1).unwrap();
+        remember_host_key(&conn, "p", "b:22", "SHA256:b", 1).unwrap();
+        assert_eq!(clear_host_keys(&conn, "p").unwrap(), 2);
+        assert!(all_host_keys(&conn, "p").unwrap().is_empty());
+        assert_eq!(clear_host_keys(&conn, "p").unwrap(), 0, "clearing an empty store is not an error");
     }
 
     #[test]
     fn one_device_can_be_forgotten_without_touching_the_rest() {
         let conn = mem();
-        remember_host_key(&conn, "a:22", "SHA256:a", 1).unwrap();
-        remember_host_key(&conn, "b:22", "SHA256:b", 1).unwrap();
-        assert_eq!(forget_host_key(&conn, "a:22").unwrap(), 1);
-        let all = all_host_keys(&conn).unwrap();
+        remember_host_key(&conn, "p", "a:22", "SHA256:a", 1).unwrap();
+        remember_host_key(&conn, "p", "b:22", "SHA256:b", 1).unwrap();
+        assert_eq!(forget_host_key(&conn, "p", "a:22").unwrap(), 1);
+        let all = all_host_keys(&conn, "p").unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].0, "b:22");
     }
@@ -2347,53 +2502,159 @@ mod tests {
         c
     }
 
-    /// A credential saved in one project is neither listed nor
-    /// opened in another; one a project's diagram refers to is; the start
-    /// screen sees every one, with its owner.
+    /// A login is one project's: saved, listed, opened and deleted
+    /// there and nowhere else, with no project open least of all.
     #[test]
-    fn a_login_belongs_to_the_project_it_was_saved_in() {
+    fn a_login_belongs_to_one_project_and_nothing_else_sees_it() {
         let c = mem();
         upsert_project(&c, &pkg("pa", "Customer A")).unwrap();
         upsert_project(&c, &pkg("pb", "Customer B")).unwrap();
-        let cred = |id: &str, kind: &str| StoredCredential {
+        let cred = |id: &str, kind: &str, secret: u8| StoredCredential {
             id: id.into(),
             label: format!("{id} label"),
             kind: kind.into(),
             username: "reader".into(),
-            secret: (vec![1], vec![2]),
+            secret: (vec![1], vec![secret]),
             extra: None,
             detail: String::new(),
         };
-        save_credential(&c, &cred("a-ssh", "ssh"), 1).unwrap();
-        set_credential_owner(&c, "a-ssh", Some("pa")).unwrap();
-        save_credential(&c, &cred("b-key", "meraki"), 1).unwrap();
-        set_credential_owner(&c, "b-key", Some("pb")).unwrap();
-        save_credential(&c, &cred("old", "ssh"), 1).unwrap(); // from before owners
+        save_credential(&c, "pa", &cred("a-ssh", "ssh", 2), 1).unwrap();
+        save_credential(&c, "pb", &cred("b-key", "meraki", 3), 1).unwrap();
 
-        let ids = |open: Option<&str>| list_credentials_for(&c, open).unwrap().into_iter().map(|l| l.id).collect::<Vec<_>>();
-        assert_eq!(ids(Some("pa")), ["a-ssh"], "A sees only its own");
-        assert_eq!(ids(Some("pb")), ["b-key"], "B does not see A's login, nor the unowned one");
-        assert_eq!(ids(None).len(), 3, "the start screen sees every one");
-        let listed = list_credentials_for(&c, None).unwrap();
-        assert_eq!(listed.iter().find(|l| l.id == "b-key").unwrap().owner_name.as_deref(), Some("Customer B"));
+        let ids = |project: &str| list_credentials(&c, project).unwrap().into_iter().map(|l| l.0).collect::<Vec<_>>();
+        assert_eq!(ids("pa"), ["a-ssh"], "A lists only its own");
+        assert_eq!(ids("pb"), ["b-key"], "B lists only its own");
 
-        assert!(may_use_credential(&c, Some("pa"), "a-ssh").is_ok());
-        assert_eq!(may_use_credential(&c, Some("pa"), "b-key").unwrap_err(), "That saved login belongs to another project.");
-        assert!(may_use_credential(&c, Some("pa"), "old").is_err(), "unowned and not referred to: not A's");
-        assert!(may_use_credential(&c, None, "b-key").is_ok(), "the start screen manages the whole vault");
+        assert_eq!(may_use_credential(&c, Some("pa"), "a-ssh").unwrap(), "pa");
+        assert!(may_use_credential(&c, Some("pa"), "b-key").is_err(), "B's key is not A's to use");
+        assert!(credential(&c, "pa", "b-key").unwrap().is_none(), "nor can it be looked up from A");
+        assert!(may_use_credential(&c, None, "a-ssh").is_err(), "with no project open nothing may be used");
+        assert!(may_use_credential(&c, Some(""), "a-ssh").is_err());
         assert!(may_use_credential(&c, Some("pa"), "gone").is_err());
 
-        // A's diagram refers to the unowned login (saved before owners): A
-        // keeps it, B still does not see it.
+        // A's diagram naming B's login does not make it A's. This was the
+        // way round the owner, and it is closed.
         let mut refers = pkg("pa", "Customer A");
-        refers.document = serde_json::json!({ "credentialDefaults": { "ssh": "old" } });
+        refers.document = serde_json::json!({ "credentialDefaults": { "meraki": "b-key" } });
         upsert_project(&c, &refers).unwrap();
-        assert!(may_use_credential(&c, Some("pa"), "old").is_ok());
-        assert!(ids(Some("pa")).contains(&"old".to_string()));
-        assert!(!ids(Some("pb")).contains(&"old".to_string()));
-        // An autosave never changes who owns what.
-        save_credential(&c, &cred("a-ssh", "ssh"), 2).unwrap();
-        assert_eq!(credential_owner(&c, "a-ssh").unwrap(), Some(Some("pa".to_string())));
+        assert!(may_use_credential(&c, Some("pa"), "b-key").is_err());
+        assert_eq!(ids("pa"), ["a-ssh"]);
+
+        // The same id in two projects is two logins: saving or deleting one
+        // leaves the other exactly as it was.
+        save_credential(&c, "pb", &cred("a-ssh", "ssh", 7), 2).unwrap();
+        assert_eq!(credential(&c, "pa", "a-ssh").unwrap().unwrap().secret.1, vec![2]);
+        assert_eq!(credential(&c, "pb", "a-ssh").unwrap().unwrap().secret.1, vec![7]);
+        assert_eq!(delete_credential(&c, "pb", "a-ssh").unwrap(), 1);
+        assert!(credential(&c, "pa", "a-ssh").unwrap().is_some());
+        assert_eq!(delete_credential(&c, "pb", "a-ssh").unwrap(), 0, "A's cannot be deleted from B");
+    }
+
+    /// Host keys are one project's: remembered, listed and forgotten
+    /// there, and a second project with the same address starts from first
+    /// contact.
+    #[test]
+    fn a_host_key_belongs_to_one_project() {
+        let c = mem();
+        remember_host_key(&c, "pa", "10.1.1.1:22", "SHA256:of-a", 1).unwrap();
+        remember_host_key(&c, "pb", "10.1.1.1:22", "SHA256:of-b", 2).unwrap();
+        remember_host_key(&c, "pa", "10.1.1.2:22", "SHA256:a2", 3).unwrap();
+        assert_eq!(all_host_keys(&c, "pa").unwrap().len(), 2);
+        assert_eq!(all_host_keys(&c, "pb").unwrap(), [("10.1.1.1:22".to_string(), "SHA256:of-b".to_string())], "the same address at another customer is another device");
+        assert!(all_host_keys(&c, "").unwrap().is_empty() && all_host_keys(&c, "pc").unwrap().is_empty());
+        assert_eq!(forget_host_key(&c, "pb", "10.1.1.2:22").unwrap(), 0, "B cannot forget A's");
+        assert_eq!(clear_host_keys(&c, "pb").unwrap(), 1);
+        assert_eq!(all_host_keys(&c, "pa").unwrap().len(), 2, "clearing B's leaves A's");
+    }
+
+    /// Deleting a project deletes its logins, its host keys and its
+    /// lines of the use log, and nobody else's.
+    #[test]
+    fn deleting_a_project_takes_its_logins_and_host_keys() {
+        let c = mem();
+        upsert_project(&c, &pkg("pa", "Going")).unwrap();
+        upsert_project(&c, &pkg("pb", "Staying")).unwrap();
+        for p in ["pa", "pb"] {
+            save_credential(&c, p, &StoredCredential { id: "x".into(), label: "x".into(), kind: "ssh".into(), username: "u".into(), secret: (vec![1], vec![2]), extra: None, detail: String::new() }, 1).unwrap();
+            remember_host_key(&c, p, "192.0.2.1:22", "SHA256:k", 1).unwrap();
+            record_credential_use(&c, p, "x", "Backup", "192.0.2.1", 1_000).unwrap();
+        }
+        delete_project(&c, "pa").unwrap();
+        assert!(list_credentials(&c, "pa").unwrap().is_empty());
+        assert!(all_host_keys(&c, "pa").unwrap().is_empty());
+        assert!(list_credential_use(&c, "pa", None, 10).unwrap().is_empty());
+        assert_eq!(list_credentials(&c, "pb").unwrap().len(), 1);
+        assert_eq!(all_host_keys(&c, "pb").unwrap().len(), 1);
+        assert_eq!(list_credential_use(&c, "pb", None, 10).unwrap().len(), 1);
+        assert_eq!(count_credentials(&c).unwrap(), 1);
+    }
+
+    /// A database from before: every login could be seen from the
+    /// start screen, a project could use one its diagram named, and host
+    /// keys were the machine's. After the step each project has exactly what
+    /// it could use before, and nothing is anybody else's.
+    #[test]
+    fn an_older_database_is_divided_between_its_projects() {
+        let c = mem();
+        // Put the two tables back the way schema 8 had them.
+        c.execute_batch(
+            "DROP TABLE credentials; DROP TABLE host_keys; DROP TABLE credential_use;
+             CREATE TABLE credentials (id TEXT PRIMARY KEY, label TEXT NOT NULL, kind TEXT NOT NULL, username TEXT NOT NULL,
+                secret_nonce BLOB NOT NULL, secret_cipher BLOB NOT NULL, extra_nonce BLOB, extra_cipher BLOB,
+                detail TEXT NOT NULL DEFAULT '', created_ms INTEGER NOT NULL, project_id TEXT);
+             CREATE TABLE host_keys (host_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, first_seen_ms INTEGER NOT NULL);
+             CREATE TABLE credential_use (id INTEGER PRIMARY KEY AUTOINCREMENT, credential_id TEXT NOT NULL, label TEXT NOT NULL DEFAULT '',
+                purpose TEXT NOT NULL, target TEXT NOT NULL, first_ms INTEGER NOT NULL, last_ms INTEGER NOT NULL, uses INTEGER NOT NULL DEFAULT 1);",
+        )
+        .unwrap();
+        let mut a = pkg("pa", "Customer A");
+        a.document = serde_json::json!({ "nodes": [{ "address": "192.0.2.1", "credentialId": "shared-old" }] });
+        upsert_project(&c, &a).unwrap();
+        let mut b = pkg("pb", "Customer B");
+        b.document = serde_json::json!({ "nodes": [{ "address": "192.0.2.10", "credentialId": "shared-old" }, { "credentialId": "owned-by-a" }] });
+        upsert_project(&c, &b).unwrap();
+        let login = |id: &str, owner: Option<&str>| {
+            c.execute(
+                "INSERT INTO credentials (id, label, kind, username, secret_nonce, secret_cipher, created_ms, project_id) VALUES (?1, ?1, 'ssh', 'u', x'01', x'02', 1, ?2)",
+                params![id, owner],
+            )
+            .unwrap();
+        };
+        login("owned-by-a", Some("pa"));
+        login("shared-old", None);
+        login("of-a-deleted-project", Some("gone"));
+        login("nobody-names-it", None);
+        for (host, key) in [("192.0.2.1:22", "SHA256:one"), ("192.0.2.10:22", "SHA256:ten"), ("tls:192.0.2.10", "SHA256:pin"), ("198.51.100.7:22", "SHA256:nobody")] {
+            c.execute("INSERT INTO host_keys VALUES (?1, ?2, 5)", params![host, key]).unwrap();
+        }
+        for id in ["owned-by-a", "shared-old", "nobody-names-it"] {
+            c.execute("INSERT INTO credential_use (credential_id, purpose, target, first_ms, last_ms) VALUES (?1, 'Backup', '192.0.2.1', 1, 1)", params![id]).unwrap();
+        }
+
+        logins_and_host_keys_per_project(&c).unwrap();
+        logins_and_host_keys_per_project(&c).unwrap(); // and again changes nothing
+
+        let ids = |project: &str| list_credentials(&c, project).unwrap().into_iter().map(|l| l.0).collect::<Vec<_>>();
+        assert_eq!(ids("pa"), ["owned-by-a", "shared-old"], "A keeps its own and the one its diagram named");
+        assert_eq!(ids("pb"), ["owned-by-a", "shared-old"], "B keeps, as copies of its own, the two its diagram named");
+        assert_eq!(unowned_credentials(&c).unwrap(), 2, "the deleted project's and the one nobody names belong to no project");
+        assert!(list_credentials(&c, "gone").unwrap().is_empty());
+        assert_eq!(credential(&c, "pb", "shared-old").unwrap().unwrap().secret, (vec![1], vec![2]), "a copy carries the sealed bytes");
+
+        let keys = |project: &str| { let mut k: Vec<String> = all_host_keys(&c, project).unwrap().into_iter().map(|k| k.0).collect(); k.sort(); k };
+        assert_eq!(keys("pa"), ["192.0.2.1:22"], "A gets the key of the address in its diagram — and not 192.0.2.10's, which only begins the same");
+        assert_eq!(keys("pb"), ["192.0.2.10:22", "tls:192.0.2.10"]);
+        let all: i64 = c.query_row("SELECT count(*) FROM host_keys", [], |r| r.get(0)).unwrap();
+        assert_eq!(all, 3, "a key no project names is dropped");
+
+        // The log: a line whose login is now in exactly one project goes
+        // there; one that could be either's, or nobody's, is removed.
+        let uses: Vec<(String, String)> = c.prepare("SELECT credential_id, project_id FROM credential_use").unwrap().query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap().map(|r| r.unwrap()).collect();
+        assert!(uses.iter().all(|(_, p)| !p.is_empty()), "{uses:?}");
+        assert!(!uses.iter().any(|(id, _)| id == "nobody-names-it"));
+
+        assert_eq!(delete_unowned_credentials(&c).unwrap(), 2);
+        assert_eq!(ids("pa").len(), 2);
     }
 
     #[test]
@@ -3039,19 +3300,115 @@ mod credential_use_log {
     fn uses_are_logged_rolled_up_by_the_hour() {
         let c = mem();
         let hour = CREDENTIAL_USE_ROLLUP_MS;
-        record_credential_use(&c, "cred-1", "SNMP uptime check", "192.0.2.10", 1_000).unwrap();
-        record_credential_use(&c, "cred-1", "SNMP uptime check", "192.0.2.10", 1_000 + hour / 2).unwrap();
-        record_credential_use(&c, "cred-1", "SNMP uptime check", "192.0.2.11", 2_000).unwrap();
-        record_credential_use(&c, "cred-1", "SNMP uptime check", "192.0.2.10", 1_000 + hour * 2).unwrap();
-        record_credential_use(&c, "cred-2", "Backup", "CORE-SW1 (192.0.2.10)", 3_000).unwrap();
+        record_credential_use(&c, "p", "cred-1", "SNMP uptime check", "192.0.2.10", 1_000).unwrap();
+        record_credential_use(&c, "p", "cred-1", "SNMP uptime check", "192.0.2.10", 1_000 + hour / 2).unwrap();
+        record_credential_use(&c, "p", "cred-1", "SNMP uptime check", "192.0.2.11", 2_000).unwrap();
+        record_credential_use(&c, "p", "cred-1", "SNMP uptime check", "192.0.2.10", 1_000 + hour * 2).unwrap();
+        record_credential_use(&c, "p", "cred-2", "Backup", "CORE-SW1 (192.0.2.10)", 3_000).unwrap();
 
-        let one = list_credential_use(&c, Some("cred-1"), 100).unwrap();
+        let one = list_credential_use(&c, "p", Some("cred-1"), 100).unwrap();
         assert_eq!(one.len(), 3);
         assert_eq!((one[0].target.as_str(), one[0].uses), ("192.0.2.10", 1), "a later hour is a new line");
         let rolled = one.iter().find(|r| r.uses == 2).expect("rolled up");
         assert_eq!((rolled.first_ms, rolled.last_ms), (1_000, 1_000 + hour / 2));
-        assert_eq!(list_credential_use(&c, None, 100).unwrap().len(), 4);
-        assert_eq!(clear_credential_use(&c).unwrap(), 4);
-        assert!(list_credential_use(&c, None, 100).unwrap().is_empty());
+        assert_eq!(list_credential_use(&c, "p", None, 100).unwrap().len(), 4);
+        assert_eq!(clear_credential_use(&c, "p").unwrap(), 4);
+        assert!(list_credential_use(&c, "p", None, 100).unwrap().is_empty());
+    }
+}
+
+#[cfg(test)]
+mod a_deleted_project_leaves_nothing {
+    use super::*;
+
+    /// A collection run named its project without referring to it, so
+    /// deleting the project left every device, command log and table the
+    /// collector had read — and its settings, with seeds and folders in them.
+    #[test]
+    fn its_collection_runs_and_settings_go_with_it() {
+        let c = Connection::open_in_memory().unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").unwrap();
+        migrate(&c).unwrap();
+        for p in ["going", "staying"] {
+            c.execute("INSERT INTO projects (id, name, document, created_at, updated_at) VALUES (?1, ?1, '{}', 1, 1)", params![p]).unwrap();
+            crate::collection_db::open_run(&c, &format!("run-{p}"), p, "192.0.2.1", false, None, "live").unwrap();
+            c.execute("INSERT INTO collection_devices (run_id, device_id, host, collected_at) VALUES (?1, 'd1', '192.0.2.1', 1)", params![format!("run-{p}")]).unwrap();
+            c.execute("INSERT INTO project_settings (project_id, key, value) VALUES (?1, 'scanSeed', '192.0.2.1')", params![p]).unwrap();
+        }
+        delete_project(&c, "going").unwrap();
+        let n = |sql: &str| -> i64 { c.query_row(sql, [], |r| r.get(0)).unwrap() };
+        assert_eq!(n("SELECT count(*) FROM collection_runs WHERE project_id = 'going'"), 0);
+        assert_eq!(n("SELECT count(*) FROM collection_devices WHERE run_id = 'run-going'"), 0, "and what hangs off the run");
+        assert_eq!(n("SELECT count(*) FROM project_settings WHERE project_id = 'going'"), 0);
+        assert_eq!(n("SELECT count(*) FROM collection_runs"), 1);
+        assert_eq!(n("SELECT count(*) FROM collection_devices"), 1);
+        assert_eq!(n("SELECT count(*) FROM project_settings"), 1);
+
+        // And a database that already holds what an earlier version left.
+        c.pragma_update(None, "foreign_keys", "OFF").unwrap();
+        crate::collection_db::open_run(&c, "run-orphan", "long-gone", "192.0.2.9", false, None, "live").unwrap();
+        c.execute("INSERT INTO project_settings (project_id, key, value) VALUES ('long-gone', 'scanSeed', '192.0.2.9')", []).unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").unwrap();
+        purge_orphans(&c).unwrap();
+        assert_eq!(n("SELECT count(*) FROM collection_runs"), 1);
+        assert_eq!(n("SELECT count(*) FROM project_settings"), 1);
+    }
+
+    /// A project's files are in a folder of its own, named safely
+    /// whatever the id.
+    #[test]
+    fn a_projects_files_have_a_folder_of_their_own() {
+        let a = project_dir("3f2a-11");
+        let b = project_dir("../../etc");
+        assert!(a.ends_with("projects/3f2a-11") || a.ends_with("projects\\3f2a-11"));
+        assert!(!b.to_string_lossy().contains(".."), "{}", b.display());
+        assert_ne!(project_dir("a"), project_dir("b"));
+    }
+}
+
+#[cfg(test)]
+mod upgrading_from_the_version_before {
+    use super::*;
+
+    /// The whole upgrade, as an installed copy meets it: a database at
+    /// schema 8 is opened by this version. Its logins and host keys are
+    /// divided between its projects, the version moves, and opening it a
+    /// second time changes nothing.
+    #[test]
+    fn a_schema_8_database_opens_and_is_divided_once() {
+        let c = Connection::open_in_memory().unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").unwrap();
+        migrate(&c).unwrap();
+        c.execute_batch(
+            "DROP TABLE credentials; DROP TABLE host_keys; DROP TABLE credential_use;
+             CREATE TABLE credentials (id TEXT PRIMARY KEY, label TEXT NOT NULL, kind TEXT NOT NULL, username TEXT NOT NULL,
+                secret_nonce BLOB NOT NULL, secret_cipher BLOB NOT NULL, extra_nonce BLOB, extra_cipher BLOB,
+                detail TEXT NOT NULL DEFAULT '', created_ms INTEGER NOT NULL, project_id TEXT);
+             CREATE TABLE host_keys (host_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, first_seen_ms INTEGER NOT NULL);
+             CREATE TABLE credential_use (id INTEGER PRIMARY KEY AUTOINCREMENT, credential_id TEXT NOT NULL, label TEXT NOT NULL DEFAULT '',
+                purpose TEXT NOT NULL, target TEXT NOT NULL, first_ms INTEGER NOT NULL, last_ms INTEGER NOT NULL, uses INTEGER NOT NULL DEFAULT 1);
+             CREATE INDEX idx_credential_use ON credential_use(credential_id, last_ms DESC);
+             UPDATE schema_info SET version = 8;
+             INSERT INTO projects (id, name, document, created_at, updated_at) VALUES ('pa', 'A', '{\"nodes\":[{\"address\":\"192.0.2.1\"}]}', 1, 1);
+             INSERT INTO credentials (id, label, kind, username, secret_nonce, secret_cipher, created_ms, project_id) VALUES ('mine', 'Mine', 'ssh', 'u', x'01', x'02', 1, 'pa');
+             INSERT INTO credentials (id, label, kind, username, secret_nonce, secret_cipher, created_ms, project_id) VALUES ('stray', 'Stray', 'ssh', 'u', x'01', x'02', 1, NULL);
+             INSERT INTO host_keys VALUES ('192.0.2.1:22', 'SHA256:k', 1);
+             INSERT INTO credential_use (credential_id, purpose, target, first_ms, last_ms) VALUES ('mine', 'Backup', '192.0.2.1', 1, 1);",
+        )
+        .unwrap();
+
+        migrate(&c).unwrap();
+        migrate(&c).unwrap();
+
+        let version: i64 = c.query_row("SELECT version FROM schema_info", [], |r| r.get(0)).unwrap();
+        assert_eq!(version, SCHEMA_VERSION);
+        assert_eq!(list_credentials(&c, "pa").unwrap().len(), 1);
+        assert_eq!(unowned_credentials(&c).unwrap(), 1);
+        assert_eq!(all_host_keys(&c, "pa").unwrap().len(), 1);
+        assert_eq!(list_credential_use(&c, "pa", None, 10).unwrap().len(), 1);
+        // And the tables take the new kind of row from here on.
+        remember_host_key(&c, "pb", "192.0.2.1:22", "SHA256:other", 2).unwrap();
+        record_credential_use(&c, "pa", "mine", "Backup", "192.0.2.2", 5_000_000).unwrap();
+        assert_eq!(list_credential_use(&c, "pa", None, 10).unwrap().len(), 2);
     }
 }

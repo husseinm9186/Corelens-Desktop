@@ -68,6 +68,7 @@ fn sink() -> &'static RwLock<Option<Sink>> {
 /// is waiting for a file, and silently not writing one is worse than saying so.
 pub fn start(path: &std::path::Path, header: &str) -> std::io::Result<String> {
     let mut file = std::fs::File::create(path)?;
+    crate::support::owner_only(path);
     writeln!(file, "{header}")?;
     writeln!(
         file,

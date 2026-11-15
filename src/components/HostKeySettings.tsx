@@ -4,7 +4,9 @@ import { ipc, isDesktop, type HostKeyRow } from '../lib/ipc';
 import { t } from '../i18n';
 
 /**
- * The SSH host keys Corelens has remembered, and the ways to forget them.
+ * The SSH host keys the open project has remembered, and the ways to forget
+ * them. Drawn inside a project only: a host key names an address, and an
+ * address is a customer's.
  *
  * Corelens records a device's key the first time it connects and refuses to
  * connect again if it changes. That is the right default — a changed key is
@@ -61,7 +63,7 @@ export function HostKeySettings() {
       ) : (
         <>
           <p className="cv-help">
-            {t('hostKeySettings.recordedOnFirstContact')}
+            {t('hostKeySettings.recordedOnFirstContact')} {t('hostKeySettings.thisProjectOnly')}
           </p>
           <table className="cv-table cv-hostkey-table">
             <thead>

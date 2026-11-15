@@ -46,7 +46,7 @@ pub async fn get(client: &ApiClient, version: &str, path: &str) -> Result<ApiOut
     }
     let resp = client.client.get(&url).header("Accept", "application/json").send().await.map_err(|e| super::transport(e, &client.pin))?;
     let status = resp.status().as_u16();
-    let text = resp.text().await.map_err(|e| ApiError::Body(e.to_string()))?;
+    let text = resp.text().await.map_err(|e| ApiError::Body(e.without_url().to_string()))?;
     let ms = started.elapsed().as_millis() as u64;
     if status == 401 || status == 403 {
         return Err(ApiError::Auth(format!("HTTP {status}")));

@@ -35,8 +35,8 @@ fn key_of(state: &AppState, credential_id: &str) -> CmdResult<String> {
     let stored = {
         let conn = state.db.lock().map_err(db_err)?;
         // Another project's API key is refused here, where it is opened.
-        crate::db::may_use_credential(&conn, crate::commands::open_project(state).as_deref(), credential_id)?;
-        crate::db::credential(&conn, credential_id)
+        let project = crate::db::may_use_credential(&conn, crate::commands::open_project(state).as_deref(), credential_id)?;
+        crate::db::credential(&conn, &project, credential_id)
             .map_err(db_err)?
             .ok_or("That saved credential no longer exists.")?
     };
@@ -118,6 +118,7 @@ pub async fn meraki_backup(
     stamp: String,
     project_id: String,
 ) -> CmdResult<BackupWritten> {
+    crate::commands::not_another_project(&state, &project_id)?;
     if network_ids.is_empty() {
         return Err("Choose at least one network to back up.".into());
     }
@@ -171,6 +172,9 @@ pub async fn meraki_backup(
     }
     let json = serde_json::to_string_pretty(&taken).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| format!("Could not write {}: {e}", path.display()))?;
+    // A Meraki backup holds what the Dashboard holds, wireless keys among
+    // it: readable by its owner alone, like a device's configuration.
+    crate::db::owner_only(&path);
 
     Ok(BackupWritten {
         path: path.display().to_string(),
@@ -209,6 +213,7 @@ pub async fn meraki_health_check(
     profile: Option<String>,
     project_id: String,
 ) -> CmdResult<health::Report> {
+    crate::commands::not_another_project(&state, &project_id)?;
     let root = {
         let conn = state.db.lock().map_err(db_err)?;
         crate::db::project_settings(&conn, &project_id).map_err(db_err)?.get("backupFolder").cloned()

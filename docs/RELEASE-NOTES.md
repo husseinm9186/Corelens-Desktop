@@ -2,6 +2,49 @@
 
 Newest first.
 
+## 2.15.1 — 2026-11-14
+
+**The canvas is easier on the eye**
+- Both grounds are softer. The dark one is a slate page on a charcoal desk
+  instead of near-black; the light one is a warm off-white page with soft
+  black ink instead of pure white and pure black. High contrast and print
+  are as they were.
+- A device's name and address were haloed in the desk's colour while
+  standing on the page — a brown glow round every label on the light
+  ground. The halo is the page's colour now.
+
+**Boxes behind devices**
+- A filled box sent to the back is under the links as well as the devices,
+  on screen and in the SVG, PNG and PDF exports. It used to cover the links.
+- A name, an address, a port label or a link label on a filled box is
+  written in ink chosen for that fill, with a halo in the fill's colour, on
+  screen and in the exports. A box's own text does the same on its own fill.
+- *Box around the selection*, on the right-click menu, draws a box sized to
+  the selected devices and puts it behind everything, in one undo step.
+
+**As-built workbook**
+- *Export → As-built workbook (Excel)* writes one `.xlsx` with a tab each
+  for devices, links, ports, VLANs and addresses. The header row is bold and
+  stays in view; anything typed like a formula is kept as text.
+
+**Importing an inventory**
+- A heading row over each site's devices names their site, and each site
+  arrives in a titled frame of its own.
+- A column naming the device each row connects to becomes links.
+- Rack position can be given as the top rack unit and a height; the lowest
+  unit is worked out. `U12` and `12U` read as 12.
+
+**Terminal**
+- *Copy on select* and saving the session log are on to begin with. A
+  choice already made on this computer is kept. The log is written only
+  where a configuration folder has been chosen.
+
+**Fixed**
+- A project package in the older single-page shape opened to a broken
+  canvas.
+- A link's tooltip element is made when the link is pointed at, not kept
+  for every link on the page.
+
 ## 2.15.0 — 2026-11-14
 
 **Device details for an as-built**

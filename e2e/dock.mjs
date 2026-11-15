@@ -47,7 +47,8 @@ await page.addInitScript(({ p }) => {
     },
   };
 }, { p: project });
-page.on("pageerror", (e) => console.log("PAGE EXCEPTION:", String(e).slice(0, 300)));
+const pageErrors = [];
+page.on("pageerror", (e) => { pageErrors.push(String(e).slice(0, 300)); console.log("PAGE EXCEPTION:", String(e).slice(0, 300)); });
 await page.goto(URL, { waitUntil: "networkidle" });
 await page.locator(".cv-project-open").first().click();
 await page.waitForTimeout(700);
@@ -198,6 +199,73 @@ check("Dock below puts it back under the canvas", back.panel.y >= back.canvas.y 
   JSON.stringify(back));
 check("and that is remembered too, keyed by the tab",
   (await st(() => JSON.parse(localStorage.getItem("corelens.view.dockPlacements") ?? "{}"))).objects === "bottom");
+
+// ---------------------------------------------- a window of its own
+// The dock moved into a second window: the same panel, drawn from the same
+// state, with the main window's room given back to the diagram.
+{
+  const canvasBefore = await box(".cv-canvas");
+  const [dock] = await Promise.all([
+    page.context().waitForEvent("page"),
+    page.locator('[data-action="dock-window"]').click(),
+  ]);
+  await dock.waitForSelector(".cv-panel.is-detached", { timeout: 5000 });
+  await page.waitForTimeout(400);
+  check("the dock opens in a window of its own", (await dock.locator(".cv-panel.is-detached").count()) === 1);
+  check("and leaves the main window", (await page.locator(".cv-panel").count()) === 0);
+  const canvasAfter = await box(".cv-canvas");
+  check("whose diagram takes the room it had", canvasAfter.height > canvasBefore.height + 100 || canvasAfter.width > canvasBefore.width + 100,
+    JSON.stringify({ before: canvasBefore, after: canvasAfter }));
+  const look = await dock.evaluate(() => {
+    const panel = document.querySelector(".cv-panel");
+    const r = panel.getBoundingClientRect();
+    const cs = getComputedStyle(panel);
+    return { w: r.width, h: r.height, vw: innerWidth, vh: innerHeight, bg: cs.backgroundColor, font: getComputedStyle(document.body).fontFamily,
+      sheets: document.querySelectorAll("style, link[rel=stylesheet]").length, title: document.title };
+  });
+  const mainBg = await page.evaluate(() => { const e = document.createElement("i"); e.style.color = "var(--chrome)"; document.body.appendChild(e); const c = getComputedStyle(e).color; e.remove(); return c; });
+  check("it fills its window", look.w >= look.vw - 1 && look.h >= look.vh - 1, JSON.stringify(look));
+  check("dressed in the application's own stylesheet", look.sheets > 0 && look.bg === mainBg, JSON.stringify({ bg: look.bg, mainBg, sheets: look.sheets }));
+  check("and named for the project", /Corelens Desktop/.test(look.title) && /Dock/.test(look.title), look.title);
+  check("every tab is there", (await dock.locator('.cv-panel button[role="tab"]').count()) === 11);
+
+  // One program, one state: a click in that window is a change in this one.
+  await dock.locator('.cv-panel button[role="tab"]', { hasText: "Event timeline" }).click();
+  await page.waitForTimeout(300);
+  check("a tab chosen there is the tab the application is on", (await st(() => window.__cvStore.getState().dockTab)) === "events");
+  await dock.locator('.cv-panel button[role="tab"]', { hasText: /^Monitored objects/ }).click();
+  await dock.waitForTimeout(300);
+  check("the monitored objects are listed there", (await dock.locator(".cv-panel tr", { hasText: "CORE-SW1" }).count()) >= 1);
+  await dock.locator(".cv-panel tr", { hasText: "ACCESS-SW7" }).first().click();
+  await page.waitForTimeout(400);
+  check("and choosing a row there selects the device on the diagram here",
+    (await st(() => window.__cvStore.getState().selectedNodeId)) === "n2", String(await st(() => window.__cvStore.getState().selectedNodeId)));
+  // …and a change made here is drawn there.
+  await st(() => window.__cvStore.getState().updateNodeData("n1", { label: "CORE-RENAMED" }));
+  await dock.waitForTimeout(400);
+  check("a device renamed in the main window is renamed in the dock's", (await dock.locator(".cv-panel tr", { hasText: "CORE-RENAMED" }).count()) >= 1);
+
+  // Other screens do not take a detached dock away.
+  check("the side and hide buttons give way to the one that brings it back",
+    (await dock.locator('[data-action="dock-side"]').count()) === 0 && (await dock.locator('[data-action="dock-window"]').getAttribute("aria-pressed")) === "true");
+
+  await dock.locator('[data-action="dock-window"]').click();
+  await page.waitForTimeout(600);
+  check("the button there brings the dock back", (await page.locator(".cv-panel").count()) === 1 && (await st(() => window.__cvStore.getState().dockDetached)) === false);
+  check("and its window closes", dock.isClosed());
+
+  // Closing the window itself is the other way back.
+  const [again] = await Promise.all([
+    page.context().waitForEvent("page"),
+    page.locator('[data-action="dock-window"]').click(),
+  ]);
+  await again.waitForSelector(".cv-panel.is-detached", { timeout: 5000 });
+  await again.close();
+  await page.waitForTimeout(900);
+  check("closing the dock's window puts the dock back in the main one",
+    (await page.locator(".cv-panel").count()) === 1 && (await st(() => window.__cvStore.getState().dockDetached)) === false);
+  check("and nothing was thrown on the way", pageErrors.length === 0, pageErrors.join(" | ").slice(0, 300));
+}
 
 await browser.close();
 if (failures) {

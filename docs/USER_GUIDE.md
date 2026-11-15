@@ -371,6 +371,17 @@ tables want the room. Moving one with **Dock to the right** or **Dock
 below** is remembered for that tab alone. **Hide** folds the dock to one
 row that keeps the counts and the strip.
 
+**Open in its own window** — the window button beside it — moves the whole
+dock into a second window, which you can put on another screen: the
+monitored objects, the backups, the terminal and its open sessions go with
+it, and the diagram keeps the whole of the main window. It is the same
+dock, not a copy — a row chosen there selects the device on the diagram, a
+session typed into there is the same session — and asking for a panel from
+the main window brings that window forward. The same button there, or
+closing that window, puts the dock back. Closing the main window closes
+both. It is not remembered between runs: the dock starts in the main
+window each time.
+
 **Paths.** Path-Trace, Path check, Tracert and Where is answer one
 question, so it is asked once: the destination, the application, its
 protocol and port, and the VRF typed on any of them are there on the
@@ -1006,6 +1017,18 @@ Set which one the first menu entry uses, and the command to run, on the SSH
 tab.
 
 **The controls on the SSH tab** apply to every session you have open:
+
+**A device this computer cannot reach.** Where only a neighbour can reach
+a device — a management network with no route from here — right-click it
+and choose **SSH through** *the neighbour's name*: there is one entry for
+each device a link on the page joins it to that has an address, up to six.
+Corelens logs in to the neighbour, runs that device's own `ssh` to the
+target with the same login, and hands you the session as an ordinary
+terminal tab; the tab's tooltip says which way it went, and reopening it
+goes the same way. The password is typed only at the far device's own
+prompt. Nothing is changed on either device, and a hop made from a Linux
+host writes nothing to its `known_hosts`. A wireless controller has no
+client to hop from and says so.
 
 - **Font** and **Size** — how the terminal is drawn. Remembered on this
   computer, not in the project.

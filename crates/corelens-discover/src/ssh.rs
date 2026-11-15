@@ -362,6 +362,22 @@ impl Device {
         store: Arc<std::sync::Mutex<HostKeyStore>>,
         progress: Option<mpsc::Sender<SshProgress>>,
     ) -> Result<Self, SshError> {
+        Self::connect_as(host, credentials, options, store, progress, false).await
+    }
+
+    /// `connect`, for a capture or for a person. A session that is going to
+    /// be handed to somebody at a keyboard (`for_person`) is not closed for
+    /// being quiet — a person leaves a session open while they think — and
+    /// asks for the terminal type a terminal emulator draws, as
+    /// [`Shell::open`] does.
+    async fn connect_as(
+        host: &str,
+        credentials: &Credentials,
+        options: SshOptions,
+        store: Arc<std::sync::Mutex<HostKeyStore>>,
+        progress: Option<mpsc::Sender<SshProgress>>,
+        for_person: bool,
+    ) -> Result<Self, SshError> {
         let say = |p: SshProgress| {
             if let Some(tx) = &progress {
                 let _ = tx.try_send(p);
@@ -386,10 +402,20 @@ impl Device {
             rejection: Arc::clone(&rejection),
         };
 
-        let config = Arc::new(client::Config {
-            inactivity_timeout: Some(Duration::from_secs(300)),
-            preferred: network_device_algorithms(),
-            ..Default::default()
+        let config = Arc::new(if for_person {
+            client::Config {
+                inactivity_timeout: None,
+                keepalive_interval: None,
+                keepalive_max: 0,
+                preferred: network_device_algorithms(),
+                ..Default::default()
+            }
+        } else {
+            client::Config {
+                inactivity_timeout: Some(Duration::from_secs(300)),
+                preferred: network_device_algorithms(),
+                ..Default::default()
+            }
         });
 
         say(SshProgress::CheckingHostKey {
@@ -455,7 +481,7 @@ impl Device {
         // standing between us and a paged capture. A device may also
         // ask how big it is, and the answer has to be this same size.
         channel
-            .request_pty(true, "vt100", PTY_COLS.into(), PTY_ROWS.into(), 0, 0, &[])
+            .request_pty(true, if for_person { "xterm-256color" } else { "vt100" }, PTY_COLS.into(), PTY_ROWS.into(), 0, 0, &[])
             .await
             .map_err(|e| SshError::Protocol {
                 host: host.to_string(),
@@ -812,6 +838,27 @@ impl Device {
         password: &Secret,
         progress: Option<&mpsc::Sender<SshProgress>>,
     ) -> Result<(), SshError> {
+        self.hop_into(dialect, user, address, password, progress).await?;
+        // Paging off on the device we landed on, both spellings.
+        let paging = self.run("terminal length 0").await.unwrap_or_default();
+        if crate::cli::command_was_rejected(&paging).is_some() {
+            let _ = self.run("no page").await;
+        }
+        Ok(())
+    }
+
+    /// The hop itself, and nothing after it: this `Device` ends at the far
+    /// device's prompt with that device exactly as it was found. What a
+    /// capture wants next — paging off — is [`Self::hop_to`]'s to add; a
+    /// person's session leaves the far device's settings alone.
+    async fn hop_into(
+        &mut self,
+        dialect: crate::hop::HopDialect,
+        user: &str,
+        address: &str,
+        password: &Secret,
+        progress: Option<&mpsc::Sender<SshProgress>>,
+    ) -> Result<(), SshError> {
         use crate::hop::{Hop, HopAction, HopError};
         let via = self.host.clone();
         let say = |p: SshProgress| {
@@ -873,12 +920,27 @@ impl Device {
             self.prompt = p;
         }
         say(SshProgress::Ready { host: address.to_string(), hostname: self.prompt.hostname.clone() });
-        // Paging off on the device we landed on, both spellings.
-        let paging = self.run("terminal length 0").await.unwrap_or_default();
-        if crate::cli::command_was_rejected(&paging).is_some() {
-            let _ = self.run("no page").await;
-        }
         Ok(())
+    }
+
+    /// What the device says it is: the first answer to one of the version
+    /// commands that identifies a platform, or nothing when none does.
+    pub async fn banner(&mut self) -> Option<String> {
+        for command in crate::dialect::VERSION_COMMANDS {
+            if let Ok(output) = self.run(command).await {
+                if crate::dialect::identifies(&output) {
+                    return Some(output);
+                }
+            }
+        }
+        None
+    }
+
+    /// This session, handed over as it stands to somebody at a keyboard:
+    /// the same connection and the same channel, with nothing reading it
+    /// for prompts any more.
+    pub fn into_shell(self) -> Shell {
+        Shell { host: self.host, handle: self.handle, channel: self.channel }
     }
 
     pub async fn close(self) {
@@ -1292,6 +1354,77 @@ fn second_factor_message(instructions: &str) -> String {
     } else {
         format!("{trimmed} — approve the push on your phone.")
     }
+}
+
+/// An interactive shell on `target`, reached through `via`.
+///
+/// For a device this machine cannot route to and one of its neighbours can.
+/// Logs in to `via` with the first of `logins` it accepts, works out from
+/// what `via` says it is how that device spells its own `ssh`, runs it to
+/// `target` with the same login, and hands the channel over as an ordinary
+/// [`Shell`] sized `cols` by `rows`. Returns the shell, the name the far
+/// device's prompt gave, and which of `logins` it was — every one before it
+/// was offered to `via` and refused.
+///
+/// The hop is the crawl's own ([`Device::hop_to`]'s state machine): the
+/// fingerprint question is answered, the password is typed only at the far
+/// device's own prompt and never logged. A jump made through real OpenSSH
+/// writes nothing to that host's `known_hosts`. Nothing is changed on the
+/// far device — its paging is left as it was found, because the session is
+/// a person's.
+#[allow(clippy::too_many_arguments)]
+pub async fn open_shell_through(
+    via: &str,
+    logins: &[Credentials],
+    target: &str,
+    options: SshOptions,
+    store: Arc<std::sync::Mutex<HostKeyStore>>,
+    cols: u32,
+    rows: u32,
+    progress: Option<mpsc::Sender<SshProgress>>,
+) -> Result<(Shell, String, usize), SshError> {
+    use crate::dialect::{family_of, hop_dialect_for, Family};
+    use crate::hop::HopDialect;
+
+    let mut rejected = None;
+    let mut found = None;
+    for (taken, login) in logins.iter().enumerate() {
+        match Device::connect_as(via, login, options.clone(), Arc::clone(&store), progress.clone(), true).await {
+            Ok(device) => {
+                found = Some((device, login, taken));
+                break;
+            }
+            Err(e @ SshError::AuthFailed { .. }) => rejected = Some(e),
+            Err(e) => return Err(e),
+        }
+    }
+    let Some((mut device, login, taken)) = found else {
+        return Err(rejected.unwrap_or(SshError::AuthFailed { host: via.to_string() }));
+    };
+
+    let refuse = |reason: &str| SshError::Hop { host: target.to_string(), via: via.to_string(), reason: reason.to_string() };
+    let family = device.banner().await.as_deref().map(family_of).unwrap_or(Family::Generic);
+    // A device that names no platform and draws a `$` is a Linux host, and
+    // its client is OpenSSH.
+    let dialect = if family == Family::Generic && device.prompt.text.trim_end().ends_with('$') {
+        Some(HopDialect::OpenSsh)
+    } else {
+        hop_dialect_for(family)
+    };
+    let Some(dialect) = dialect else {
+        device.close().await;
+        return Err(refuse("that device has no ssh client to reach another device with"));
+    };
+
+    if let Err(e) = device.hop_into(dialect, &login.username, target, &login.password, progress.as_ref()).await {
+        device.close().await;
+        return Err(e);
+    }
+    let landed = device.prompt.hostname.clone();
+    let mut shell = device.into_shell();
+    // The terminal that will draw it is not the size the login asked for.
+    let _ = shell.resize(cols, rows).await;
+    Ok((shell, landed, taken))
 }
 
 /// Logs in with the first of `logins` the device accepts, and says which.

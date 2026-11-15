@@ -176,6 +176,9 @@ export interface SshTab {
   /** The saved login it was opened with — its id, never a secret —
    *  so an ended session can be opened again from its own tab. */
   credentialId?: string;
+  /** The neighbour it was reached through, when it was not reached
+   *  directly: that device's address and name. Reopening goes the same way. */
+  via?: { address: string; label: string };
 }
 
 export interface ProjectDocument {
@@ -479,6 +482,10 @@ interface Store {
   dockTab: DockTab;
   /** The dock taking the canvas's room, until it is restored. */
   dockMax: boolean;
+  /** The dock is in a window of its own rather than in the main one. Window
+   *  state: not saved, because a window can only be opened by a click. */
+  dockDetached: boolean;
+  setDockDetached: (on: boolean) => void;
   /** Which side each dock tab sits on when it is not the default: a
    *  per-machine override of `dockSideFor`. The dock follows the active
    *  tab's side, so discovering devices and the terminal open down the
@@ -1506,6 +1513,7 @@ export const useStore = create<Store>((set, get) => ({
   panelOpen: viewPref('panelOpen'),
   dockTab: 'objects',
   dockMax: false,
+  dockDetached: false,
   dockPlacements: readDockPlacements(),
   inspectorTab: 'status',
   backupHandover: null,
@@ -2022,6 +2030,9 @@ export const useStore = create<Store>((set, get) => ({
   },
   setDockMax(on) {
     set({ dockMax: on });
+  },
+  setDockDetached(on) {
+    if (get().dockDetached !== on) set({ dockDetached: on });
   },
 
   setDockPlacement(tab, side) {

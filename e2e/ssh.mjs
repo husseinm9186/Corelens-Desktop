@@ -42,7 +42,11 @@ const project = {
   document: {
     activePageId: "p1", probes: [],
     pages: [{ id: "p1", name: "Core",
-      canvas: { gridEnabled: true, snapEnabled: true, minimap: false, nodeStyle: "glyph" }, edges: [],
+      canvas: { gridEnabled: true, snapEnabled: true, minimap: false, nodeStyle: "glyph" },
+      // One link, CORE-SW1 to ACCESS-SW7: what makes each the other's neighbour.
+      edges: [{ id: "ab", source: "a", target: "b", sourceHandle: "r", targetHandle: "l", type: "live",
+        data: { sourcePortLabel: "", targetPortLabel: "", label: "", pathType: "straight", direction: "none", width: 2,
+          color: "#2fbf6b", enabled: true, maintenance: false, healthRule: { type: "manual", manualStatus: "unknown" } } }],
       nodes: [
         node("a", "CORE-SW1", { hostname: "CORE-SW1", sshCredentialId: "cred-1",
           addresses: [{ id: "x", label: "Mgmt", address: "192.0.2.10", isPrimary: true }] }),
@@ -469,6 +473,43 @@ check("turning copy on select off is remembered on this machine",
   (await st(() => window.__settings)).sshCopyOnSelect === "false",
   JSON.stringify(await st(() => window.__settings)));
 
+// --------------------------------------- the terminal in its own window
+// The dock moved to a window of its own takes the open sessions with it:
+// the same terminal, its screen as it was, typing still reaching the device.
+{
+  const before = await page.locator(".cv-ssh-screen:not([hidden]) .xterm-rows").textContent();
+  const [dock] = await Promise.all([
+    page.context().waitForEvent("page"),
+    page.locator('[data-action="dock-window"]').click(),
+  ]);
+  await dock.waitForSelector(".cv-panel.is-detached .cv-ssh-screen:not([hidden]) .xterm-rows", { timeout: 6000 });
+  await dock.waitForTimeout(500);
+  const there = await dock.locator(".cv-ssh-screen:not([hidden]) .xterm-rows").textContent();
+  check("a session goes to the dock's own window with its screen as it was",
+    there.replace(/\s+/g, "").includes(before.replace(/\s+/g, "").slice(0, 40)) && before.trim().length > 0, JSON.stringify({ before: before.slice(0, 80), there: there.slice(0, 80) }));
+  check("and is no longer drawn in the main window", (await page.locator(".cv-ssh-screen").count()) === 0);
+  const size = await dock.evaluate(() => { const r = document.querySelector(".cv-ssh-screen:not([hidden]) .xterm").getBoundingClientRect(); return { w: r.width, h: r.height, vw: innerWidth }; });
+  check("the terminal has that window's width to itself", size.w > size.vw * 0.8 && size.h > 100, JSON.stringify(size));
+  await st(() => { window.__sent.length = 0; });
+  await dock.locator(".cv-ssh-screen:not([hidden]) .xterm-helper-textarea").first().focus();
+  await dock.keyboard.type("show clock");
+  await dock.waitForTimeout(400);
+  check("typing in that window reaches the device", (await st(() => window.__sent.map((x) => x.text).join(""))) === "show clock",
+    JSON.stringify(await st(() => window.__sent)));
+  await dock.locator('[data-action="dock-window"]').click();
+  await page.waitForTimeout(700);
+  const back = await page.locator(".cv-ssh-screen:not([hidden]) .xterm-rows").textContent();
+  check("brought back, the session is in the main window again with its screen",
+    back.replace(/\s+/g, "").includes(before.replace(/\s+/g, "").slice(0, 40)), back.slice(0, 80));
+  await st(() => { window.__sent.length = 0; });
+  await page.locator(".cv-ssh-screen:not([hidden]) .xterm-helper-textarea").first().focus();
+  await page.keyboard.type("x");
+  await page.waitForTimeout(300);
+  check("and typing here reaches the device as before", (await st(() => window.__sent.map((x) => x.text).join(""))) === "x");
+  await page.keyboard.press("Backspace");
+  await page.waitForTimeout(200);
+}
+
 // Sending one command to several sessions, and the guards on it.
 await st(() => { window.__sent.length = 0; });
 await controls.locator("button", { hasText: "Send to several" }).click();
@@ -544,6 +585,39 @@ await closedTab.locator(".cv-ssh-close").click();
 await page.waitForTimeout(400);
 check("closing a tab takes it away", (await page.locator(".cv-ssh-tab").count()) === 1);
 check("and tells the backend to end it", (await st(() => window.__closed)).includes(newId), JSON.stringify(await st(() => window.__closed)));
+
+// ------------------------------------------- SSH through a neighbour
+// A device this machine cannot reach, opened through the device a link
+// joins it to: the menu names the neighbour, the backend is told which
+// address to go through, and the tab remembers the way it went.
+{
+  await rightClick("ACCESS-SW7");
+  const through = menuItem("SSH through CORE-SW1");
+  check("a device linked to another offers SSH through it", (await through.count()) === 1);
+  const before = (await st(() => window.__opened)).length;
+  await through.click();
+  await page.waitForTimeout(700);
+  const opened = await st(() => window.__opened);
+  const last = opened[opened.length - 1];
+  check("the session is asked for to the device, through the neighbour's address",
+    opened.length === before + 1 && last.address === "192.0.2.11" && last.via === "192.0.2.10", JSON.stringify(last));
+  const viaTab = await st(() => window.__cvStore.getState().sshSessions.find((x) => x.via));
+  check("the tab keeps the way it went, so reopening goes the same way",
+    viaTab?.address === "192.0.2.11" && viaTab.via.address === "192.0.2.10" && viaTab.via.label === "CORE-SW1", JSON.stringify(viaTab));
+  check("and says so on the tab", /192\.0\.2\.11, through CORE-SW1/.test(
+    (await page.locator(".cv-ssh-tab [title*='through']").first().getAttribute("title").catch(() => "")) ?? ""));
+
+  await rightClick("NO-LOGIN");
+  check("a device with no link to anything offers no way through", (await menuItem("SSH through").count()) === 0);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(200);
+
+  await rightClick("CORE-SW1");
+  await menuItem("SSH to this device").click();
+  await page.waitForTimeout(600);
+  const direct = (await st(() => window.__opened)).at(-1);
+  check("a direct session sends no neighbour at all", direct.address === "192.0.2.10" && !("via" in direct), JSON.stringify(direct));
+}
 
 // ------------------------------------ closing the project ends every shell
 

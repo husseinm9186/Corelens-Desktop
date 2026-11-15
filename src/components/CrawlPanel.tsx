@@ -1,6 +1,7 @@
 import { scannedOf, sweptLine } from '../lib/subnetScan';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { dockOwnerWindow } from '../lib/dockWindow';
 import { t } from '../i18n';
 import { EmptyState } from './EmptyState';
 import { useRovingTabindex } from './useRovingTabindex';
@@ -1283,7 +1284,7 @@ export function CrawlPanel({
               {supportResult?.problem ? ` — ${supportResult.problem}` : ''}
             </span>
             <code className="cv-failure-log-path">{folder}</code>
-            <button type="button" className="cv-btn cv-btn-small" onClick={() => void navigator.clipboard.writeText(folder)}>
+            <button type="button" className="cv-btn cv-btn-small" onClick={() => void dockOwnerWindow().navigator.clipboard.writeText(folder)}>
               {t('crawl.support.copyPath')}
             </button>
             <button type="button" className="cv-btn cv-btn-small" onClick={() => void ipc.openAttachment(folder, true)}>
@@ -1649,7 +1650,7 @@ export function CrawlPanel({
                           <button
                             type="button"
                             className="cv-btn cv-btn-small"
-                            onClick={() => void navigator.clipboard.writeText(f.transcriptPath ?? '')}
+                            onClick={() => void dockOwnerWindow().navigator.clipboard.writeText(f.transcriptPath ?? '')}
                           >
                             Copy path
                           </button>

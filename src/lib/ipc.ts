@@ -1532,6 +1532,11 @@ export const ipc = {
     if (!isDesktop) throw new Error('There is no installer to update in the browser.');
     await invoke('install_update');
   },
+  /** Closes the dock's own window from the application's side, for the
+   *  engines that do not let a page close a window it opened. */
+  async closeDockWindows(): Promise<void> {
+    if (isDesktop) await invoke('close_dock_windows');
+  },
 
   async onUpdateProgress(handler: (e: UpdateProgress) => void): Promise<() => void> {
     if (!isDesktop) return () => {};
@@ -1662,10 +1667,15 @@ export const ipc = {
     size: { cols: number; rows: number },
     port?: number,
     keepaliveSeconds?: number,
+    /** A neighbour's address to go through, for a device this machine
+     *  cannot reach itself. */
+    via?: string,
   ) {
     if (!isDesktop) throw new BackendUnavailable('An SSH session');
     return invoke<string>('ssh_open', {
       address, credentialId, port, cols: size.cols, rows: size.rows, keepaliveSeconds,
+      // Left out, not null, when the session is direct.
+      ...(via ? { via } : {}),
     });
   },
   /** Append this session's transcript beside the device's backups.

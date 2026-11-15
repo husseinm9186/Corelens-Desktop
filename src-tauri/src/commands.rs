@@ -1204,3 +1204,19 @@ pub struct SubnetInfo {
     pub prefix: u8,
     pub hosts: u32,
 }
+
+/// Closes the dock's own window, when it has one.
+///
+/// The page closes that window itself where the engine lets it; not every
+/// engine does, and one that does not leaves an empty frame on the screen.
+/// Takes nothing and returns nothing: it can only ever close a window the
+/// application opened for its own dock.
+#[tauri::command]
+pub fn close_dock_windows(app: tauri::AppHandle) {
+    use tauri::Manager;
+    for (label, window) in app.webview_windows() {
+        if label.starts_with("dock-") {
+            let _ = window.close();
+        }
+    }
+}

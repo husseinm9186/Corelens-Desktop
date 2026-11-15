@@ -1037,6 +1037,9 @@ details.cv-discover-advanced[open] > summary::after { content: '▾'; }
    not fit the height the status tables need. Capped against the viewport so it
    still leaves a usable canvas at the 700px minimum window height. */
 .cv-panel.is-tall { height: min(35.38461538rem, 55vh); }
+/* The dock in a window of its own: it is the whole of that window. */
+.cv-dock-window { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--chrome); }
+.cv-dock-window > .cv-panel, .cv-dock-window > .cv-panel.is-tall { height: auto; flex: 1; min-height: 0; border-top: 0; }
 /* The dock with the canvas's room: the body gives it everything. */
 .cv-body.is-dock-max > .cv-main { display: none; }
 .cv-body.is-dock-max > .cv-panel, .cv-body.is-dock-max > .cv-panel.is-tall { height: auto; flex: 1; min-height: 0; }

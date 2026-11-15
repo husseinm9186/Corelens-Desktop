@@ -32,8 +32,9 @@ export function ContextMenu({
     // Lifted rather than flipped: a menu that jumps above the pointer puts a
     // different item under the cursor than the one that was there a moment
     // ago, which is how people click the wrong thing.
-    const nextY = Math.max(margin, Math.min(y, window.innerHeight - box.height - margin));
-    const nextX = Math.max(margin, Math.min(x, window.innerWidth - box.width - margin));
+    const view = ref.current?.ownerDocument.defaultView ?? window;
+    const nextY = Math.max(margin, Math.min(y, view.innerHeight - box.height - margin));
+    const nextX = Math.max(margin, Math.min(x, view.innerWidth - box.width - margin));
     if (nextX !== at.x || nextY !== at.y) setAt({ x: nextX, y: nextY });
   }, [x, y, at.x, at.y]);
 
@@ -42,12 +43,14 @@ export function ContextMenu({
       if (!ref.current?.contains(e.target as Node)) onClose();
     };
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('mousedown', away);
-    window.addEventListener('keydown', esc);
+    // The window the menu is drawn in, which is not always the main one.
+    const view = ref.current?.ownerDocument.defaultView ?? window;
+    view.addEventListener('mousedown', away);
+    view.addEventListener('keydown', esc);
     ref.current?.querySelector('button')?.focus();
     return () => {
-      window.removeEventListener('mousedown', away);
-      window.removeEventListener('keydown', esc);
+      view.removeEventListener('mousedown', away);
+      view.removeEventListener('keydown', esc);
     };
   }, [onClose]);
 

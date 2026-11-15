@@ -54,3 +54,41 @@ export function planSsh(d: DeviceNodeData, projectSsh?: string): SshPlan {
   if (!credentialId) return { ok: false, reason: 'noCredential' };
   return { ok: true, address, credentialId, label: sshLabel(d), inherited: !own };
 }
+
+/** How many neighbours the menu offers a session through. */
+export const MAX_JUMPS = 6;
+
+export interface JumpCandidate {
+  nodeId: string;
+  label: string;
+  address: string;
+}
+
+/**
+ * The devices a session to `nodeId` could go through: the ones a link on
+ * the page joins it to, that have an address to log in to — by name, each
+ * once, and only a handful.
+ *
+ * For a device this machine cannot route to and its neighbours can. The
+ * drawing is what says who the neighbours are; whether one of them can
+ * actually reach it is found out by trying.
+ */
+export function jumpCandidates(
+  nodeId: string,
+  nodes: readonly { id: string; type?: string; data: unknown }[],
+  edges: readonly { source: string; target: string }[],
+): JumpCandidate[] {
+  const linked = new Set<string>();
+  for (const e of edges) {
+    if (e.source === nodeId && e.target !== nodeId) linked.add(e.target);
+    if (e.target === nodeId && e.source !== nodeId) linked.add(e.source);
+  }
+  const found: JumpCandidate[] = [];
+  for (const n of nodes) {
+    if (!linked.has(n.id) || n.type !== 'device') continue;
+    const d = n.data as DeviceNodeData;
+    const address = sshAddress(d);
+    if (address) found.push({ nodeId: n.id, label: sshLabel(d), address });
+  }
+  return found.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })).slice(0, MAX_JUMPS);
+}

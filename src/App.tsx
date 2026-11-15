@@ -12,6 +12,7 @@ import { RegisterScreen } from './components/RegisterScreen';
 import { ToolsScreen } from './components/ToolsScreen';
 import { ImportDialog } from './components/ImportDialog';
 import { StatusPanel } from './components/StatusPanel';
+import { DockHost } from './components/DockHost';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { DrawerHost } from './components/Drawer';
 import { TopBar } from './components/TopBar';
@@ -40,7 +41,9 @@ export default function App() {
   const uiScale = useStore((s) => s.settings.uiScale);
   const dockTab = useStore((s) => s.dockTab);
   const dockPlacements = useStore((s) => s.dockPlacements);
-  const dockSide = dockSideFor(dockTab, dockPlacements);
+  const dockDetached = useStore((s) => s.dockDetached);
+  // In its own window the dock takes no room here at all.
+  const dockSide = dockDetached ? 'bottom' : dockSideFor(dockTab, dockPlacements);
   // Maximise is a bottom-dock idea: a right dock already takes a column, and
   // the canvas must not vanish when a tall tab opens beside it.
   const dockMax = useStore((s) => s.dockMax) && dockSide === 'bottom';
@@ -240,9 +243,12 @@ export default function App() {
             {inspectorOpen ? '›' : '‹'}
           </button>
         </div>
-        {!registerOpen && !helpOpen && !toolsOpen && (
+        <DockHost
+          appClass={`cv-app ${highContrast ? 'is-contrast' : ''} ${ground === 'light' ? 'is-light' : ''} ${reduceMotion ? 'is-reduce-motion' : ''}`}
+          inPlace={!registerOpen && !helpOpen && !toolsOpen}
+        >
           <ErrorBoundary what="The monitoring panel"><StatusPanel /></ErrorBoundary>
-        )}
+        </DockHost>
         </div>
         </div>
       </div>

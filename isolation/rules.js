@@ -18,6 +18,7 @@
   /** Each command, and the argument names the page may send it. */
   var COMMANDS = {
     app_info: [],
+    close_dock_windows: [],
     check_for_update: [],
     install_update: [],
     cancel_backup: [],
@@ -121,7 +122,7 @@
     ssh_keepalive: ["id", "seconds"],
     ssh_log_start: ["id", "folder", "device", "address", "site", "pattern"],
     ssh_log_stop: ["id"],
-    ssh_open: ["address", "credentialId", "port", "cols", "rows", "keepaliveSeconds"],
+    ssh_open: ["address", "credentialId", "port", "cols", "rows", "keepaliveSeconds", "via"],
     ssh_resize: ["id", "cols", "rows"],
     ssh_send: ["id", "bytes"],
     ssh_sessions: [],

@@ -4,6 +4,7 @@ import { SearchAddon } from '@xterm/addon-search';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 
+import { dockOwnerWindow } from '../lib/dockWindow';
 import { t } from '../i18n';
 import { Colouriser } from '../lib/colourise';
 import { ipc, type SshEvent } from '../lib/ipc';
@@ -60,7 +61,8 @@ async function reconnect(held: Held) {
   held.term.write(`\r\n\x1b[2m${t('ssh.reconnecting', { name: tab.label })}\x1b[0m\r\n`);
   try {
     const { keepaliveSeconds, logByDefault } = useStore.getState().settings.terminal;
-    const id = await ipc.sshOpen(tab.address, tab.credentialId, { cols: held.term.cols, rows: held.term.rows }, undefined, keepaliveSeconds);
+    // The way it went the first time: through the same neighbour, if any.
+    const id = await ipc.sshOpen(tab.address, tab.credentialId, { cols: held.term.cols, rows: held.term.rows }, undefined, keepaliveSeconds, tab.via?.address);
     terminals.set(id, held);
     terminals.delete(held.id);
     held.id = id;
@@ -395,7 +397,7 @@ export function SshPanel() {
             <button type="button" role="tab" aria-selected={tab.id === active}
               tabIndex={tab.id === active ? 0 : -1}
               className={tab.id === active ? 'is-active' : ''}
-              title={tab.status === 'closed' ? tab.reason : tab.address}
+              title={tab.status === 'closed' ? tab.reason : tab.via ? t('ssh.tabThrough', { address: tab.address, via: tab.via.label }) : tab.address}
               onClick={() => setActive(tab.id)}>
               <span className={`cv-ssh-dot${tab.status === 'closed' ? ' is-closed' : ''}`} aria-hidden="true" />{' '}
               {tab.label}
@@ -549,7 +551,7 @@ function SshTerminal({ tab, visible }: { tab: SshTab; visible: boolean }) {
       term.onSelectionChange(() => {
         if (!useStore.getState().settings.terminal.copyOnSelect) return;
         const picked = term.getSelection();
-        if (picked) void navigator.clipboard?.writeText(picked).catch(() => undefined);
+        if (picked) void dockOwnerWindow().navigator.clipboard?.writeText(picked).catch(() => undefined);
       });
       // Keystrokes as typed. Nothing is added, not even a newline: Enter is
       // already a carriage return in the data xterm hands over.
@@ -624,7 +626,7 @@ function SshTerminal({ tab, visible }: { tab: SshTab; visible: boolean }) {
       onContextMenu={(e) => {
         if (!useStore.getState().settings.terminal.pasteOnRight) return;
         e.preventDefault();
-        void navigator.clipboard
+        void dockOwnerWindow().navigator.clipboard
           ?.readText()
           .then((text) => (text ? sendText(tab.id, text) : undefined))
           .catch(() => undefined);

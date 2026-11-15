@@ -44,6 +44,77 @@ use tauri::{Manager, RunEvent, WindowEvent};
 /// capped at a size beyond which more pixels stop helping, and floored at the
 /// smallest layout that still works. Failure is silent and harmless: the
 /// window keeps the size from the config, which is what happened before.
+/// The main window's label; the capability file names it too.
+const MAIN_WINDOW: &str = "main";
+
+/// The page the dock's own window shows; `public/dock.html`.
+const DOCK_PAGE: &str = "dock.html";
+
+/// Opens the main window from the configuration, with one thing the
+/// configuration cannot say: what happens when the page asks for a second
+/// window.
+///
+/// The dock can be moved into a window of its own. The page does that with
+/// `window.open` on `dock.html` — an empty page of this application, which
+/// runs nothing — and then draws the dock into it itself, so the new window
+/// is a second frame of the same running page rather than a second copy of
+/// the application. It is given no capability, so nothing in it can call a
+/// command. A request for any other address is refused.
+fn open_main_window(app: &tauri::App) -> tauri::Result<()> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use tauri::webview::NewWindowResponse;
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|w| w.label == MAIN_WINDOW)
+        .cloned()
+        .ok_or(tauri::Error::WindowNotFound)?;
+    let handle = app.handle().clone();
+    let opened = AtomicUsize::new(0);
+    WebviewWindowBuilder::from_config(app, &config)?
+        .on_new_window(move |url, features| {
+            // The application's own origin, whatever it is on this platform,
+            // and that one page of it.
+            let ours = handle
+                .get_webview_window(MAIN_WINDOW)
+                .and_then(|main| main.url().ok())
+                .is_some_and(|main| main.scheme() == url.scheme() && main.host_str() == url.host_str() && main.port() == url.port());
+            if !ours || url.path() != format!("/{DOCK_PAGE}") {
+                return NewWindowResponse::Deny;
+            }
+            // One dock, one window: a second request while one is open is
+            // answered with nothing.
+            if handle.webview_windows().keys().any(|label| label.starts_with("dock-")) {
+                return NewWindowResponse::Deny;
+            }
+            let label = format!("dock-{}", opened.fetch_add(1, Ordering::Relaxed));
+            let built = WebviewWindowBuilder::new(&handle, label, WebviewUrl::App(DOCK_PAGE.into()))
+                .inner_size(1040.0, 760.0)
+                .min_inner_size(480.0, 320.0)
+                .window_features(features)
+                .title("Corelens Desktop")
+                .theme(Some(tauri::Theme::Dark))
+                // The page names the window after the project.
+                .on_document_title_changed(|window, title| {
+                    let _ = window.set_title(&title);
+                })
+                .build();
+            match built {
+                Ok(window) => NewWindowResponse::Create { window },
+                Err(e) => {
+                    eprintln!("could not open the dock's window: {e}");
+                    NewWindowResponse::Deny
+                }
+            }
+        })
+        .build()?;
+    Ok(())
+}
+
 fn fit_to_screen(app: &tauri::App) {
     use tauri::{LogicalSize, Manager};
 
@@ -153,15 +224,33 @@ fn main() {
             });
             commands::pump_events(app.handle().clone(), rx);
             register_snmp_uptime(app.handle().clone());
+            open_main_window(app)?;
             fit_to_screen(app);
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Closing the window must stop probing before the process exits.
-            if let WindowEvent::CloseRequested { .. } = event {
-                let state = window.state::<AppState>();
-                let engine = Arc::clone(&state.engine);
-                tauri::async_runtime::block_on(async move { engine.stop().await });
+            // The dock's own window is a second frame of the same page: it
+            // comes and goes without touching the probes.
+            if window.label() != MAIN_WINDOW {
+                return;
+            }
+            match event {
+                // Closing the window must stop probing before the process exits.
+                WindowEvent::CloseRequested { .. } => {
+                    let state = window.state::<AppState>();
+                    let engine = Arc::clone(&state.engine);
+                    tauri::async_runtime::block_on(async move { engine.stop().await });
+                }
+                // …and takes the dock's window with it, which on its own
+                // would be an empty frame keeping the process alive.
+                WindowEvent::Destroyed => {
+                    for (label, other) in window.app_handle().webview_windows() {
+                        if label != MAIN_WINDOW {
+                            let _ = other.close();
+                        }
+                    }
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -199,6 +288,7 @@ fn main() {
             commands::list_events,
             commands::record_event,
             commands::app_info,
+            commands::close_dock_windows,
             updater::check_for_update,
             updater::install_update,
             commands::list_icon_library,

@@ -2,6 +2,7 @@ import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useStableList } from '../lib/useStableList';
 import { useReactFlow } from '@xyflow/react';
 import { findNodes } from '../lib/findNodes';
+import { dockOwnerWindow } from '../lib/dockWindow';
 import { t } from '../i18n';
 
 import { useRuntimeSlowly, useStore, type DockTab } from '../state/store';
@@ -23,6 +24,7 @@ import { linkStatus } from '../health/evaluate';
 import { formatTime } from '../lib/timeFormat';
 import { ChromeIcon, IconButton } from './chromeIcons';
 import { dockSideFor, dockWidthClass } from '../lib/dockPlacement';
+import { attachDock, detachDock } from './DockHost';
 import type { DeviceNodeData, HealthStatus, LinkData, ProbeRuntime } from '../types/domain';
 import { STATUS_GLYPH, STATUS_LABEL } from '../types/domain';
 import { activePage, allEdges, allNodes } from '../lib/pages';
@@ -269,6 +271,7 @@ export function StatusPanel() {
   const [problems, setProblems] = useState<'all' | 'problems' | 'down'>('all');
   const problemsOnly = problems !== 'all';
   const dockMaxRaw = useStore((s) => s.dockMax);
+  const detached = useStore((s) => s.dockDetached);
   // The dock's height, dragged on its grip and remembered on this machine.
   const [dockHeight, setDockHeight] = useState<number | null>(() => {
     try {
@@ -500,7 +503,7 @@ export function StatusPanel() {
     }
   };
 
-  if (!open) {
+  if (!open && !detached) {
     return (
       <div className="cv-panel is-collapsed">
         <button type="button" className="cv-btn" onClick={() => setOpen(true)}>
@@ -521,7 +524,8 @@ export function StatusPanel() {
 
   const tall = tab === 'crawl' || tab === 'collect' || tab === 'discover' || tab === 'backup' || tab === 'ssh' || tab === 'trace' || tab === 'tracert' || tab === 'whereis';
   const listTab = tab === 'objects' || tab === 'events';
-  const dockSide = dockSideFor(tab, dockPlacements);
+  // In a window of its own the dock is the whole window: no side, no grip.
+  const dockSide = detached ? 'window' : dockSideFor(tab, dockPlacements);
   const dockMax = dockMaxRaw && dockSide === 'bottom';
   const shown = tab === 'objects' ? filtered.length : filteredEvents.length;
   const total = tab === 'objects' ? rows.length : events.length;
@@ -534,7 +538,7 @@ export function StatusPanel() {
   return (
     <div
       ref={panelRef}
-      className={`cv-panel${tall ? ' is-tall' : ''}${dockMax ? ' is-max' : ''}${dockSide === 'right' ? ` is-dock-right ${dockWidthClass(tab)}` : ''}`}
+      className={`cv-panel${tall ? ' is-tall' : ''}${dockMax ? ' is-max' : ''}${dockSide === 'right' ? ` is-dock-right ${dockWidthClass(tab)}` : ''}${detached ? ' is-detached' : ''}`}
       style={dockSide === 'bottom' && !dockMax && dockHeight ? { height: `${dockHeight}px` } : undefined}
     >
       {/* The grip: drag to resize, double-click for a third or six tenths. */}
@@ -596,17 +600,31 @@ export function StatusPanel() {
             <IconButton icon="maximise" label={dockMax ? t('dock.restore') : t('dock.maximise')} pressed={dockMax} region="dock-max"
               onClick={() => useStore.getState().setDockMax(!dockMax)} />
           )}
+          {!detached && (
+            <button
+              type="button"
+              className="cv-icon-btn"
+              data-action="dock-side"
+              title={dockSide === 'right' ? t('dock.dockBelowHint') : t('dock.dockRightHint')}
+              onClick={() => useStore.getState().setDockPlacement(tab, dockSide === 'right' ? 'bottom' : 'right')}
+            >
+              <ChromeIcon name="pop-out" />
+              <span className="cv-sr">{dockSide === 'right' ? t('dock.dockBelow') : t('dock.dockRight')}</span>
+            </button>
+          )}
+          {/* Out into a window of its own, and back. */}
           <button
             type="button"
             className="cv-icon-btn"
-            data-action="dock-side"
-            title={dockSide === 'right' ? t('dock.dockBelowHint') : t('dock.dockRightHint')}
-            onClick={() => useStore.getState().setDockPlacement(tab, dockSide === 'right' ? 'bottom' : 'right')}
+            data-action="dock-window"
+            aria-pressed={detached}
+            title={detached ? t('dock.attachHint') : t('dock.detachHint')}
+            onClick={() => (detached ? attachDock() : detachDock())}
           >
-            <ChromeIcon name="pop-out" />
-            <span className="cv-sr">{dockSide === 'right' ? t('dock.dockBelow') : t('dock.dockRight')}</span>
+            <ChromeIcon name="window" />
+            <span className="cv-sr">{detached ? t('dock.attach') : t('dock.detach')}</span>
           </button>
-          <IconButton icon="hide" label={t('dock.hide')} region="dock-hide" onClick={() => setOpen(false)} />
+          {!detached && <IconButton icon="hide" label={t('dock.hide')} region="dock-hide" onClick={() => setOpen(false)} />}
         </span>
       </div>
 
@@ -739,7 +757,7 @@ export function StatusPanel() {
             <div className="cv-select-bar" role="toolbar" aria-label={t('select.bar')}>
               <span>{t('select.count', { count: pickedEvents.size })}</span>
               <button type="button" className="cv-btn cv-btn-small"
-                onClick={() => void navigator.clipboard.writeText(eventsToCsv(events.filter((e) => pickedEvents.has(e.id))))}>
+                onClick={() => void dockOwnerWindow().navigator.clipboard.writeText(eventsToCsv(events.filter((e) => pickedEvents.has(e.id))))}>
                 {t('select.copyCsv')}
               </button>
               <button type="button" className="cv-btn cv-btn-small"
@@ -775,7 +793,7 @@ export function StatusPanel() {
                   key={e.id}
                   data-picked={pickedEvents.has(e.id) ? 'yes' : undefined}
                   onDoubleClick={() =>
-                    void navigator.clipboard.writeText(
+                    void dockOwnerWindow().navigator.clipboard.writeText(
                       `${formatTime(e.timestampMs, timeFormat)} ${e.objectType} ${e.objectName} ${
                         e.previousStatus
                       } → ${e.currentStatus} ${e.target ?? ''} ${e.message}`,

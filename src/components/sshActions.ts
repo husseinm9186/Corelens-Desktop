@@ -15,8 +15,11 @@ import type { DeviceNodeData } from '../types/domain';
  * The two ways this fails before anything is sent — no address, no credential
  * of its own — are decided by `planSsh` and reported as themselves. A timeout
  * would be the wrong answer to both.
+ *
+ * With `via`, the session goes through that neighbour: this machine logs in
+ * to it, and it to the device, with the same login.
  */
-export async function openSsh(nodeId: string, data: DeviceNodeData) {
+export async function openSsh(nodeId: string, data: DeviceNodeData, via?: { address: string; label: string }) {
   const store = useStore.getState();
   // The project's login is what a device with none of its own uses.
   const plan = planSsh(data, store.doc.credentialDefaults?.ssh);
@@ -24,7 +27,7 @@ export async function openSsh(nodeId: string, data: DeviceNodeData) {
     store.setStatusMessage(t(plan.reason === 'noAddress' ? 'ssh.noAddress' : 'ssh.noCredential'));
     return;
   }
-  store.setStatusMessage(t('ssh.opening', { name: plan.label }));
+  store.setStatusMessage(via ? t('ssh.openingThrough', { name: plan.label, via: via.label }) : t('ssh.opening', { name: plan.label }));
   store.requestPanelTab('ssh');
   // The panel's own event listener turns each login stage into the
   // status line while this open is pending, so the wait is legible instead
@@ -33,8 +36,8 @@ export async function openSsh(nodeId: string, data: DeviceNodeData) {
     // A size the device can use straight away; the terminal tells it the real
     // one as soon as it has been laid out.
     const { keepaliveSeconds, logByDefault } = store.settings.terminal;
-    const id = await ipc.sshOpen(plan.address, plan.credentialId, { cols: 120, rows: 30 }, undefined, keepaliveSeconds);
-    useStore.getState().openSshTab({ id, address: plan.address, label: plan.label, nodeId, status: 'open', credentialId: plan.credentialId });
+    const id = await ipc.sshOpen(plan.address, plan.credentialId, { cols: 120, rows: 30 }, undefined, keepaliveSeconds, via?.address);
+    useStore.getState().openSshTab({ id, address: plan.address, label: plan.label, nodeId, status: 'open', credentialId: plan.credentialId, ...(via ? { via } : {}) });
     useStore.getState().setStatusMessage(null);
     // Logging every session without being asked each time.
     const folder = useStore.getState().settings.backupFolder;

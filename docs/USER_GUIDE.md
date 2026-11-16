@@ -1015,6 +1015,10 @@ MAC where the platform prints one, and the members of a stack with their
 serials. The addresses on its own interfaces are added to its **Addresses**
 under **Checks**, each named after its interface; the address it is managed
 on stays the primary, and no check is made for the others until you add one.
+Link-local addresses (`fe80::…`, `169.254.x.x`) are left out: nothing off
+that link can reach them. The answer lands on the device whichever page is in
+front when it arrives, and on every other drawing of it — a device on another
+page managed on the same address.
 This is not a crawl. The device is asked its version, whatever else
 its platform needs to state a model and serial, its stack table and its own
 interface table; it is

@@ -6,7 +6,7 @@
  * already has — never instead of them: an address somebody typed, and the
  * label they gave it, stay. The address the device is managed on is the
  * primary, always; the others are listed and nothing more — no check is made
- * for them until somebody asks for one.
+ * for them until somebody asks for one. Link-local addresses are not listed.
  *
  * Pure, so the rules are tested without a crawl.
  */
@@ -20,6 +20,12 @@ export interface InterfaceAddress {
 /** An address without the prefix length some tables print after it. */
 const bare = (address: string) => address.trim().split('/')[0]!.trim();
 const usable = (ip: string) => ip !== '' && !ip.startsWith('127.') && ip !== '0.0.0.0' && ip !== '::1' && /[.:]/.test(ip);
+/** An address that means something only on its own link — IPv6 link-local
+ *  (fe80::/10) and IPv4 self-assigned (169.254/16). A device has one on
+ *  nearly every interface and nothing a hop away can reach any of them, so
+ *  an interface's is not listed. One that was typed, or dialled, is kept:
+ *  somebody on that link put it there. */
+const linkLocal = (ip: string) => /^169\.254\./.test(ip) || /^fe[89ab][0-9a-f]:/i.test(ip);
 
 export function withInterfaceAddresses(
   had: readonly NodeAddress[] | undefined,
@@ -47,7 +53,7 @@ export function withInterfaceAddresses(
   }
   for (const i of interfaces) {
     const ip = bare(i.ip);
-    if (!usable(ip) || find(ip)) continue;
+    if (!usable(ip) || linkLocal(ip) || find(ip)) continue;
     out.push({ id: newId(), label: i.interface?.trim() || 'Interface', address: ip, isPrimary: false });
   }
   return out;

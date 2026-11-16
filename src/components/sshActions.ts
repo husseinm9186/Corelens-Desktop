@@ -4,7 +4,7 @@
  * questions in the same order and report the same refusals.
  */
 import { ipc } from '../lib/ipc';
-import { deviceInfoPatch } from '../lib/deviceInfo';
+import { fillDeviceInfo } from '../lib/deviceInfo';
 import { planSsh, sshAddress } from '../lib/sshLaunch';
 import { t } from '../i18n';
 import { useStore } from '../state/store';
@@ -108,21 +108,25 @@ export async function getDeviceInfo(nodeId: string, data: DeviceNodeData) {
   store.setStatusMessage(t('deviceInfo.asking', { name: plan.label }));
   try {
     const info = await ipc.getDeviceInfo(plan.address, plan.credentialId);
-    // The device as it is now: it may have been edited while this ran.
+    // The project as it is now: the device may have been edited while this
+    // ran, and the page in front may be another one. Every drawing of the
+    // device is filled, on whatever page it is.
     const state = useStore.getState();
-    // On the page in front, which is the one an edit lands on.
-    const node = state.doc.pages.find((p) => p.id === state.doc.activePageId)?.nodes.find((n) => n.id === nodeId);
-    if (!node) {
+    const { pages, filled, changed } = fillDeviceInfo(state.doc.pages, nodeId, info, Date.now(), plan.address);
+    if (filled.length === 0) {
       state.setStatusMessage(t('deviceInfo.gone', { name: plan.label }));
       return;
     }
-    const { patch, changed } = deviceInfoPatch(info, node.data as DeviceNodeData, Date.now(), plan.address);
-    state.updateNodeData(nodeId, patch);
+    useStore.setState((s) => ({ doc: { ...s.doc, pages }, dirty: true }));
+    // The primary check follows the primary address, as after any edit of it.
+    for (const id of filled) useStore.getState().ensureNodeCheck(id);
     const asked = info.commands.join(', ');
+    // Said only when there is more than one, so the usual case reads as before.
+    const drawings = filled.length > 1 ? t('deviceInfo.drawings', { count: filled.length }) : '';
     state.setStatusMessage(
-      changed.length
+      (changed.length
         ? t('deviceInfo.filled', { name: plan.label, fields: changed.join(', '), asked })
-        : t('deviceInfo.nothingNew', { name: plan.label, asked }),
+        : t('deviceInfo.nothingNew', { name: plan.label, asked })) + drawings,
     );
   } catch (e: unknown) {
     useStore.getState().setStatusMessage(t('deviceInfo.failed', { name: plan.label, why: e instanceof Error ? e.message : String(e) }));

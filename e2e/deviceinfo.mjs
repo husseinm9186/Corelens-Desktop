@@ -53,7 +53,19 @@ const project = {
           addresses: [{ id: "y", label: "Mgmt", address: "192.0.2.11", isPrimary: true }] }),
         node("c", "NO-LOGIN", { addresses: [{ id: "z", label: "Mgmt", address: "192.0.2.12", isPrimary: true }] }),
         node("d", "NO-ADDRESS", { sshCredentialId: "cred-1", addresses: [] }),
-      ] }],
+        // Answers slowly: long enough to turn the page while it is asked.
+        node("s", "SLOW-SW9", { hostname: "SLOW-SW9", sshCredentialId: "cred-1",
+          addresses: [{ id: "w", label: "Mgmt", address: "192.0.2.50", isPrimary: true }] }),
+      ] },
+      // A second page, with the slow device drawn on it again.
+      { id: "p2", name: "Site",
+        canvas: { gridEnabled: true, snapEnabled: true, minimap: false, nodeStyle: "glyph" },
+        edges: [],
+        nodes: [
+          node("s2", "SLOW-SW9 (site)", { sshCredentialId: "cred-1",
+            addresses: [{ id: "v", label: "Mgmt", address: "192.0.2.50", isPrimary: true }] }),
+          node("o", "OTHER-SW", { addresses: [{ id: "u", label: "Mgmt", address: "192.0.2.51", isPrimary: true }] }),
+        ] }],
   },
 };
 
@@ -80,11 +92,18 @@ await page.addInitScript(({ p }) => {
       if (cmd === "get_device_info") {
         window.__asked.push(args);
         if (args.device === "192.0.2.11") return Promise.reject("192.0.2.11 refused the login");
+        if (args.device === "192.0.2.50") return new Promise((done) => setTimeout(() => done({
+          hostname: "SLOW-SW9", family: "Cisco IOS", model: "C9200L-24T", serials: ["FOC0009TEST"],
+          software: null, mac: null, uptimeSeconds: 60, stack: null,
+          addresses: [{ ip: "192.0.2.50", interface: "Vlan10", isManagement: true }], commands: ["show version"], unverified: false,
+        }), 1500));
         return Promise.resolve({
           hostname: "CORE-SW1", family: "Cisco IOS", model: "C9300-48P",
           serials: ["FOC0000TEST", "FOC0001TEST"], software: "Cisco IOS Software, Version 16.12.4",
           mac: null, uptimeSeconds: 3600, stack: null,
-          addresses: [{ ip: "192.0.2.10", interface: "Vlan10", isManagement: true }, { ip: "198.51.100.1", interface: "Vlan20", isManagement: false }], commands: ["show version", "show switch"], unverified: false,
+          addresses: [{ ip: "192.0.2.10", interface: "Vlan10", isManagement: true }, { ip: "198.51.100.1", interface: "Vlan20", isManagement: false },
+            // Link-local: on every interface of a real device, reachable from nowhere else.
+            { ip: "fe80::1", interface: "Vlan20", isManagement: false }, { ip: "169.254.1.1", interface: "Gi0/0", isManagement: false }], commands: ["show version", "show switch"], unverified: false,
         });
       }
       if (cmd === "get_settings") return Promise.resolve({});
@@ -157,6 +176,8 @@ check("its other interface address is listed under Checks, by interface name",
 check("the address it is managed on is still there, once, under the label it was given",
   // A second entry for it would carry the interface's name; the probe's own target field also shows the address.
   listed.indexOf("192.0.2.10") === listed.indexOf("Mgmt") + 1 && !listed.includes("Vlan10"), JSON.stringify(listed.filter(Boolean)));
+check("a link-local address is not listed: nothing off that link could reach it",
+  !listed.some((v) => /^fe80|^169\.254\./i.test(v)), JSON.stringify(listed.filter(Boolean)));
 check("the status line says interface addresses were added", /interface addresses/.test(said), said);
 
 // A second time: the same answers change nothing.
@@ -172,6 +193,23 @@ await menuItem(ITEM).click();
 await page.waitForTimeout(700);
 check("a refusal is reported as itself, by name", /Could not read ACCESS-SW7: 192\.0\.2\.11 refused the login/.test(await message()), await message());
 check("still nothing but the three requests", (await st(() => window.__asked)).length === 3 && (await st(() => window.__calls)).length === 0);
+
+// ------------------------------------- the page turned while a device answers
+
+const modelOf = (id) => st((id) => window.__cvStore.getState().doc.pages.flatMap((p) => p.nodes).find((n) => n.id === id)?.data.model ?? null, id);
+await rightClick("SLOW-SW9");
+await menuItem(ITEM).click();
+await page.waitForTimeout(200);
+await st(() => window.__cvStore.getState().setActivePage("p2"));
+check("the page was turned before the device answered", (await modelOf("s")) === null && (await st(() => window.__cvStore.getState().doc.activePageId)) === "p2");
+await page.waitForTimeout(1900);
+const late = await message();
+check("its answer is not thrown away: the device is filled on the page it was asked from", (await modelOf("s")) === "C9200L-24T", late);
+check("and the drawing of it on the other page is filled too", (await modelOf("s2")) === "C9200L-24T");
+check("another device on that page is not", (await modelOf("o")) === null);
+check("the drawing keeps its own name", (await st(() => window.__cvStore.getState().doc.pages[1].nodes[0].data.label)) === "SLOW-SW9 (site)");
+check("the status line says both drawings were filled, not that the device is gone", /SLOW-SW9: filled in .*model.*all 2 drawings/.test(late) && !/no longer/.test(late), late);
+check("the page in front is still the one turned to", (await st(() => window.__cvStore.getState().doc.activePageId)) === "p2");
 
 await browser.close();
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);

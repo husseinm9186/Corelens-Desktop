@@ -2,6 +2,20 @@
 
 Newest first.
 
+## 2.17.2 — 2026-11-16
+
+**Fixed**
+- **Get device info** threw its answer away if the page was turned while
+  the device was still answering, and said the device was gone. The answer
+  now lands on the device whichever page is in front.
+- A device drawn on more than one page was filled in on one of them. Every
+  drawing of it — a device managed on the same address — is filled, each
+  keeping its own name and whatever was typed into it.
+- Link-local addresses (`fe80::…`, `169.254.x.x`) were listed under a
+  device's **Addresses** after a discovery or Get device info. Nothing off
+  that link can reach them, so they are no longer listed. One typed by hand
+  is kept; ones already listed stay until removed.
+
 ## 2.17.1 — 2026-11-15
 
 **Fixed**

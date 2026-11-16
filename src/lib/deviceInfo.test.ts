@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deviceInfoPatch } from './deviceInfo';
+import { deviceInfoPatch, fillDeviceInfo } from './deviceInfo';
 import type { DeviceInfo } from './ipc';
 import type { DeviceNodeData } from '../types/domain';
 
@@ -68,5 +68,51 @@ describe('what a device said, onto its fields', () => {
     expect(patch.stackKind).toBe('StackWise');
     expect(patch.stackMembers).toBe('1 active FOC0000TEST\n2 standby FOC0001TEST');
     expect(patch.stackUnverified).toBe(true);
+  });
+});
+
+describe('what a device said, onto every drawing of it', () => {
+  const at = (address: string, over: Partial<DeviceNodeData> = {}) =>
+    drawn({ addresses: [{ id: `a-${address}`, label: 'Mgmt', address, isPrimary: true }], ...over });
+  const node = (id: string, data: DeviceNodeData) => ({ id, type: 'device', position: { x: 0, y: 0 }, data }) as never;
+  const pages = () =>
+    [
+      { id: 'p1', name: 'Core', nodes: [node('n1', at('192.0.2.10')), node('n2', at('192.0.2.11'))], edges: [] },
+      { id: 'p2', name: 'Site', nodes: [node('n3', at('192.0.2.10/24', { label: 'Core, again' })), { id: 'note', type: 'note', position: { x: 0, y: 0 }, data: { text: '192.0.2.10' } }], edges: [] },
+    ] as never as Parameters<typeof fillDeviceInfo>[0];
+  const modelOf = (ps: ReturnType<typeof pages>, id: string) =>
+    (ps.flatMap((p) => p.nodes).find((n) => n.id === id)!.data as DeviceNodeData).model;
+
+  it('fills the device asked and every other drawing managed on the same address', () => {
+    const got = fillDeviceInfo(pages(), 'n1', info(), 1, '192.0.2.10');
+    expect(got.filled).toEqual(['n1', 'n3']);
+    expect(modelOf(got.pages, 'n1')).toBe('C9300-48P');
+    expect(modelOf(got.pages, 'n3')).toBe('C9300-48P');
+    expect(got.changed).toContain('model');
+  });
+
+  it('leaves another device, and a note, alone', () => {
+    const before = pages();
+    const got = fillDeviceInfo(before, 'n1', info(), 1, '192.0.2.10');
+    expect(modelOf(got.pages, 'n2')).toBeUndefined();
+    expect(got.pages[1]!.nodes[1]).toEqual(before[1]!.nodes[1]);
+    expect((got.pages[1]!.nodes[0]!.data as DeviceNodeData).label).toBe('Core, again');
+  });
+
+  it('does not care which page the device is on', () => {
+    const got = fillDeviceInfo(pages(), 'n3', info(), 1, '192.0.2.10');
+    expect(got.filled).toEqual(['n1', 'n3']);
+  });
+
+  it('fills nothing only when the device is on no page at all', () => {
+    const before = pages();
+    const got = fillDeviceInfo(before, 'deleted', info(), 1, '192.0.2.99');
+    expect(got.filled).toEqual([]);
+    expect(got.pages).toBe(before);
+  });
+
+  it('a page nothing on was filled is the same page as before', () => {
+    const before = pages().concat([{ id: 'p3', name: 'Other', nodes: [], edges: [] }] as never);
+    expect(fillDeviceInfo(before, 'n1', info(), 1, '192.0.2.10').pages[2]).toBe(before[2]);
   });
 });

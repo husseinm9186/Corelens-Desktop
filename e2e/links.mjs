@@ -77,6 +77,20 @@ const vp = async () => {
   return { k: n[0], tx: n[4], ty: n[5], ox: origin.x, oy: origin.y };
 };
 const overlap = (a, b) => a && b && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+// The lines of text under a device, as one box: its name and whatever it
+// shows below it. They are the device's own children, with no block round them.
+const textUnder = async (id) => {
+  const b = await page.evaluate((id) => {
+    const lines = [...document.querySelectorAll(`[data-id="${id}"] .cv-glyph-node > :is(.cv-glyph-label, .cv-node-links, .cv-glyph-addr, .cv-glyph-status, .cv-node-maint)`)];
+    if (!lines.length) return null;
+    const r = lines.map((l) => l.getBoundingClientRect());
+    const x = Math.min(...r.map((q) => q.left)), y = Math.min(...r.map((q) => q.top));
+    return { x, y, width: Math.max(...r.map((q) => q.right)) - x, height: Math.max(...r.map((q) => q.bottom)) - y };
+  }, id);
+  if (!b) return null;
+  const v = await vp();
+  return { x: (b.x - v.ox - v.tx) / v.k, y: (b.y - v.oy - v.ty) / v.k, width: b.width / v.k, height: b.height / v.k };
+};
 const box = async (sel) => {
   const b = await page.locator(sel).first().boundingBox();
   if (!b) return null;
@@ -125,7 +139,7 @@ const pathEnds = async (edgeId) => {
 // ------------------------------------------------------------- port labels beside the line, clear of the name
 
 {
-  const name = await box('[data-id="core"] .cv-glyph-text');
+  const name = await textUnder("core");
   const chip = await box('.cv-edge-port:has-text("Gi1/0/24")');
   const centre = await box(".cv-edge-center");
   const e1 = await pathEnds("e1");
@@ -145,7 +159,7 @@ const pathEnds = async (edgeId) => {
 // ------------------------------------------------------------- the centre label of a short link slides past the name
 
 {
-  const name = await box('[data-id="fw"] .cv-glyph-text');
+  const name = await textUnder("fw");
   const centre = await box('.react-flow__edge[data-id="e3"] ~ * .cv-edge-center, .cv-edge-center:has-text("10 Gb")');
   check("on a short link down from a device, the cable tag sits below the device's name, not on it", !overlap(name, centre) && centre.y > name.y + name.height - 2, JSON.stringify({ name, centre }));
   const pchip = await box('.cv-edge-port:has-text("port3")');

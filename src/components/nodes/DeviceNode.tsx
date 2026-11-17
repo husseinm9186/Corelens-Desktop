@@ -328,7 +328,7 @@ function DeviceNodeInner({ id, data, selected }: NodeProps) {
   if (glyph) {
     return (
       <div
-        className={`cv-glyph-node ${selected ? 'is-selected' : ''}${hit ? ' is-hit' : ''}${dimmed ? ' is-dimmed' : ''}`}
+        className={`cv-glyph-node ${selected ? 'is-selected' : ''}${hit ? ' is-hit' : ''}${dimmed ? ' is-dimmed' : ''}${failing ? ' is-failing' : ''}`}
         title={hoverTitle}
         onMouseEnter={cardEnter}
         onMouseLeave={cardLeave}
@@ -357,94 +357,98 @@ function DeviceNodeInner({ id, data, selected }: NodeProps) {
         <Handle type="source" position={Position.Bottom} id="b" className="cv-handle" />
         <Handle type="source" position={Position.Left} id="l" className="cv-handle" />
 
-        <div
-          className={`cv-glyph-art is-${status}${failing ? ' is-failing' : ''}`}
-          style={{ color: d.style?.iconColor ?? color }}
-        >
-          {alarm && mark && <span className="cv-glyph-ring" style={{ borderColor: mark }} aria-hidden="true" />}
-          {d.imageDataUrl ? (
-            <img src={d.imageDataUrl} alt="" />
-          ) : (
-            <DeviceGlyph type={d.deviceType} stacked={stacked} solid={solid} color={d.style?.iconColor ?? color} />
-          )}
-          {alarm && mark && (
-            <span
-              key={status}
-              className="cv-glyph-badge cv-status-pulse"
-              style={{ background: mark }}
-              title={`${STATUS_LABEL[status]}${live?.lastSummary ? ` — ${live.lastSummary}` : ''}`}
-            >
-              <span aria-hidden>{STATUS_GLYPH[status]}</span>
-              <span className="cv-sr">{STATUS_LABEL[status]}</span>
-            </span>
-          )}
-          {!alarm && mark && (
-            <span
-              key={status}
-              className="cv-glyph-dot cv-status-pulse"
-              style={{ background: mark }}
-              title={`${STATUS_LABEL[status]}${live?.lastSummary ? ` — ${live.lastSummary}` : ''}`}
-            >
-              <span className="cv-sr">{STATUS_LABEL[status]}</span>
-            </span>
-          )}
-          {d.locked && <span className="cv-glyph-lock" title={t('deviceNode.locked')} aria-label={t('deviceNode.locked')}><ChromeIcon name="lock" size={12} /></span>}
-          {openThreads(d.comments) > 0 && (
-            <span className="cv-comment-badge" title={t('deviceNode.openComments')} aria-label={`${openThreads(d.comments)} open comments`}>
-              <ChromeIcon name="comment" size={12} /> {openThreads(d.comments)}
-            </span>
-          )}
-          {d.link && (
-            <span
-              className="cv-glyph-link nodrag nopan"
-              title={d.link}
-              aria-label={`Open ${d.link}`}
-              role="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openLink();
-              }}
-            >
-              <ChromeIcon name="link" size={12} />
-            </span>
-          )}
-        </div>
+        {/* The drawing, the marks on it and the lines of text under it are
+            all this element's own children: a wrapper round the drawing and
+            another round the text were two more boxes per device for the
+            engine to lay out and hit-test, and they held nothing up. */}
+        {alarm && mark && <span className="cv-glyph-ring" style={{ borderColor: mark }} aria-hidden="true" />}
+        {d.imageDataUrl ? (
+          <img className={`cv-glyph-art is-${status}`} src={d.imageDataUrl} alt="" />
+        ) : (
+          <DeviceGlyph
+            className={`cv-glyph-art is-${status}`}
+            style={{ color: d.style?.iconColor ?? color }}
+            type={d.deviceType}
+            stacked={stacked}
+            solid={solid}
+            color={d.style?.iconColor ?? color}
+          />
+        )}
+        {alarm && mark && (
+          <span
+            key={status}
+            className="cv-glyph-badge cv-status-pulse"
+            style={{ background: mark }}
+            title={`${STATUS_LABEL[status]}${live?.lastSummary ? ` — ${live.lastSummary}` : ''}`}
+          >
+            <span aria-hidden>{STATUS_GLYPH[status]}</span>
+            <span className="cv-sr">{STATUS_LABEL[status]}</span>
+          </span>
+        )}
+        {!alarm && mark && (
+          <span
+            key={status}
+            className="cv-glyph-dot cv-status-pulse"
+            style={{ background: mark }}
+            title={`${STATUS_LABEL[status]}${live?.lastSummary ? ` — ${live.lastSummary}` : ''}`}
+          >
+            <span className="cv-sr">{STATUS_LABEL[status]}</span>
+          </span>
+        )}
+        {d.locked && <span className="cv-glyph-lock" title={t('deviceNode.locked')} aria-label={t('deviceNode.locked')}><ChromeIcon name="lock" size={12} /></span>}
+        {openThreads(d.comments) > 0 && (
+          <span className="cv-comment-badge" title={t('deviceNode.openComments')} aria-label={`${openThreads(d.comments)} open comments`}>
+            <ChromeIcon name="comment" size={12} /> {openThreads(d.comments)}
+          </span>
+        )}
+        {d.link && (
+          <span
+            className="cv-glyph-link nodrag nopan"
+            title={d.link}
+            aria-label={`Open ${d.link}`}
+            role="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openLink();
+            }}
+          >
+            <ChromeIcon name="link" size={12} />
+          </span>
+        )}
 
         {/* Text sits under the glyph and is allowed to be wider than it, so
             adding an address moves nothing and resizes nothing. */}
-        <div className="cv-glyph-text">
-          <EditableLabel
-            className="cv-glyph-label"
-            style={cssOf(d.labelStyle)}
-            value={d.label}
-            onCommit={(label) => rename(id, { label })}
-            startEditing={editingNow}
-            onStarted={() => beginEditing(null)}
-          />
-          {links > CROWDED_LINKS && !isText && (
-            <div className="cv-node-links" data-region="node-links">{t('deviceNode.links', { count: links })}</div>
-          )}
-          {d.showDetails && (
-            <>
-              {primaryAddress && <div className="cv-glyph-addr">{primaryAddress}</div>}
-              {/* A third line only when there is something to say: what is
-                  wrong, a check that went unanswered, or the time a healthy
-                  answer took. "Unknown" under every node said nothing. */}
-              {(alarm || failing || (status === 'healthy' && live?.lastRttMs != null)) && (
-                <div className="cv-glyph-status" style={{ color: failing ? amber : statusInk }}>
-                  {failing
-                    ? missedLabel
-                    : status === 'down'
-                      ? STATUS_LABEL[status]
-                      : live?.lastRttMs != null
-                        ? `${status === 'warning' ? `${STATUS_LABEL[status]} · ` : ''}${live.lastRttMs < 1 ? '<1' : live.lastRttMs.toFixed(0)} ms`
-                        : STATUS_LABEL[status]}
-                </div>
-              )}
-              {d.maintenance && <div className="cv-node-maint">{t('deviceNode.inMaintenance')}</div>}
-            </>
-          )}
-        </div>
+        <EditableLabel
+          className="cv-glyph-label"
+          style={cssOf(d.labelStyle)}
+          value={d.label}
+          onCommit={(label) => rename(id, { label })}
+          startEditing={editingNow}
+          onStarted={() => beginEditing(null)}
+        />
+        {links > CROWDED_LINKS && !isText && (
+          <div className="cv-node-links" data-region="node-links">{t('deviceNode.links', { count: links })}</div>
+        )}
+        {d.showDetails && (
+          <>
+            {primaryAddress && <div className="cv-glyph-addr">{primaryAddress}</div>}
+            {/* A third line only when there is something to say: what is
+                wrong, a check that went unanswered, or the time a healthy
+                answer took. "Unknown" under every node said nothing. */}
+            {(alarm || failing || (status === 'healthy' && live?.lastRttMs != null)) && (
+              <div className="cv-glyph-status" style={{ color: failing ? amber : statusInk }}>
+                {failing
+                  ? missedLabel
+                  : status === 'down'
+                    ? STATUS_LABEL[status]
+                    : live?.lastRttMs != null
+                      ? `${status === 'warning' ? `${STATUS_LABEL[status]} · ` : ''}${live.lastRttMs < 1 ? '<1' : live.lastRttMs.toFixed(0)} ms`
+                      : STATUS_LABEL[status]}
+              </div>
+            )}
+            {d.maintenance && <div className="cv-node-maint">{t('deviceNode.inMaintenance')}</div>}
+          </>
+        )}
       </div>
     );
   }

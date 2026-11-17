@@ -1724,7 +1724,7 @@ await dismissRecovery();
   await page.waitForTimeout(250);
 
   const glyphInk = () =>
-    page.locator(".cv-glyph-art svg, .cv-node-icon svg").first()
+    page.locator("svg.cv-glyph-art, .cv-node-icon svg").first()
       .evaluate((el) => getComputedStyle(el).color);
   const byHealth = await glyphInk();
 
@@ -2720,7 +2720,7 @@ await dismissRecovery();
   check("a resize corner sits on the shape's own corner",
     handle && Math.hypot(handle.x + handle.width / 2 - art.x, handle.y + handle.height / 2 - art.y) < 12,
     handle ? `handle (${handle.x.toFixed(0)},${handle.y.toFixed(0)}) vs art (${art.x.toFixed(0)},${art.y.toFixed(0)})` : "no handle");
-  const label = await node.locator(".cv-glyph-text").boundingBox();
+  const label = await node.locator(".cv-glyph-label").boundingBox();
   check("the label hangs below the shape without widening its bounds",
     label && label.y >= art.y + art.height - 2, label ? `label y ${label.y.toFixed(0)} art bottom ${(art.y + art.height).toFixed(0)}` : "no label");
   await page.keyboard.press("Escape");

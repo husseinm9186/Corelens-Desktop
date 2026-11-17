@@ -150,7 +150,7 @@
 }
 .is-reduce-motion { --motion-fast: 0ms; --motion: 0ms; }
 @media (prefers-reduced-motion: reduce) { :root { --motion-fast: 0ms; --motion: 0ms; } }
-.is-reduce-motion .cv-glyph-art.is-failing::before { animation: none; opacity: 0.8; }
+.is-reduce-motion .cv-glyph-node.is-failing::before { animation: none; opacity: 0.8; }
 
 /* The white ground — the canvas only.
  *
@@ -2141,6 +2141,11 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   width: 100%; height: 100%;
   background: none; border: none; padding: 0;
   position: relative;
+  /* A column: the drawing fills the box, and the lines of text follow it
+     out of the bottom, centred however much wider than the box they are.
+     Everything else in here — the hit area, the handles, the marks — is
+     positioned on the box and takes no part in this. */
+  display: flex; flex-direction: column; align-items: center;
   /* The node's own box takes no pointer events. An HTML element is a
      hit target across the whole of its box whether or not anything is painted
      there, so a square node swallowed every link that passed behind it — for
@@ -2160,24 +2165,21 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 }
 .cv-glyph-node .react-flow__handle,
 .cv-glyph-node .react-flow__resize-control { pointer-events: auto; }
+/* The drawing itself: the glyph's svg, or an image somebody chose. It owns
+   every pixel of the node and none of the pointer: clicks and drags land on
+   the hit area, and the connection dots and resize corners never fight the
+   drawing for the same pixels. */
 .cv-glyph-art {
-  position: relative;
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  /* The artwork owns every pixel of the node, and it must own
-     none of the pointer: clicks and drags fall through to the node wrapper,
-     and the connection dots and resize corners never fight the drawing for
-     the same pixels. The status badge opts back in for its tooltip. */
+  flex: none; width: 100%; height: 100%;
   pointer-events: none;
 }
+img.cv-glyph-art { object-fit: contain; }
 .cv-glyph-badge { pointer-events: auto; }
-.cv-glyph-art svg { width: 100%; height: 100%; }
-.cv-glyph-art img { width: 100%; height: 100%; object-fit: contain; }
 
 /* Selection is a halo on the glyph rather than a box around everything: the
    node has no box to outline. Ink, not the accent, so it reads on every
    family tint and both grounds. */
-.cv-glyph-node.is-selected .cv-glyph-art::after {
+.cv-glyph-node.is-selected::after {
   content: ''; position: absolute; inset: -6px;
   border: 2px solid var(--ink); border-radius: 50%;
   background: color-mix(in srgb, var(--ink) 6%, transparent);
@@ -2205,19 +2207,20 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   pointer-events: auto; cursor: pointer;
 }
 
-.cv-glyph-text {
-  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-  margin-top: 6px; text-align: center; line-height: 1.35;
-  /* Wider than the node box so a long name does not force the node wider and
-     shove its neighbours around. */
+/* The lines under the glyph. Each may be wider than the node, so a long
+   name neither resizes the device nor shoves its neighbours around. Only the
+   name takes pointer events — it has to be clickable to be renamed in place
+   — or the overhang would swallow clicks meant for the canvas. */
+.cv-glyph-node > :is(.cv-glyph-label, .cv-node-links, .cv-glyph-addr, .cv-glyph-status, .cv-node-maint, .cv-inline-edit) {
+  flex: none;
   width: max-content; max-width: 190px;
-  /* The block is wider than the node so a long name does not resize it. Only
-     the text itself takes pointer events, or that overhang would swallow
-     clicks meant for the canvas — and the label has to be clickable to be
-     renamed in place. */
-  pointer-events: none;
+  text-align: center; line-height: 1.35;
+  /* Over the bottom connection dot and the selection ring, which reach down
+     into the first line: the name is what a click there is meant for. */
+  position: relative; z-index: 1;
 }
-.cv-glyph-label, .cv-glyph-text .cv-inline-edit { pointer-events: auto; }
+.cv-glyph-node > :is(.cv-glyph-label, .cv-inline-edit) { margin-top: 6px; pointer-events: auto; }
+.cv-glyph-node > .cv-inline-edit { width: 10.76923077rem; }
 /* `--label-ink`, `--label-muted` and `--label-halo` are set on a device that
    stands on a filled shape, to ink that reads on that fill; anywhere else
    they are the ground's own. The halo is the page's colour, because the
@@ -2243,7 +2246,6 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   padding: 0 0.23076923rem; text-align: inherit; font: inherit;
   width: min(13.84615385rem, 90%); pointer-events: all;
 }
-.cv-glyph-text .cv-inline-edit { text-align: center; }
 .cv-glyph-label, .cv-node-label { cursor: text; }
 
 /* Choosing what the crawl may log in to, before it runs. */
@@ -2269,14 +2271,14 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
    called down. Solid green for the fifteen seconds the default thresholds
    take is the app claiming health it has not confirmed — this says plainly
    that the last check did not answer, without asserting the device is down. */
-.cv-glyph-art.is-failing::before {
+.cv-glyph-node.is-failing::before {
   content: ''; position: absolute; inset: -5px;
   border: 1.5px dashed var(--warning); border-radius: 50%;
   animation: cv-missed 1.4s ease-in-out infinite;
 }
 @keyframes cv-missed { 0%, 100% { opacity: 0.45 } 50% { opacity: 1 } }
 @media (prefers-reduced-motion: reduce) {
-  .cv-glyph-art.is-failing::before { animation: none; opacity: 0.8; }
+  .cv-glyph-node.is-failing::before { animation: none; opacity: 0.8; }
 }
 
 /* How long ago a result was actually confirmed. Dim, because it is context
@@ -2513,7 +2515,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 .cv-node.cv-zone .cv-status-badge { display: none; }
 /* Zoomed far out, the detail nobody can read or aim at is not drawn.
    The device's grab area stays, so it can still be dragged. */
-.cv-canvas.is-far .cv-glyph-text,
+.cv-canvas.is-far .cv-glyph-node > :is(.cv-glyph-label, .cv-node-links, .cv-glyph-addr, .cv-glyph-status, .cv-node-maint),
 .cv-canvas.is-far .cv-glyph-badge,
 .cv-canvas.is-far .cv-node-text,
 .cv-canvas.is-far .cv-status-badge,
@@ -2860,12 +2862,12 @@ details[open] > .cv-palette-sub::before { transform: rotate(90deg); }
 
 /* What the panel filter matches, lit on the canvas. Everything else steps
    back rather than vanishing — the point is to find, not to hide. */
-.cv-glyph-node.is-hit .cv-glyph-art::after,
+.cv-glyph-node.is-hit::after,
 .cv-node.is-hit::after {
   content: ''; position: absolute; inset: -6px; border-radius: 10px;
   border: 2px solid var(--warning); pointer-events: none;
 }
-.cv-glyph-node.is-hit .cv-glyph-art::after { border-radius: 50%; }
+.cv-glyph-node.is-hit::after { border-radius: 50%; }
 .cv-glyph-node.is-dimmed, .cv-node.is-dimmed { opacity: 0.3; }
 
 /* Unsaved work found from a session that ended badly. Loud on purpose: it is

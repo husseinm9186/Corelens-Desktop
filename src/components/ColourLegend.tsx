@@ -10,6 +10,8 @@ import { useMemo } from 'react';
 import { useStore } from '../state/store';
 import { legendFor, type ColourBy } from '../lib/tinting';
 import { activePage } from '../lib/pages';
+import { drawnLegend } from '../lib/drawnLinks';
+import { linkMarkColours } from '../theme';
 import { t } from '../i18n';
 
 const WHAT: Record<ColourBy, string> = {
@@ -22,6 +24,8 @@ const WHAT: Record<ColourBy, string> = {
 
 export function ColourLegend() {
   const nodes = useStore((s) => activePage(s.doc).nodes);
+  const edges = useStore((s) => activePage(s.doc).edges);
+  const hideManagement = useStore((s) => activePage(s.doc).canvas.hideManagement);
   const colourBy = useStore((s) => activePage(s.doc).canvas.colourBy ?? 'health');
   const ground = useStore((s) => s.settings.ground);
   const setCanvas = useStore((s) => s.setCanvas);
@@ -31,7 +35,31 @@ export function ColourLegend() {
     [nodes, colourBy, ground],
   );
 
-  if (colourBy === 'health') return null;
+  // What the link colours mean, once the devices have been asked about the
+  // drawn links — only the ones on this page.
+  const linkItems = useMemo(() => drawnLegend(edges), [edges]);
+  const linkColours = linkMarkColours(ground);
+  const links = linkItems.length > 0 && (
+    <div className="cv-legend-links" data-region="link-legend" aria-label={t('drawn.legend')}>
+      <div className="cv-legend-head">
+        <span>{t('drawn.legend')}</span>
+      </div>
+      <div className="cv-legend-items">
+        {linkItems.map((i) => (
+          <span key={i.key} className="cv-legend-item">
+            <i className="cv-legend-line" style={{ background: linkColours[i.key] }} />
+            <span className="cv-legend-key">{t(`drawn.legend.${i.key}`)}</span>
+            <span className="cv-legend-count">
+              {i.count}
+              {i.key === 'management' && hideManagement ? ` · ${t('drawn.legend.hidden')}` : ''}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (colourBy === 'health') return links ? <div className="cv-legend">{links}</div> : null;
 
   return (
     <div className="cv-legend" aria-label={`Colour by ${WHAT[colourBy]}`}>
@@ -64,6 +92,7 @@ export function ColourLegend() {
           )}
         </div>
       )}
+      {links}
     </div>
   );
 }

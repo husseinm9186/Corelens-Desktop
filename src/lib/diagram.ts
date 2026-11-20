@@ -25,10 +25,10 @@ import {
   canvasPalette,
   deviceColor,
   notePalette,
-  readableOn,
   statusColors,
   statusMark,
   type Ground,
+  linkMarkColours,
 } from '../theme';
 import { glyphMarkup } from './glyphSvg';
 import { jumpsFor, withJumps } from './lineJumps';
@@ -42,6 +42,7 @@ import { linkPath } from './linkPath';
 import { alignedX, safeColour, sizeOf as textSizeOf, svgTextAttrs } from './textStyle';
 import { BOUNDARIES, boundaryChip, isBoundaryKind } from './boundaries';
 import { capPath, capsFor, doubleWidths, strokeFor } from './linkStyle';
+import { drawnLegend, lineColourOf } from './drawnLinks';
 import { fitOnSheet } from './paper';
 import { centreLabelFraction, placePortChip } from './portLabels';
 import type { TopoEdge, TopoNode } from '../state/store';
@@ -502,8 +503,7 @@ function edgeMarkup(
   const color = status === 'unknown' ? canvasPalette(sheet.ground).linkNeutral : statusColors(sheet.ground)[status];
   // A link given a colour of its own keeps it, darkened only as far as the
   // ground needs — the same rule the canvas applies.
-  const lineColor =
-    data.colorMode === 'fixed' && data.color ? readableOn(data.color, sheet.ground) : color;
+  const lineColor = lineColourOf(data, sheet.ground) ?? color;
   // What the link is, in the stroke, as on the canvas.
   const stroke = strokeFor(data, status);
   const width = stroke.width;
@@ -620,6 +620,20 @@ function legend(width: number, sheet: Sheet): string {
     .join('');
 }
 
+/** What the link colours mean, under the health key — only the ones this
+ *  drawing uses, and nothing at all on a drawing whose links were never
+ *  checked against its devices. */
+const LINK_MARK_LABEL = { ethernet: 'Ethernet', sfp: 'SFP', qsfp: 'QSFP', management: 'Management', unmet: 'Not found' } as const;
+function linkLegend(width: number, sheet: Sheet, edges: DiagramInput['edges']): string {
+  const colours = linkMarkColours(sheet.ground);
+  return drawnLegend(edges as never)
+    .map(({ key }, i) => {
+      const x = width - 520 + i * 104;
+      return `<g><line x1="${x - 6}" y1="68" x2="${x + 8}" y2="68" stroke="${colours[key]}" stroke-width="3" stroke-linecap="round"/><text x="${x + 12}" y="72" fill="${sheet.inkDim}" font-size="11">${LINK_MARK_LABEL[key]}</text></g>`;
+    })
+    .join('');
+}
+
 /** The whole diagram as a standalone SVG document. */
 export function renderDiagramSvg(input: DiagramInput): string {
   // Print is drawn on the light sheet and then taken to greys.
@@ -675,6 +689,7 @@ function renderInColour(input: DiagramInput): string {
       (input.now ?? new Date()).toLocaleString(),
     )} · Status reflects checks run from the exporting machine</text>
     ${legend(contentW, sheet)}
+    ${linkLegend(contentW, sheet, edges)}
   </g>`
     : '';
 

@@ -91,6 +91,31 @@ export const CANVAS_LIGHT: CanvasPalette = {
   linkNeutral: '#3b4a5e',
 };
 
+/**
+ * What a link is coloured when the devices at its ends have been asked
+ * about it: by what its ports are made of, sky blue for a management link,
+ * purple for one no device reports. None is a health colour, so a link
+ * coloured this way is never taken for one that is up, slow or down.
+ */
+export type LinkMarkColour = 'ethernet' | 'sfp' | 'qsfp' | 'management' | 'unmet';
+export const LINK_MARK_DARK: Record<LinkMarkColour, string> = {
+  ethernet: '#b8c2cf',
+  sfp: '#e8b923',
+  qsfp: '#f06aa8',
+  management: '#5cc8f5',
+  unmet: '#a45cf0',
+};
+export const LINK_MARK_LIGHT: Record<LinkMarkColour, string> = {
+  ethernet: '#4d5866',
+  sfp: '#8a6a00',
+  qsfp: '#b0206a',
+  management: '#0b79b3',
+  unmet: '#7422c9',
+};
+export function linkMarkColours(ground: Ground): Record<LinkMarkColour, string> {
+  return ground === 'light' ? LINK_MARK_LIGHT : LINK_MARK_DARK;
+}
+
 export function canvasPalette(ground: Ground): CanvasPalette {
   return ground === 'light' ? CANVAS_LIGHT : CANVAS_DARK;
 }

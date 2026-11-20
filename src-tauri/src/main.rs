@@ -357,6 +357,7 @@ fn main() {
             discovery::cancel_crawl,
             discovery::ping_from_device,
             discovery::get_device_info,
+            discovery::get_device_links,
             discovery::traceroute_from_device,
             discovery::ecmp_leg_from_device,
             discovery::read_snmp_walk,

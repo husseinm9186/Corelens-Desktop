@@ -101,6 +101,9 @@ export interface ProjectPage {
     /** Little hops where one link crosses another. On by default: two lines
      *  meeting at a point look exactly like two lines joined at a point. */
     lineJumps?: boolean;
+    /** Management links are on the page and not drawn: the network
+     *  without the ports it is managed through. */
+    hideManagement?: boolean;
     /** The sheet the diagram is drawn on. On by default; turning it off gives
      *  back the endless desk for a diagram that is not going on paper. Named
      *  apart from "page" so the print-sheet boundary of one drawing
@@ -976,6 +979,9 @@ interface Store {
    *  stencil pack, since nothing was deleted from disk. */
   removeCustomShape: (id: string) => void;
   setCanvas: (patch: Partial<ProjectPage['canvas']>) => void;
+  /** One page's links replaced as one undo step — the page named, not the
+   *  one in front, because what replaces them may have taken a while. */
+  setPageEdges: (pageId: string, edges: TopoEdge[], label: string) => void;
   /** How links on this diagram are drawn by default — every page, since a
    *  diagram whose pages disagree about it is nobody's intent. */
   setDefaultLinkStyle: (style: LinkStyleDefaults) => void;
@@ -4680,6 +4686,12 @@ export const useStore = create<Store>((set, get) => ({
       },
       dirty: true,
     }));
+  },
+
+  setPageEdges(pageId, edges, label) {
+    if (!get().doc.pages.some((p) => p.id === pageId)) return;
+    get().commit(label);
+    set((s) => ({ doc: { ...s.doc, pages: s.doc.pages.map((p) => (p.id === pageId ? { ...p, edges } : p)) }, dirty: true }));
   },
 
   setCanvas(patch) {

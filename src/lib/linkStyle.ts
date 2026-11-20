@@ -88,7 +88,9 @@ export function strokeFor(
   const dash = chosen ? dashFor(data.lineStyle, status) : (KIND_DASH[kind] ?? dashFor(data.lineStyle, status));
   return {
     dash,
-    width: kind === 'transit' ? width + 1.25 : width,
+    // A transit circuit is heavier; a management link thinner, because it is
+    // beside the network rather than part of what it carries.
+    width: kind === 'transit' ? width + 1.25 : kind === 'management' ? Math.max(1, width * 0.6) : width,
     double: kind === 'bundle',
   };
 }

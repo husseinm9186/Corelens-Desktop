@@ -877,6 +877,35 @@ pub async fn get_device_info(
     Ok(info)
 }
 
+/// One device asked who is on its ports, and nobody gone to.
+///
+/// For checking a diagram somebody drew against the devices on it: the
+/// neighbour tables of this one address, and its own port table for what
+/// each port is made of. No neighbour is contacted, here or afterwards —
+/// the answer goes back to the page, which matches it to what is drawn.
+#[tauri::command]
+pub async fn get_device_links(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    device: String,
+    credential_id: String,
+    port: Option<u16>,
+) -> CmdResult<corelens_discover::devicelinks::DeviceLinks> {
+    state.limiter.allow(crate::ratelimit::Job::DeviceLinks)?;
+    let device = device.trim();
+    if device.is_empty() {
+        return Err("That device has no address to connect to.".into());
+    }
+    let store = load_host_keys(&state)?;
+    let options = SshOptions { port: port.unwrap_or(22), ..SshOptions::default() };
+    let mut session =
+        connect_with_project_logins(&state, device, &credential_id, options, Arc::clone(&store), "Fill in drawn links").await?;
+    let links = corelens_discover::devicelinks::read(&mut session).await;
+    session.close().await;
+    persist_host_keys(&app, &store);
+    Ok(links)
+}
+
 /// What a device saw, hop by hop, running its own traceroute.
 ///
 /// The platform is read off the device's version banner first, the way a

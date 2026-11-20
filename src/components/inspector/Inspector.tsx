@@ -2530,7 +2530,7 @@ function LinkInspector({ edgeId }: { edgeId: string }) {
             onChange={(e) => update(edgeId, { linkKind: e.target.value as LinkData['linkKind'] })}
           >
             <option value="auto">{tr('inspector.linkKindAuto', { kind: tr(`inspector.linkKind.${kindOf({ ...d, linkKind: 'auto' })}`) })}</option>
-            {(['cable', 'bundle', 'tunnel', 'logical', 'transit'] as const).map((k) => (
+            {(['cable', 'bundle', 'tunnel', 'logical', 'transit', 'management'] as const).map((k) => (
               <option key={k} value={k}>{tr(`inspector.linkKind.${k}`)}</option>
             ))}
           </select>

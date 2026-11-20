@@ -14,8 +14,9 @@ import type { TopoNode } from '../../state/store';
 import { STATUS_LABEL } from '../../types/domain';
 import { probesOf, useStore } from '../../state/store';
 import { describeRule, shouldAnimate } from '../../health/evaluate';
-import { STATUS_COLOR_DARK, canvasPalette, readableOn, statusColors } from '../../theme';
+import { STATUS_COLOR_DARK, canvasPalette, statusColors } from '../../theme';
 import { capPath, capsFor, doubleWidths, stepAlong, strokeFor } from '../../lib/linkStyle';
+import { lineColourOf } from '../../lib/drawnLinks';
 import { withJumps } from '../../lib/lineJumps';
 import { cableTag, centreLabel } from '../../lib/cables';
 import { cssOf } from '../../lib/textStyle';
@@ -334,9 +335,7 @@ function LiveEdgeInner(props: EdgeProps) {
   // lose the choice entirely.
   const lineColor = isLeader
     ? 'var(--text-faint)'
-    : data.colorMode === 'fixed' && data.color
-      ? readableOn(data.color, ground)
-      : color;
+    : (lineColourOf(data, ground) ?? color);
   // A leader carries nothing, so nothing travels along it.
   const animate = !isLeader && shouldAnimate(status, reduceMotion);
   const duration = SPEED_SECONDS[status] ?? 3;

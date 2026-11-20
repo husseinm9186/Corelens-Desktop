@@ -34,6 +34,8 @@ pub enum Job {
     LivePath,
     /// Asking one device what it is.
     DeviceInfo,
+    /// One device asked who is on its ports, for a drawn diagram.
+    DeviceLinks,
 }
 
 impl Job {
@@ -58,6 +60,8 @@ impl Job {
             Job::LivePath => (10, "A live path check"),
             // One login each; a person documenting a site asks a rack at a time.
             Job::DeviceInfo => (120, "Reading a device's details"),
+            // One a drawn device, and a diagram holds hundreds.
+            Job::DeviceLinks => (600, "Reading a device's neighbours"),
         }
     }
 }

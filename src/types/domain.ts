@@ -370,7 +370,10 @@ export type LinkLineStyle = 'auto' | 'solid' | 'dashed' | 'dotted' | 'dash-dot';
 /** What a link is, drawn into the stroke itself so it still reads when the
  *  labels are hidden: a cable solid, a bundle a double line, a tunnel
  *  dashed, a logical adjacency dotted, a transit circuit heavier. */
-export type LinkKind = 'cable' | 'bundle' | 'tunnel' | 'logical' | 'transit';
+export type LinkKind = 'cable' | 'bundle' | 'tunnel' | 'logical' | 'transit' | 'management';
+
+/** What a cable's ports are made of: copper, an SFP of any speed, a QSFP. */
+export type LinkMedia = 'ethernet' | 'sfp' | 'qsfp';
 
 export type LinkHealthRuleType =
   | 'manual'
@@ -437,6 +440,12 @@ export interface LinkData extends Record<string, unknown> {
    *  a tunnel, a layer-3 hop, a bundle a crawl found, a WAN circuit — and a
    *  choice here wins over all of that. */
   linkKind?: LinkKind | 'auto';
+  /** What the devices at its ends said about this drawn link, the last
+   *  time they were asked: 'met' where one of them reports it, 'unmet'
+   *  where at least one was asked and neither does. Unset is never asked. */
+  drawnCheck?: 'met' | 'unmet';
+  /** What its ports are made of, as the devices reported it. */
+  media?: LinkMedia;
   /** What the link is physically made of, shown as a tag in its
    *  centre label and listed in the cable schedule. */
   cableType?: 'copper' | 'fiber-sm' | 'fiber-mm' | 'coax' | 'wireless' | 'wan' | 'trunk';

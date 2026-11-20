@@ -1,3 +1,4 @@
+import { withoutHiddenManagement } from '../lib/drawnLinks';
 import { useEffect, useRef, useState } from 'react';
 
 import { useRuntimeSlowly, useStore, type ProjectDocument } from '../state/store';
@@ -154,14 +155,16 @@ export function TopBar({ onExit }: { onExit: () => void }) {
    *  every page the same way. */
   const printedOf = (page: ProjectPage) => {
     const layers = layersOf(page.canvas.layers);
+    // Management links the page hides are not in the document either.
+    const pageEdges = withoutHiddenManagement(page.edges, page.canvas.hideManagement);
     if (allPrinted(layers)) {
-      return { nodes: page.nodes, edges: page.edges };
+      return { nodes: page.nodes, edges: pageEdges };
     }
     const nodes = page.nodes.filter((n) =>
       isPrinted((n.data as { layers?: string[] }).layers, layers),
     );
     const alive = new Set(nodes.map((n) => n.id));
-    const edges = page.edges.filter(
+    const edges = pageEdges.filter(
       (e) =>
         isPrinted((e.data as { layers?: string[] } | undefined)?.layers, layers) &&
         alive.has(e.source) &&

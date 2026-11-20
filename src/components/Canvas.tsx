@@ -25,6 +25,8 @@ import { STATUS_COLOR_DARK, canvasPalette, statusColors, type Ground } from '../
 import { ContextMenu, type MenuItem } from './ContextMenu';
 import { FindBox } from './FindBox';
 import { ColourLegend } from './ColourLegend';
+import { clearDrawnFromDevices, fillDrawnFromDevices } from './drawnLinksAction';
+import { withoutHiddenManagement } from '../lib/drawnLinks';
 import { ShortcutHelp } from './ShortcutHelp';
 import { GuidePanel } from './GuidePanel';
 import { CommandPalette, type PaletteCommand } from './CommandPalette';
@@ -744,6 +746,22 @@ export function Canvas() {
             nodeStyle: (pg.canvas.nodeStyle ?? 'glyph') === 'glyph' ? 'card' : 'glyph',
           }),
       },
+      // The drawn diagram checked against its own devices: each asked who
+      // is on its ports, and nobody else contacted.
+      ...(isDesktop
+        ? [
+            { label: t('drawn.fill'), onSelect: () => void fillDrawnFromDevices() },
+            ...(pg.edges.some((e) => (e.data as LinkData | undefined)?.drawnCheck !== undefined)
+              ? [{ label: t('drawn.clear'), onSelect: () => clearDrawnFromDevices() }]
+              : []),
+          ]
+        : []),
+      ...(pg.edges.some((e) => (e.data as LinkData | undefined)?.linkKind === 'management')
+        ? [{
+            label: pg.canvas.hideManagement ? t('drawn.showManagement') : t('drawn.hideManagement'),
+            onSelect: () => useStore.getState().setCanvas({ hideManagement: !pg.canvas.hideManagement }),
+          }]
+        : []),
       {
         // Every link back on the page's default path, routed afresh.
         label: 'Re-route all links',
@@ -1347,22 +1365,24 @@ export function Canvas() {
       ? liveNodes.filter((n) => shows((n.data as { layers?: string[] }).layers, layers))
       : liveNodes;
     const alive = new Set(nodes.map((n) => n.id));
+    // Management links out first, where the page hides them.
+    const drawnEdges = withoutHiddenManagement(pg.edges, pg.canvas.hideManagement);
     const edges = anyHidden
-      ? pg.edges.filter(
+      ? drawnEdges.filter(
           (e) =>
             shows((e.data as { layers?: string[] } | undefined)?.layers, layers) &&
             // A link whose device is on a hidden view has nowhere to land.
             alive.has(e.source) &&
             alive.has(e.target),
         )
-      : pg.edges;
+      : drawnEdges;
 
     // Which side a link leaves by, and where on it, is `layoutLinks`' answer
     // below — worked out for the page as drawn, folded boxes included — so
     // the links themselves pass through untouched and none is handed a new
     // object because a device somewhere else moved.
     return collapseView(nodes, edges, folded);
-  }, [liveNodes, pg.edges, pg.canvas.layers, folded, printing]);
+  }, [liveNodes, pg.edges, pg.canvas.layers, pg.canvas.hideManagement, folded, printing]);
 
   // Where every link meets its devices and the track its middle run takes:
   // one pass over the page, as it is being drawn. Set while rendering, so a

@@ -24,6 +24,7 @@ pub mod bindings;
 pub mod backup;
 pub mod capture;
 pub mod deviceinfo;
+pub mod devicelinks;
 pub mod dialect;
 pub mod cdp;
 pub mod checks;

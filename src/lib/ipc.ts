@@ -1420,6 +1420,13 @@ export const ipc = {
     return invoke('get_device_info', { device, credentialId, port });
   },
 
+  /** One device asked who is on its ports — its neighbour tables and its
+   *  own port table — and nobody gone to. For checking a drawn diagram. */
+  async getDeviceLinks(device: string, credentialId: string, port?: number): Promise<DeviceLinks> {
+    if (!isDesktop) throw new BackendUnavailable('Reading a device');
+    return invoke('get_device_links', { device, credentialId, port });
+  },
+
   /** A saved snmpwalk of one device, read into what an SNMP crawl
    *  would have found. `address` is where it is managed from, when the walk
    *  does not say. */
@@ -2039,4 +2046,16 @@ export interface ConsolePorts {
   ports: ConsolePort[];
   /** The port to open without asking: the only likely one, or none. */
   chosen: string | null;
+}
+
+/** What one device said about who is on its ports. */
+export interface DeviceLinks {
+  hostname: string;
+  family: string;
+  serials: string[];
+  neighbors: Neighbor[];
+  /** What each of its ports is made of, as the device words it. */
+  ports: { port: string; media: string; speed: string }[];
+  commands: string[];
+  unverified: boolean;
 }

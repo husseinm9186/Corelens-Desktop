@@ -214,6 +214,19 @@ check("the link that was purple is no longer", (await strokeOf("x")).stroke !== 
 check("through all of it, only the drawn devices were ever asked",
   (await st(() => window.__asked)).every((a) => ["192.0.2.1", "192.0.2.2", "192.0.2.5", "192.0.2.100"].includes(a.device)) && (await st(() => window.__other)).length === 0);
 
+// --------------------------------------- a menu taller than the window
+
+await page.setViewportSize({ width: 1100, height: 620 });
+await page.waitForTimeout(300);
+await paneMenu("Fit view");
+const menu = page.locator(".cv-context-menu, .cv-menu").first();
+const box = await menu.boundingBox();
+check("a menu longer than the window stays inside it", box.y >= 0 && box.y + box.height <= 620, JSON.stringify(box));
+const last = menu.locator("button").last();
+await last.scrollIntoViewIfNeeded();
+const lastBox = await last.boundingBox();
+check("and its last entry can be reached by scrolling", lastBox.y >= box.y && lastBox.y + lastBox.height <= box.y + box.height + 1 && lastBox.y + lastBox.height <= 620, JSON.stringify(lastBox));
+await page.keyboard.press("Escape");
 await browser.close();
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);

@@ -172,7 +172,9 @@ const DOCK_GROUPS: { key: 'monitor' | 'discover' | 'paths' | 'ops'; tabs: DockTa
   // whatever asks for it still lands there.
   { key: 'discover', tabs: ['crawl', 'discover'] },
   { key: 'paths', tabs: ['trace', 'path', 'tracert', 'whereis'] },
-  { key: 'ops', tabs: ['backup', 'ssh'] },
+  // A serial console is its own tab: it is found and opened differently
+  // from an SSH session, and its controls would crowd the shells.
+  { key: 'ops', tabs: ['backup', 'ssh', 'console'] },
 ];
 
 function missedNote(live: ProbeRuntime | undefined): string | null {
@@ -247,7 +249,8 @@ export function StatusPanel() {
     useStore.getState().requestBackup(null);
   }, [backupHandover, setTab]);
   // How many shells are open, on the tab itself.
-  const sshCount = useStore((s) => s.sshSessions.length);
+  const sshCount = useStore((s) => s.sshSessions.filter((x) => !x.console).length);
+  const consoleCount = useStore((s) => s.sshSessions.filter((x) => x.console).length);
   const [query, setQuery] = useState('');
   const rf = useReactFlow();
   // The active page only: jumpToFirst below centres the viewport on
@@ -500,6 +503,7 @@ export function StatusPanel() {
       case 'whereis': return t('whereis.find');
       // Open shells — the diagram's own devices, so the dock keeps a tab.
       case 'ssh': return sshCount ? t('ssh.tab', { count: sshCount }) : t('ssh.title');
+      case 'console': return consoleCount ? t('console.tabCount', { count: consoleCount }) : t('console.title');
     }
   };
 
@@ -522,7 +526,7 @@ export function StatusPanel() {
     );
   }
 
-  const tall = tab === 'crawl' || tab === 'collect' || tab === 'discover' || tab === 'backup' || tab === 'ssh' || tab === 'trace' || tab === 'tracert' || tab === 'whereis';
+  const tall = tab === 'crawl' || tab === 'collect' || tab === 'discover' || tab === 'backup' || tab === 'ssh' || tab === 'console' || tab === 'trace' || tab === 'tracert' || tab === 'whereis';
   const listTab = tab === 'objects' || tab === 'events';
   // In a window of its own the dock is the whole window: no side, no grip.
   const dockSide = detached ? 'window' : dockSideFor(tab, dockPlacements);
@@ -687,8 +691,8 @@ export function StatusPanel() {
           <TracertPanel />
         ) : tab === 'whereis' ? (
           <WhereIsPanel />
-        ) : tab === 'ssh' ? (
-          <SshPanel />
+        ) : tab === 'ssh' || tab === 'console' ? (
+          <SshPanel kind={tab} />
         ) : tab === 'objects' ? (
           <table className="cv-table cv-targets">
             {/* The column contract: what is counted is right-aligned and

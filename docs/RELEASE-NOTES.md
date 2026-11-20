@@ -2,6 +2,17 @@
 
 Newest first.
 
+## 2.18.2 — 2026-11-20
+
+**The console has a tab of its own**
+- Serial console sessions moved out of the SSH tab into a **Console** tab
+  beside it in the dock, with the Console button, **Port** and **Speed**.
+  The SSH tab is shells only again, and each tab counts its own sessions.
+
+**Fixed**
+- A right-click menu longer than the window ran off the bottom and its last
+  entries could not be reached. It now stays inside the window and scrolls.
+
 ## 2.18.1 — 2026-11-20
 
 **Fill in drawn links from the devices**

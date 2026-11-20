@@ -72,9 +72,9 @@ check("Discover holds the crawler and the ping sweep",
   JSON.stringify(await under("discover")) === JSON.stringify(["Discover devices", "Ping sweep"]), (await under("discover")).join(" | "));
 check("Paths holds the four answers to where it goes",
   JSON.stringify(await under("paths")) === JSON.stringify(["Path-Trace", "Path check", "Tracert", "Where is"]), (await under("paths")).join(" | "));
-check("Ops holds Backups and SSH",
-  JSON.stringify(await under("ops")) === JSON.stringify(["Backups", "SSH"]), (await under("ops")).join(" | "));
-check("every tab is there exactly once", (await page.locator('.cv-panel button[role="tab"]').count()) === 11);
+check("Ops holds Backups, SSH and the Console",
+  JSON.stringify(await under("ops")) === JSON.stringify(["Backups", "SSH", "Console"]), (await under("ops")).join(" | "));
+check("every tab is there exactly once", (await page.locator('.cv-panel button[role="tab"]').count()) === 12);
 
 // the arrows still walk the tabs, past the group headings.
 await page.locator('.cv-panel button[role="tab"]', { hasText: "Monitored objects" }).focus();
@@ -90,7 +90,7 @@ check("and on into the next group", (await st(() => window.__cvStore.getState().
 check("which the rail marks as Discover", (await page.locator(".cv-nav-item.is-current").innerText()) === "Discover");
 await page.keyboard.press("End");
 await page.waitForTimeout(150);
-check("End reaches SSH, the last tab", (await st(() => window.__cvStore.getState().dockTab)) === "ssh");
+check("End reaches the Console, the last tab", (await st(() => window.__cvStore.getState().dockTab)) === "console");
 await page.locator('.cv-panel button[role="tab"]', { hasText: "Monitored objects" }).click();
 await page.waitForTimeout(150);
 
@@ -172,7 +172,7 @@ check("Pop out puts the dock down the right of the window",
 check("the full height of the body", right.panel.height > 800, `${right.panel.height}`);
 check("without the inspector running under it", right.inspector.x + right.inspector.width <= right.panel.x + 1, JSON.stringify(right));
 check("and the button now reads Dock below", (await side.innerText()) === "Dock below");
-check("the tabs still answer", (await page.locator('.cv-panel button[role="tab"]').count()) === 11);
+check("the tabs still answer", (await page.locator('.cv-panel button[role="tab"]').count()) === 12);
 
 // F5 hides the dock wherever it is.
 await page.locator(".react-flow__pane").click({ position: { x: 60, y: 60 } });
@@ -227,7 +227,7 @@ check("and that is remembered too, keyed by the tab",
   check("it fills its window", look.w >= look.vw - 1 && look.h >= look.vh - 1, JSON.stringify(look));
   check("dressed in the application's own stylesheet", look.sheets > 0 && look.bg === mainBg, JSON.stringify({ bg: look.bg, mainBg, sheets: look.sheets }));
   check("and named for the project", /Corelens Desktop/.test(look.title) && /Dock/.test(look.title), look.title);
-  check("every tab is there", (await dock.locator('.cv-panel button[role="tab"]').count()) === 11);
+  check("every tab is there", (await dock.locator('.cv-panel button[role="tab"]').count()) === 12);
 
   // One program, one state: a click in that window is a change in this one.
   await dock.locator('.cv-panel button[role="tab"]', { hasText: "Event timeline" }).click();

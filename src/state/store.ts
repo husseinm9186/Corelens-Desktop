@@ -246,7 +246,7 @@ export interface ProjectDocument {
 /** The dock's tabs. */
 export type PathQuestion = { to: string; app: string; protocol: string; port: string; vrf: string };
 export type InspectorTab = 'status' | 'identity' | 'ports' | 'checks' | 'notes';
-export type DockTab = 'objects' | 'events' | 'compare' | 'discover' | 'crawl' | 'collect' | 'backup' | 'path' | 'trace' | 'tracert' | 'whereis' | 'ssh';
+export type DockTab = 'objects' | 'events' | 'compare' | 'discover' | 'crawl' | 'collect' | 'backup' | 'path' | 'trace' | 'tracert' | 'whereis' | 'ssh' | 'console';
 
 /** A trace's state, kept outside the Tracert panel. */
 export interface TracertRun {

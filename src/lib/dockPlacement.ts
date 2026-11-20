@@ -22,6 +22,7 @@ export const DEFAULT_DOCK_SIDE: Partial<Record<DockTab, DockSide>> = {
   crawl: 'right',
   discover: 'right',
   ssh: 'right',
+  console: 'right',
 };
 
 export function dockSideFor(tab: DockTab, overrides: Partial<Record<DockTab, DockSide>>): DockSide {
@@ -34,7 +35,7 @@ export function dockSideFor(tab: DockTab, overrides: Partial<Record<DockTab, Doc
  * column of form steps that reads at a narrower width.
  */
 export function dockWidthClass(tab: DockTab): 'is-dock-wide' | 'is-dock-narrow' {
-  return tab === 'ssh' ? 'is-dock-wide' : 'is-dock-narrow';
+  return tab === 'ssh' || tab === 'console' ? 'is-dock-wide' : 'is-dock-narrow';
 }
 
 /** Reads the remembered overrides. Window state, like the panels' own. */

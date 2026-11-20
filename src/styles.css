@@ -931,7 +931,13 @@ select.cv-input option { background: var(--bg-raised); color: var(--text); }
   border-radius: var(--radius); padding: 0.30769231rem;
   box-shadow: 0 14px 34px var(--shadow);
   display: flex; flex-direction: column;
+  /* Never taller than the window it is in: a long menu on a small window
+     ran off the bottom, and what was past the edge could not be reached.
+     It scrolls instead, with the same margin it is placed by. */
+  max-height: calc(100vh - 16px); overflow-y: auto; overscroll-behavior: contain;
 }
+/* An entry keeps its height; it is the menu that scrolls. */
+.cv-menu button { flex: none; }
 .cv-menu button {
   text-align: left; background: none; border: none; color: var(--text);
   padding: 0.46153846rem 0.69230769rem; font-size: var(--text-md); font-family: inherit; cursor: pointer; border-radius: 4px;

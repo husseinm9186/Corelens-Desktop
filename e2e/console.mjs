@@ -110,12 +110,18 @@ const portSelect = bar.locator("select").nth(0);
 const speedSelect = bar.locator("select").nth(1);
 const tabs = () => page.locator(".cv-ssh-tab [role=tab]").evaluateAll((els) => els.map((e) => e.textContent.trim()));
 
+// The SSH tab is for shells: nothing of the console's is on it.
 await st(() => window.__cvStore.getState().requestPanelTab("ssh"));
+await page.waitForTimeout(400);
+check("the SSH tab carries no console controls", (await page.locator('[data-region="console"]').count()) === 0);
+const dockTab = (name) => page.locator(".cv-panel-tabs [role=tab], .cv-panel-tabs button", { hasText: name }).first();
+check("the dock has a Console tab of its own, beside SSH", (await dockTab("Console").count()) === 1 && (await dockTab("SSH").count()) === 1);
+await dockTab("Console").click();
 await page.waitForTimeout(400);
 
 // ------------------------------------------------------ before any session
 
-check("with no session open the SSH tab still offers a console", (await consoleButton.count()) === 1);
+check("with no session open the Console tab offers a console", (await consoleButton.count()) === 1);
 check("the port is Automatic until somebody says otherwise", (await portSelect.inputValue()) === "");
 check("and the speed is 9600", (await speedSelect.inputValue()) === "9600");
 check("nothing has been listed or opened by looking", (await st(() => window.__listed)) === 0 && (await st(() => window.__opened)).length === 0);
@@ -144,10 +150,15 @@ await page.waitForTimeout(600);
 let opened = await st(() => window.__opened);
 check("with one USB serial adapter in, Console opens it without asking",
   opened.length === 1 && opened[0].port === "/dev/ttyUSB0" && opened[0].baud === 9600, JSON.stringify(opened));
-check("its tab stands beside the SSH ones, named for the port", (await tabs()).join("|") === "Console ttyUSB0", (await tabs()).join("|"));
+check("its tab is on the Console tab, named for the port", (await tabs()).join("|") === "Console ttyUSB0", (await tabs()).join("|"));
 check("the status line says what was opened, and that nothing was sent", /Console on ttyUSB0 at 9600 8N1\. Nothing was sent/.test(await message()), await message());
 check("nothing was typed at the device by opening it", (await st(() => window.__sent)).length === 0);
 check("and no other command that reaches a device was started", (await st(() => window.__other)).length === 0, JSON.stringify(await st(() => window.__other)));
+
+check("the dock's Console tab counts it, and the SSH tab does not",
+  /Console \(1\)/.test((await dockTab("Console").textContent()) ?? "") && !/\(/.test((await page.locator(".cv-panel-tabs [role=tab], .cv-panel-tabs button", { hasText: /^SSH/ }).first().textContent()) ?? ""),
+  `${await dockTab("Console").textContent()} | ${await page.locator(".cv-panel-tabs [role=tab], .cv-panel-tabs button", { hasText: /^SSH/ }).first().textContent()}`);
+check("a console has no keepalive to set", (await page.locator(".cv-ssh-controls", { hasText: "Keepalive" }).count()) === 0);
 
 // What the device says, and what is typed.
 await st(() => window.__fromDevice("console-1", "Switch>"));
@@ -227,6 +238,15 @@ await page.locator(".cv-ssh-tab", { hasText: "NEW-SW1 (console)" }).locator(".cv
 await page.waitForTimeout(300);
 check("closing the tab lets go of the port", (await st(() => window.__closed)).length === before + 1 && !(await tabs()).includes("NEW-SW1 (console)"));
 check("through all of it, nothing else that reaches a device was started", (await st(() => window.__other)).length === 0);
+
+// Over on the SSH tab there is still nothing: a console is not a shell.
+await page.locator(".cv-panel-tabs [role=tab], .cv-panel-tabs button", { hasText: /^SSH/ }).first().click();
+await page.waitForTimeout(400);
+check("the SSH tab lists no console session", (await page.locator(".cv-ssh-tab").count()) === 0 && (await page.locator('[data-region="console"]').count()) === 0);
+await dockTab("Console").click();
+await page.waitForTimeout(400);
+check("and back on the Console tab the sessions are as they were, screens and all",
+  (await tabs()).length === 2 && /Switch>/.test((await page.locator(".cv-ssh-screen .xterm-rows").first().textContent()) ?? ""), (await tabs()).join("|"));
 
 await browser.close();
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);

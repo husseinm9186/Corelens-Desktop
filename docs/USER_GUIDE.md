@@ -1080,13 +1080,14 @@ tab.
 
 **A serial console, the port found for you.** For a device with no address
 yet, one that has lost its configuration, or one sitting in its boot loader:
-plug the console cable in and press **Console** on the SSH tab, or
+plug the console cable in and press **Console** on the dock's **Console**
+tab, or
 right-click a device and choose **Console to this device**. Corelens lists
 this computer's serial ports and opens the USB serial adapter among them —
 the console cable, or the device's own USB console socket — so you do not
-need to know whether it is COM3 or COM7 today. The session is a tab beside
-the SSH ones: typed into, logged, found in, reordered and closed the same
-way.
+need to know whether it is COM3 or COM7 today. Console sessions have a tab
+of their own in the dock, beside **SSH**, and are typed into, logged, found
+in, reordered and closed the same way as a shell.
 
 - **Port** is *Automatic* unless you choose one. With two adapters plugged
   in Corelens will not guess, because a guess types into the wrong device;

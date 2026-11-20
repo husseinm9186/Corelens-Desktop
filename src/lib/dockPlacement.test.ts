@@ -32,7 +32,7 @@ describe('dockWidthClass', () => {
 });
 
 describe('the defaults', () => {
-  it('names only the three that open on the right', () => {
-    expect(Object.keys(DEFAULT_DOCK_SIDE).sort()).toEqual(['crawl', 'discover', 'ssh']);
+  it('names only the four that open on the right', () => {
+    expect(Object.keys(DEFAULT_DOCK_SIDE).sort()).toEqual(['console', 'crawl', 'discover', 'ssh']);
   });
 });

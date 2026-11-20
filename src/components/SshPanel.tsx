@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { Terminal } from '@xterm/xterm';
@@ -135,12 +135,30 @@ function decode(base64: string): Uint8Array {
   return bytes;
 }
 
-export function SshPanel() {
-  const tabs = useStore((s) => s.sshSessions);
+/** Which session was in front on each of the two tabs, so going to the
+ *  other and back finds the same one. */
+const lastFront: Record<'ssh' | 'console', string | null> = { ssh: null, console: null };
+
+/**
+ * The terminal's sessions of one kind: the SSH sessions on the SSH tab,
+ * the serial consoles on the Console tab. One machinery — the screens, the
+ * transcript, the search, the order of the tabs — and two lists, because a
+ * console is found and opened differently and has nothing to do with a
+ * login.
+ */
+export function SshPanel({ kind = 'ssh' }: { kind?: 'ssh' | 'console' }) {
+  const sessions = useStore((s) => s.sshSessions);
+  const tabs = useMemo(() => sessions.filter((tab) => Boolean(tab.console) === (kind === 'console')), [sessions, kind]);
   // The tab being dragged to a new place, and the one it is over.
   const [dragging, setDragging] = useState<string | null>(null);
   const [dropOn, setDropOn] = useState<string | null>(null);
-  const active = useStore((s) => s.sshActive);
+  const front = useStore((s) => s.sshActive);
+  // The session in front here: the one last opened or chosen if it is one
+  // of this tab's, else the one that was in front here before.
+  const active = tabs.some((tab) => tab.id === front)
+    ? front
+    : (tabs.find((tab) => tab.id === lastFront[kind])?.id ?? tabs[tabs.length - 1]?.id ?? null);
+  lastFront[kind] = active;
   const setActive = useStore((s) => s.setSshActive);
   const terminal = useStore((s) => s.settings.terminal);
   const setTerminal = useStore((s) => s.setTerminalSettings);
@@ -335,9 +353,10 @@ export function SshPanel() {
   // leaves a terminal holding a canvas and its scrollback. Nothing else drops
   // them, so this does.
   useEffect(() => {
-    const live = new Set(tabs.map((tab) => tab.id));
+    // Every session, not this tab's: the other kind's screens are kept too.
+    const live = new Set(sessions.map((tab) => tab.id));
     for (const id of [...terminals.keys()]) if (!live.has(id)) dispose(id);
-  }, [tabs]);
+  }, [sessions]);
 
   /** Start or stop this session's transcript. */
   const toggleLog = (tab: SshTab) => {
@@ -405,7 +424,8 @@ export function SshPanel() {
           onChange={() => current && toggleLog(current)} />
         {t('ssh.log')}
       </label>
-      <label className="cv-field cv-field-narrow cv-ssh-size" title={t('ssh.keepaliveHint')}>
+      {/* A serial line has no connection to keep alive. */}
+      {kind === 'ssh' && <label className="cv-field cv-field-narrow cv-ssh-size" title={t('ssh.keepaliveHint')}>
         <span>{t('ssh.keepalive')}</span>
         <input className="cv-input" type="number" min={0} max={3600} value={terminal.keepaliveSeconds}
           onChange={(e) => {
@@ -416,7 +436,7 @@ export function SshPanel() {
               if (tab.status === 'open') void ipc.sshKeepalive(tab.id, seconds).catch(() => undefined);
             }
           }} />
-      </label>
+      </label>}
       {/* Only where there is a line to hold: a console session, still open. */}
       {current?.console && (
         <button type="button" className="cv-btn cv-btn-small" title={t('console.breakHint')}
@@ -447,8 +467,8 @@ export function SshPanel() {
   if (tabs.length === 0) {
     return (
       <div className="cv-ssh cv-ssh-empty">
-        <p className="cv-help">{t('ssh.empty')}</p>
-        {consoleBar}
+        <p className="cv-help">{t(kind === 'console' ? 'console.empty' : 'ssh.empty')}</p>
+        {kind === 'console' && consoleBar}
         <div className="cv-ssh-foot" data-region="ssh-foot">
           <span className="cv-ssh-foot-name">{t('ssh.noSession')}</span>
         </div>
@@ -458,7 +478,7 @@ export function SshPanel() {
 
   return (
     <div className="cv-ssh">
-      <div className="cv-tabs cv-ssh-tabs" role="tablist" aria-label={t('ssh.title')}>
+      <div className="cv-tabs cv-ssh-tabs" role="tablist" aria-label={t(kind === 'console' ? 'console.title' : 'ssh.title')}>
         {tabs.map((tab) => (
           // Dragged onto another tab, a tab takes its place: the sessions of
           // one piece of work kept side by side, whatever order they were
@@ -518,7 +538,7 @@ export function SshPanel() {
         ))}
       </div>
       {controls}
-      {consoleBar}
+      {kind === 'console' && consoleBar}
       {findOpen && (
         <div className="cv-ssh-find">
           <input className="cv-input" value={finding} autoFocus

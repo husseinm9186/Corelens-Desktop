@@ -140,7 +140,7 @@ export async function getDeviceInfo(nodeId: string, data: DeviceNodeData) {
  * The port is found, not asked for: the machine's serial ports are listed
  * and the only USB serial adapter among them — the console cable — is
  * opened. With two cables in, or none, nothing is opened and the status
- * line says to choose on the SSH tab: a guess would type into the wrong
+ * line says to choose on the Console tab: a guess would type into the wrong
  * device. `wanted` is a port somebody did choose.
  *
  * Nothing is sent to the device by opening it. From a device's menu the tab
@@ -151,7 +151,7 @@ export async function getDeviceInfo(nodeId: string, data: DeviceNodeData) {
  */
 export async function openConsole(wanted = '', from?: { nodeId: string; data: DeviceNodeData }) {
   const store = useStore.getState();
-  store.requestPanelTab('ssh');
+  store.requestPanelTab('console');
   try {
     const found = await ipc.consolePorts();
     const choice = choosePort(found.ports, found.chosen, wanted);

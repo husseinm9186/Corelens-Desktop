@@ -1251,6 +1251,9 @@ button.cv-start-card:hover { border-color: var(--accent); }
   background: var(--panel); border: 1px solid var(--line-strong);
   border-radius: 10px; padding: 1.69230769rem; max-width: 43.07692308rem; width: 100%;
   box-shadow: 0 24px 60px var(--shadow-deep);
+  /* Never taller than the window: a dialog longer than a small window ran
+     off both ends of it, with its buttons out of reach. It scrolls instead. */
+  max-height: calc(100vh - 3.69230769rem); overflow-y: auto; overscroll-behavior: contain;
 }
 .cv-modal h2 { margin: 0 0 0.92307692rem; font-size: var(--text-2xl); }
 .cv-modal h3 { margin: 1.23076923rem 0 0.30769231rem; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); font-weight: 600;}
@@ -1549,7 +1552,7 @@ button.cv-start-card:hover { border-color: var(--accent); }
 .cv-ipam-views { flex: 0 0 auto; width: auto; max-width: 16.92307692rem; }
 .cv-ipam-columns > summary { cursor: pointer; list-style: none; padding: 0.23076923rem 0.61538462rem; border: 1px solid var(--line); border-radius: 4px; color: var(--text-dim); font-size: var(--text-md); }
 .cv-ipam-columns[open] > summary { color: var(--text); border-color: var(--accent); }
-.cv-ipam-columns-list { position: absolute; right: 0; top: calc(100% + 0.30769231rem); z-index: 20; min-width: 15.38461538rem; max-height: 27.69230769rem; overflow-y: auto; padding: 0.61538462rem 0.76923077rem; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; display: grid; gap: 0.30769231rem; }
+.cv-ipam-columns-list { position: absolute; right: 0; top: calc(100% + 0.30769231rem); z-index: 20; min-width: 15.38461538rem; max-height: min(27.69230769rem, 60vh); overflow-y: auto; padding: 0.61538462rem 0.76923077rem; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; display: grid; gap: 0.30769231rem; }
 .cv-ipam-columns-list .cv-help { margin: 0.46153846rem 0 0; }
 .cv-ipam-setup { display: grid; gap: 1.84615385rem; padding: 0.92307692rem 1.23076923rem; max-width: 75.38461538rem; }
 .cv-ipam-setup-section h3 { margin: 0 0 0.30769231rem; font-size: var(--text-xl); }
@@ -2391,7 +2394,7 @@ img.cv-glyph-art { object-fit: contain; }
 }
 .cv-find-input::placeholder { color: var(--text-faint); }
 .cv-find-results {
-  border-top: 1px solid var(--line); max-height: 20rem; overflow-y: auto;
+  border-top: 1px solid var(--line); max-height: min(20rem, 60vh); overflow-y: auto;
   display: flex; flex-direction: column; padding: 0.30769231rem;
 }
 .cv-find-results button {

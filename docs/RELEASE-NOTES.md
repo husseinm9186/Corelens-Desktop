@@ -11,7 +11,9 @@ Newest first.
 
 **Fixed**
 - A right-click menu longer than the window ran off the bottom and its last
-  entries could not be reached. It now stays inside the window and scrolls.
+  entries could not be reached. Every menu, dropdown and dialog now stays
+  inside the window and scrolls where it holds more than fits — the About
+  dialog, which ran off both ends of a small window, among them.
 
 ## 2.18.1 — 2026-11-20
 

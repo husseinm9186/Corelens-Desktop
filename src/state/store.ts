@@ -1,3 +1,4 @@
+import { moveSession, nudgeSession } from '../lib/sshOrder';
 import { useEffect, useState } from 'react';
 import { projectLeft } from '../lib/projectLeft';
 import { EMPTY_TREE, type FolderTree } from '../lib/projectFolders';
@@ -652,6 +653,9 @@ interface Store {
   applyJobEvent: (snapshot: JobSnapshot) => void;
   openSshTab: (tab: SshTab) => void;
   setSshActive: (id: string | null) => void;
+  /** One session's tab moved onto another's place, or a place left or
+   *  right. Order only: which is in front does not change. */
+  moveSshTab: (movedId: string, onto: string | -1 | 1) => void;
   /** The session ended — at the device's end or ours. The tab stays, with
    *  what it said, until it is closed by hand: a shell that vanishes the
    *  moment it drops takes the error message with it. */
@@ -2147,6 +2151,12 @@ export const useStore = create<Store>((set, get) => ({
 
   setSshActive(id) {
     set({ sshActive: id });
+  },
+
+  moveSshTab(movedId, onto) {
+    set((s) => ({
+      sshSessions: typeof onto === 'string' ? moveSession(s.sshSessions, movedId, onto) : nudgeSession(s.sshSessions, movedId, onto),
+    }));
   },
 
   reopenSshTab(oldId, newId) {

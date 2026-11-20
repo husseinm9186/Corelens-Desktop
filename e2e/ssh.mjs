@@ -302,6 +302,29 @@ const front = await page.locator(".cv-ssh-screen:not([hidden]) .xterm-rows").tex
 check("each session's output lands on its own screen",
   /ACCESS-SW7>/.test(front ?? "") && !/show version/.test(front ?? ""), (front ?? "").slice(0, 120));
 
+// ------------------------------------------- the tabs, put in order by hand
+{
+  const names = () => page.locator(".cv-ssh-tab [role=tab]").evaluateAll((els) => els.map((e) => e.textContent.trim().split(/\s+/)[0]).join(","));
+  const closedBefore = (await st(() => window.__calls?.filter?.((c) => c === "ssh_close").length ?? 0));
+  check("the tabs stand in the order they were opened", (await names()) === "CORE-SW1,ACCESS-SW7", await names());
+  await page.locator(".cv-ssh-tab", { hasText: "ACCESS-SW7" }).dragTo(page.locator(".cv-ssh-tab", { hasText: "CORE-SW1" }));
+  await page.waitForTimeout(300);
+  check("a tab dragged onto another takes its place", (await names()) === "ACCESS-SW7,CORE-SW1", await names());
+  check("the session in front is still in front", (await page.locator(".cv-ssh-tab.is-active").first().textContent())?.includes("ACCESS-SW7"));
+  check("and its screen still shows what it said", /ACCESS-SW7>/.test((await page.locator(".cv-ssh-screen:not([hidden]) .xterm-rows").textContent()) ?? ""));
+  check("no session was opened or closed by the move",
+    (await st(() => window.__opened)).length === 2 && (await page.locator(".cv-ssh-tab").count()) === 2 &&
+    (await st(() => window.__calls?.filter?.((c) => c === "ssh_close").length ?? 0)) === closedBefore);
+  // The keyboard: one place at a time, from the tab itself.
+  await page.locator(".cv-ssh-tab.is-active [role=tab]").focus();
+  await page.keyboard.press("Control+Shift+ArrowRight");
+  await page.waitForTimeout(200);
+  check("Ctrl+Shift+Right moves the tab a place right", (await names()) === "CORE-SW1,ACCESS-SW7", await names());
+  await page.keyboard.press("Control+Shift+ArrowRight");
+  await page.waitForTimeout(200);
+  check("and at the end it stays", (await names()) === "CORE-SW1,ACCESS-SW7", await names());
+}
+
 await page.locator(".cv-ssh-tab", { hasText: "CORE-SW1" }).locator("button").first().click();
 await page.waitForTimeout(500);
 const returnedScreen = await page.locator(".cv-ssh-screen:not([hidden]) .xterm-rows").textContent();

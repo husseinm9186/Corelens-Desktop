@@ -132,6 +132,9 @@ function decode(base64: string): Uint8Array {
 
 export function SshPanel() {
   const tabs = useStore((s) => s.sshSessions);
+  // The tab being dragged to a new place, and the one it is over.
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropOn, setDropOn] = useState<string | null>(null);
   const active = useStore((s) => s.sshActive);
   const setActive = useStore((s) => s.setSshActive);
   const terminal = useStore((s) => s.settings.terminal);
@@ -393,11 +396,47 @@ export function SshPanel() {
     <div className="cv-ssh">
       <div className="cv-tabs cv-ssh-tabs" role="tablist" aria-label={t('ssh.title')}>
         {tabs.map((tab) => (
-          <span key={tab.id} className={`cv-ssh-tab${tab.id === active ? ' is-active' : ''}`}>
+          // Dragged onto another tab, a tab takes its place: the sessions of
+          // one piece of work kept side by side, whatever order they were
+          // opened in. The whole tab is the handle, and the whole tab the
+          // target.
+          <span key={tab.tabKey ?? tab.id}
+            className={`cv-ssh-tab${tab.id === active ? ' is-active' : ''}${dragging === tab.id ? ' is-dragging' : ''}${dropOn === tab.id && dragging !== tab.id ? ' is-drop' : ''}`}
+            draggable
+            onDragStart={(e) => {
+              setDragging(tab.id);
+              e.dataTransfer.effectAllowed = 'move';
+              // Some engines start no drag without data; the label is harmless.
+              e.dataTransfer.setData('text/plain', tab.label);
+            }}
+            onDragOver={(e) => {
+              if (!dragging) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (dropOn !== tab.id) setDropOn(tab.id);
+            }}
+            onDrop={(e) => {
+              if (!dragging) return;
+              e.preventDefault();
+              useStore.getState().moveSshTab(dragging, tab.id);
+              setDragging(null);
+              setDropOn(null);
+            }}
+            onDragEnd={() => {
+              setDragging(null);
+              setDropOn(null);
+            }}>
             <button type="button" role="tab" aria-selected={tab.id === active}
               tabIndex={tab.id === active ? 0 : -1}
               className={tab.id === active ? 'is-active' : ''}
               title={tab.status === 'closed' ? tab.reason : tab.via ? t('ssh.tabThrough', { address: tab.address, via: tab.via.label }) : tab.address}
+              aria-keyshortcuts="Control+Shift+ArrowLeft Control+Shift+ArrowRight"
+              onKeyDown={(e) => {
+                // The same move without a pointer: one place left or right.
+                if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+                e.preventDefault();
+                useStore.getState().moveSshTab(tab.id, e.key === 'ArrowLeft' ? -1 : 1);
+              }}
               onClick={() => setActive(tab.id)}>
               <span className={`cv-ssh-dot${tab.status === 'closed' ? ' is-closed' : ''}`} aria-hidden="true" />{' '}
               {tab.label}

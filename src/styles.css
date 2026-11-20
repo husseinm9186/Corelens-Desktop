@@ -1995,6 +1995,9 @@ tr[data-picked="yes"] td { background: var(--hover); }
 .cv-ssh-empty { padding: 0.92307692rem; }
 .cv-ssh-tabs { flex: 0 0 auto; padding: 0.30769231rem 0.61538462rem 0; gap: 0.15384615rem; flex-wrap: wrap; }
 .cv-ssh-tab { display: inline-flex; align-items: stretch; }
+/* A tab on its way to a new place, and the place it would take. */
+.cv-ssh-tab.is-dragging { opacity: 0.45; }
+.cv-ssh-tab.is-drop { box-shadow: inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent); border-radius: 3px; }
 .cv-ssh-tab > button:first-child { max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cv-ssh-close {
   background: none; border: 0; color: var(--text-faint); cursor: pointer;

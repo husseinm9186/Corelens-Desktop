@@ -1047,6 +1047,12 @@ nothing about a session it did not open: no log, no colouring, no keepalive.
 Set which one the first menu entry uses, and the command to run, on the SSH
 tab.
 
+**The order of the session tabs is yours.** Drag a session's tab onto
+another and it takes that place; the rest move along. With the tab focused,
+**Ctrl+Shift+Left** and **Ctrl+Shift+Right** move it one place. Only the
+order changes: the session in front stays in front, and no shell or log is
+touched.
+
 **The controls on the SSH tab** apply to every session you have open:
 
 **A device this computer cannot reach.** Where only a neighbour can reach

@@ -29,6 +29,7 @@ pub mod cdp;
 pub mod checks;
 pub mod cli;
 pub mod compare;
+pub mod console;
 pub mod comware;
 pub mod crawl;
 pub mod cumulus;

@@ -49,7 +49,7 @@ import { allPrinted, isEditable, isPrinted, isVisible, layersOf } from '../lib/l
 import { resetToDefault, styleOf } from '../lib/linkDefaults';
 import { useStore, type TopoEdge, type TopoNode, moveGroups } from '../state/store';
 import { activePage, withPage, pageNodeById } from '../lib/pages';
-import { getDeviceInfo, openSsh, openSshElsewhere } from './sshActions';
+import { getDeviceInfo, openConsole, openSsh, openSshElsewhere } from './sshActions';
 import { jumpCandidates } from '../lib/sshLaunch';
 import { isDesktop } from '../lib/ipc';
 import { t } from '../i18n';
@@ -480,6 +480,10 @@ export function Canvas() {
                 { label: t('ssh.connect'), onSelect: () => void openSsh(nodeId, node.data as DeviceNodeData) },
                 { label: t('ssh.external'), onSelect: () => void openSshElsewhere(node.data as DeviceNodeData) },
               ])
+        : []),
+      // The cable in its console port. The port is found, not asked for.
+      ...(node?.type === 'device' && isDesktop
+        ? [{ label: t('console.toDevice'), onSelect: () => void openConsole('', { nodeId, data: node.data as DeviceNodeData }) }]
         : []),
       // What this one device says it is — model, serial, software — asked
       // of it alone. Not a crawl, and nothing else is contacted.

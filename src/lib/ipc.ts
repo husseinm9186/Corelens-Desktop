@@ -1112,6 +1112,7 @@ export type StoredSettings = Partial<{
   sshFontSize: string;
   sshColourise: string;
   sshKeepaliveSeconds: string;
+  consoleBaud: string;
   sshLogByDefault: string;
   /** Where a plain **SSH to this device** goes: `panel` or `external`. */
   sshOpenWith: string;
@@ -1728,6 +1729,22 @@ export const ipc = {
     if (!isDesktop) throw new BackendUnavailable('An external terminal');
     return invoke<string[]>('ssh_external', { address, username, port, command });
   },
+  /** The machine's serial ports, the likely console cable first, and the
+   *  one that would be opened without asking. Nothing is opened or sent. */
+  consolePorts() {
+    if (!isDesktop) throw new BackendUnavailable('A console session');
+    return invoke<ConsolePorts>('console_ports');
+  },
+  /** Opens a serial console; the session is typed into, logged and closed
+   *  like any other in the terminal. 8N1 with no flow control unless told. */
+  consoleOpen(port: string, baud: number) {
+    if (!isDesktop) throw new BackendUnavailable('A console session');
+    return invoke<string>('console_open', { port, baud });
+  },
+  /** A break on a console session — what a boot loader waits for. */
+  consoleBreak(id: string) {
+    return invoke<void>('console_break', { id });
+  },
   /** Keystrokes, base64 as they came off the terminal. */
   sshSend(id: string, bytes: string) {
     return invoke<void>('ssh_send', { id, bytes });
@@ -2007,3 +2024,19 @@ export const ipc = {
     return un;
   },
 };
+
+/** One serial port of this machine. */
+export interface ConsolePort {
+  /** What it is opened by: `COM3`, `/dev/ttyUSB0`. */
+  name: string;
+  kind: 'usb' | 'bluetooth' | 'builtIn' | 'unknown';
+  /** What the adapter says it is. */
+  description: string;
+  /** A USB serial adapter, so in all likelihood the console cable. */
+  likelyConsole: boolean;
+}
+export interface ConsolePorts {
+  ports: ConsolePort[];
+  /** The port to open without asking: the only likely one, or none. */
+  chosen: string | null;
+}

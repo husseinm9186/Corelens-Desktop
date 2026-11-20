@@ -1,4 +1,5 @@
 import { moveSession, nudgeSession } from '../lib/sshOrder';
+import { consoleSpeed, DEFAULT_CONSOLE_SPEED } from '../lib/consolePort';
 import { useEffect, useState } from 'react';
 import { projectLeft } from '../lib/projectLeft';
 import { EMPTY_TREE, type FolderTree } from '../lib/projectFolders';
@@ -181,6 +182,9 @@ export interface SshTab {
   /** The neighbour it was reached through, when it was not reached
    *  directly: that device's address and name. Reopening goes the same way. */
   via?: { address: string; label: string };
+  /** A serial console rather than an SSH session: the port and the speed
+   *  it was opened at, so an ended one can be opened again the same way. */
+  console?: { port: string; baud: number };
 }
 
 export interface ProjectDocument {
@@ -374,6 +378,7 @@ export function terminalFromStored(stored: StoredSettings, current: TerminalSett
     externalCommand: stored.sshExternalCommand ?? current.externalCommand,
     copyOnSelect: flag(stored.sshCopyOnSelect, current.copyOnSelect),
     pasteOnRight: flag(stored.sshPasteOnRight, current.pasteOnRight),
+    consoleBaud: stored.consoleBaud === undefined ? current.consoleBaud : consoleSpeed(stored.consoleBaud),
   };
 }
 
@@ -398,6 +403,8 @@ export interface TerminalSettings {
   /** Right-click pastes into the session instead of opening the menu.
    *  Off until asked for: it types into a live device with no confirmation. */
   pasteOnRight: boolean;
+  /** The speed a console session is opened at. */
+  consoleBaud: number;
 }
 
 /** What the terminal does before anyone has said otherwise. */
@@ -416,6 +423,7 @@ export const TERMINAL_DEFAULTS: TerminalSettings = {
   externalCommand: '',
   copyOnSelect: true,
   pasteOnRight: false,
+  consoleBaud: DEFAULT_CONSOLE_SPEED,
 };
 
 export interface HistoryEntry {
@@ -4362,6 +4370,7 @@ export const useStore = create<Store>((set, get) => ({
       externalCommand: 'sshExternalCommand',
       copyOnSelect: 'sshCopyOnSelect',
       pasteOnRight: 'sshPasteOnRight',
+      consoleBaud: 'consoleBaud',
     };
     for (const [key, value] of Object.entries(patch)) {
       const stored = keys[key as keyof TerminalSettings];

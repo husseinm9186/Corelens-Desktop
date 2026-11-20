@@ -2004,6 +2004,12 @@ tr[data-picked="yes"] td { background: var(--hover); }
   padding: 0 0.46153846rem; font-size: var(--text-lg); line-height: 1;
 }
 .cv-ssh-close:hover { color: var(--down); }
+/* The console's own row: the button, and the port and speed it will use. */
+.cv-ssh-console {
+  flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.61538462rem;
+  padding: 0.30769231rem 0.61538462rem;
+}
+.cv-ssh-console select { min-width: 7rem; max-width: 22rem; }
 .cv-ssh-controls {
   flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.76923077rem;
   padding: 0.30769231rem 0.61538462rem 0.46153846rem; border-bottom: 1px solid var(--line);

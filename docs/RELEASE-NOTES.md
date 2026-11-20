@@ -2,6 +2,30 @@
 
 Newest first.
 
+## 2.18.0 — 2026-11-20
+
+**A serial console in the terminal**
+- **Console** on the SSH tab, and **Console to this device** on a device's
+  right-click menu, open a serial console as a tab beside the SSH sessions.
+  The port is found for you: the USB serial adapter among this computer's
+  serial ports, when exactly one is plugged in. With two, or none, it says
+  so and you choose under **Port**.
+- 9600 8N1 with no flow control; **Speed** changes the rate and is
+  remembered. Nothing is sent to the device by opening the session.
+- **Send break** on a console session, for a boot loader and password
+  recovery. A console is logged, searched and reopened (Enter in an ended
+  tab) like an SSH session.
+- Tested against a pseudo-terminal; not yet against a real console cable.
+
+**Session tabs in your order**
+- Drag a session's tab onto another to move it there; **Ctrl+Shift+Left**
+  and **Ctrl+Shift+Right** move the focused tab one place. The session in
+  front stays in front and nothing about a session is disturbed.
+
+**Under the surface**
+- Each device on the canvas is drawn with two fewer page elements. Nothing
+  looks different, and no change in panning or zooming speed was measured.
+
 ## 2.17.2 — 2026-11-16
 
 **Fixed**

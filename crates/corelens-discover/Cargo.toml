@@ -32,6 +32,7 @@ getrandom = "0.2"
 # through other crates.
 regex = "1"
 russh-sftp = "3.0.1"
+serialport = { version = "4.10.1", default-features = false }
 
 [dev-dependencies]
 rand = "0.10"

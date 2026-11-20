@@ -5,7 +5,8 @@
  */
 import { ipc } from '../lib/ipc';
 import { fillDeviceInfo } from '../lib/deviceInfo';
-import { planSsh, sshAddress } from '../lib/sshLaunch';
+import { choosePort, shortPort } from '../lib/consolePort';
+import { planSsh, sshAddress, sshLabel } from '../lib/sshLaunch';
 import { t } from '../i18n';
 import { useStore } from '../state/store';
 import type { DeviceNodeData } from '../types/domain';
@@ -130,5 +131,54 @@ export async function getDeviceInfo(nodeId: string, data: DeviceNodeData) {
     );
   } catch (e: unknown) {
     useStore.getState().setStatusMessage(t('deviceInfo.failed', { name: plan.label, why: e instanceof Error ? e.message : String(e) }));
+  }
+}
+
+/**
+ * Opens a serial console in the terminal panel, beside the SSH sessions.
+ *
+ * The port is found, not asked for: the machine's serial ports are listed
+ * and the only USB serial adapter among them — the console cable — is
+ * opened. With two cables in, or none, nothing is opened and the status
+ * line says to choose on the SSH tab: a guess would type into the wrong
+ * device. `wanted` is a port somebody did choose.
+ *
+ * Nothing is sent to the device by opening it. From a device's menu the tab
+ * carries the device's name; the cable is still whichever one is plugged in
+ * — Corelens cannot tell what is at the other end of it.
+ *
+ * Returns the ports it found, so the panel can offer them.
+ */
+export async function openConsole(wanted = '', from?: { nodeId: string; data: DeviceNodeData }) {
+  const store = useStore.getState();
+  store.requestPanelTab('ssh');
+  try {
+    const found = await ipc.consolePorts();
+    const choice = choosePort(found.ports, found.chosen, wanted);
+    if ('ask' in choice) {
+      store.setStatusMessage(t(choice.ask === 'none' ? 'console.noPorts' : choice.ask === 'noCable' ? 'console.noCable' : 'console.several'));
+      return found.ports;
+    }
+    const baud = store.settings.terminal.consoleBaud;
+    const port = shortPort(choice.open);
+    store.setStatusMessage(t('console.opening', { port, baud }));
+    const id = await ipc.consoleOpen(choice.open, baud);
+    const label = from ? t('console.tabDevice', { name: sshLabel(from.data) }) : t('console.tab', { port });
+    useStore.getState().openSshTab({
+      id, address: port, label, status: 'open', console: { port: choice.open, baud },
+      ...(from ? { nodeId: from.nodeId } : {}),
+    });
+    useStore.getState().setStatusMessage(t('console.opened', { port, baud }));
+    const { logByDefault } = useStore.getState().settings.terminal;
+    const folder = useStore.getState().settings.backupFolder;
+    if (logByDefault && folder) {
+      await ipc
+        .sshLogStart(id, { folder, device: label, address: port, site: from?.data.site ?? '' })
+        .catch((e: unknown) => useStore.getState().setStatusMessage(e instanceof Error ? e.message : String(e)));
+    }
+    return found.ports;
+  } catch (e: unknown) {
+    useStore.getState().setStatusMessage(e instanceof Error ? e.message : String(e));
+    return null;
   }
 }

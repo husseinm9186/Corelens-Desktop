@@ -1028,7 +1028,7 @@ pub fn set_setting(
     // This table is plain text in the same database as the projects, and
     // nothing typed into Corelens is ever written where it could leave the
     // machine.
-    const ALLOWED: [&str; 36] = [
+    const ALLOWED: [&str; 37] = [
         // The shadow-mode feature flag, per project.
         "collectorShadow",
         "backupFolder",
@@ -1091,6 +1091,8 @@ pub fn set_setting(
         // Clipboard manners in the terminal.
         "sshCopyOnSelect",
         "sshPasteOnRight",
+        // The speed a serial console is opened at.
+        "consoleBaud",
         // The SFTP server a Cisco device is told to send its configuration
         // to when a backup is asked for over SNMP: host, port and folder,
         // and the saved login by its vault id. Per project, like the

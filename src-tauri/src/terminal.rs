@@ -45,6 +45,8 @@ enum Instruction {
     LogStop,
     /// How often to tell the device we are still here, or never.
     Keepalive(Option<Duration>),
+    /// A break on a serial console. An SSH session has no such thing.
+    Break,
     Close,
 }
 
@@ -360,6 +362,8 @@ pub async fn ssh_open(
                             path: None,
                         });
                     }
+                    // A serial line's signal; there is none to send here.
+                    Some(Instruction::Break) => {}
                     Some(Instruction::Keepalive(next)) => {
                         every = next.filter(|d| !d.is_zero());
                         ticker = tokio::time::interval(every.unwrap_or(Duration::from_secs(3600)));
@@ -383,6 +387,177 @@ pub async fn ssh_open(
         .sessions
         .insert(id.clone(), Session { to_device, address })?;
     Ok(id)
+}
+
+/// The machine's serial ports, the likely console cable first, and the one
+/// that would be opened without asking — when exactly one of them is a USB
+/// serial adapter.
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConsolePorts {
+    pub ports: Vec<corelens_discover::console::PortInfo>,
+    pub chosen: Option<String>,
+}
+
+#[tauri::command(async)]
+pub fn console_ports() -> CmdResult<ConsolePorts> {
+    let ports = corelens_discover::console::ports().map_err(|e| e.to_string())?;
+    let chosen = corelens_discover::console::chosen(&ports).map(|p| p.name.clone());
+    Ok(ConsolePorts { ports, chosen })
+}
+
+/// Opens a serial console and returns the id of its session.
+///
+/// The session is one of the terminal's own: it is typed into with
+/// `ssh_send`, logged with `ssh_log_start`, closed with `ssh_close`, and
+/// speaks on the same event. No login is involved and nothing is sent to
+/// the device by opening it.
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+pub async fn console_open(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    port: String,
+    baud: Option<u32>,
+    data_bits: Option<u8>,
+    parity: Option<corelens_discover::console::Parity>,
+    stop_bits: Option<u8>,
+    flow: Option<corelens_discover::console::FlowControl>,
+) -> CmdResult<String> {
+    use corelens_discover::console::{Console, Settings};
+    state.limiter.allow(crate::ratelimit::Job::SshSession)?;
+    let port = port.trim().to_string();
+    if port.is_empty() {
+        return Err("Choose a serial port to open.".into());
+    }
+    // Only a port the machine lists: the name comes from the page, and a
+    // path that is not a serial port is not opened on its say-so.
+    let known = corelens_discover::console::ports().map_err(|e| e.to_string())?;
+    if !known.iter().any(|p| p.name == port) {
+        return Err(format!("{port} is not one of this computer's serial ports. Was the cable unplugged?"));
+    }
+    let defaults = Settings::default();
+    let settings = Settings {
+        baud: baud.unwrap_or(defaults.baud),
+        data_bits: data_bits.unwrap_or(defaults.data_bits),
+        parity: parity.unwrap_or(defaults.parity),
+        stop_bits: stop_bits.unwrap_or(defaults.stop_bits),
+        flow: flow.unwrap_or(defaults.flow),
+    };
+    // Opening blocks while the driver sets the line up.
+    let opening = port.clone();
+    let mut console = tauri::async_runtime::spawn_blocking(move || Console::open(&opening, &settings))
+        .await
+        .map_err(|e| format!("{port} could not be opened: {e}"))?
+        .map_err(|e| e.to_string())?;
+
+    let id = format!("console-{}", uuid::Uuid::new_v4());
+    let (to_device, mut instructions) = mpsc::channel::<Instruction>(64);
+    let emitter = app.clone();
+    let session_id = id.clone();
+    let registry = Arc::clone(&state.sessions);
+    tauri::async_runtime::spawn(async move {
+        let mut log: Option<(PathBuf, std::fs::File)> = None;
+        let mut shaper = SessionLog::new();
+        let reason = loop {
+            tokio::select! {
+                chunk = console.read() => match chunk {
+                    Some(Ok(bytes)) => {
+                        if let Some((path, file)) = log.as_mut() {
+                            let readable = shaper.feed(&bytes);
+                            if !readable.is_empty() {
+                                if let Err(e) = file.write_all(&readable) {
+                                    let _ = emitter.emit("corelens://ssh", SessionEvent::Warning {
+                                        id: session_id.clone(),
+                                        message: format!("The session log at {} could not be written: {e}", path.display()),
+                                    });
+                                    log = None;
+                                    let _ = emitter.emit("corelens://ssh", SessionEvent::Logging {
+                                        id: session_id.clone(),
+                                        path: None,
+                                    });
+                                }
+                            }
+                        }
+                        let _ = emitter.emit("corelens://ssh", SessionEvent::Data {
+                            id: session_id.clone(),
+                            bytes: base64::engine::general_purpose::STANDARD.encode(&bytes),
+                        });
+                    }
+                    Some(Err(e)) => break e.to_string(),
+                    None => break "The port was closed.".to_string(),
+                },
+                instruction = instructions.recv() => match instruction {
+                    None | Some(Instruction::Close) => break "Closed.".to_string(),
+                    Some(Instruction::Send(bytes)) => {
+                        if let Err(e) = console.send(&bytes) {
+                            break e.to_string();
+                        }
+                    }
+                    Some(Instruction::Break) => {
+                        if let Err(e) = console.send_break().await {
+                            break e.to_string();
+                        }
+                    }
+                    // A serial line has no window size to be told and no
+                    // connection to keep alive.
+                    Some(Instruction::Resize(..) | Instruction::Keepalive(_)) => {}
+                    Some(Instruction::LogTo(path)) => {
+                        match open_session_log(&path) {
+                            Ok(file) => {
+                                shaper = SessionLog::new();
+                                let said = path.display().to_string();
+                                log = Some((path, file));
+                                let _ = emitter.emit("corelens://ssh", SessionEvent::Logging {
+                                    id: session_id.clone(),
+                                    path: Some(said),
+                                });
+                            }
+                            Err(e) => {
+                                let _ = emitter.emit("corelens://ssh", SessionEvent::Warning {
+                                    id: session_id.clone(),
+                                    message: format!("The session log at {} could not be opened: {e}", path.display()),
+                                });
+                            }
+                        }
+                    }
+                    Some(Instruction::LogStop) => {
+                        log = None;
+                        let _ = emitter.emit("corelens://ssh", SessionEvent::Logging {
+                            id: session_id.clone(),
+                            path: None,
+                        });
+                    }
+                },
+            }
+        };
+        console.close();
+        let _ = emitter.emit(
+            "corelens://ssh",
+            SessionEvent::Closed {
+                id: session_id.clone(),
+                reason,
+            },
+        );
+        registry.remove(&session_id);
+    });
+
+    state.sessions.insert(id.clone(), Session { to_device, address: port })?;
+    Ok(id)
+}
+
+/// A break on a console session: what a boot loader waits for. Sent only
+/// when asked for, and to a session that is not a console it is nothing.
+#[tauri::command]
+pub async fn console_break(state: State<'_, AppState>, id: String) -> CmdResult<()> {
+    if !id.starts_with("console-") {
+        return Err("Only a console session can be sent a break.".into());
+    }
+    let to_device = state.sessions.sender(&id)?;
+    to_device
+        .send(Instruction::Break)
+        .await
+        .map_err(|_| "That session is no longer open.".to_string())
 }
 
 /// Keystrokes, base64 as they came off the terminal.

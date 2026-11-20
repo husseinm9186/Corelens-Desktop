@@ -1047,6 +1047,39 @@ nothing about a session it did not open: no log, no colouring, no keepalive.
 Set which one the first menu entry uses, and the command to run, on the SSH
 tab.
 
+**A serial console, the port found for you.** For a device with no address
+yet, one that has lost its configuration, or one sitting in its boot loader:
+plug the console cable in and press **Console** on the SSH tab, or
+right-click a device and choose **Console to this device**. Corelens lists
+this computer's serial ports and opens the USB serial adapter among them —
+the console cable, or the device's own USB console socket — so you do not
+need to know whether it is COM3 or COM7 today. The session is a tab beside
+the SSH ones: typed into, logged, found in, reordered and closed the same
+way.
+
+- **Port** is *Automatic* unless you choose one. With two adapters plugged
+  in Corelens will not guess, because a guess types into the wrong device;
+  it says so and you pick. A console on a built-in or Bluetooth port is
+  never picked for you, and is always in the list.
+- **Speed** is 9600 unless you change it, and the change is remembered. The
+  line is 8 data bits, no parity, 1 stop bit, no flow control.
+- **Nothing is sent by opening it** — no wake-up Enter, no probing for the
+  speed. Press Enter yourself. On a console a stray byte can interrupt a
+  device that is booting.
+- **Send break** appears on a console session and holds the line for a
+  quarter of a second: what a boot loader waits for during password
+  recovery. It is sent only when you press it.
+- If the cable comes out, the tab stays with what it said; press Enter in
+  it to open the same port again.
+- From a device's menu the tab carries the device's name, but the cable is
+  whichever one is plugged in: Corelens cannot tell what is at its far end.
+- On Linux the account must be allowed to use serial ports (the `dialout`
+  group on most systems); the refusal says so. Linux also lists the
+  kernel's placeholder `ttyS` ports, which are never picked automatically.
+
+This has been tested against a pseudo-terminal, not yet against a real
+console cable.
+
 **The order of the session tabs is yours.** Drag a session's tab onto
 another and it takes that place; the rest move along. With the tab focused,
 **Ctrl+Shift+Left** and **Ctrl+Shift+Right** move it one place. Only the

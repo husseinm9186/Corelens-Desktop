@@ -7,10 +7,12 @@ import '@xterm/xterm/css/xterm.css';
 import { dockOwnerWindow } from '../lib/dockWindow';
 import { t } from '../i18n';
 import { Colouriser } from '../lib/colourise';
-import { ipc, type SshEvent } from '../lib/ipc';
+import { CONSOLE_SPEEDS, portOption } from '../lib/consolePort';
+import { ipc, isDesktop, type ConsolePort, type SshEvent } from '../lib/ipc';
 import { formatTime } from '../lib/timeFormat';
 import { useStore, type SshTab } from '../state/store';
 import { ChromeIcon } from './chromeIcons';
+import { openConsole } from './sshActions';
 
 /**
  * Open shells, one tab each, with the controls that make one usable
@@ -56,13 +58,16 @@ const terminals = new Map<string, Held>();
 async function reconnect(held: Held) {
   if (held.reconnecting) return;
   const tab = useStore.getState().sshSessions.find((t) => t.id === held.id);
-  if (!tab || tab.status !== 'closed' || !tab.credentialId) return;
+  if (!tab || tab.status !== 'closed' || (!tab.credentialId && !tab.console)) return;
   held.reconnecting = true;
   held.term.write(`\r\n\x1b[2m${t('ssh.reconnecting', { name: tab.label })}\x1b[0m\r\n`);
   try {
     const { keepaliveSeconds, logByDefault } = useStore.getState().settings.terminal;
-    // The way it went the first time: through the same neighbour, if any.
-    const id = await ipc.sshOpen(tab.address, tab.credentialId, { cols: held.term.cols, rows: held.term.rows }, undefined, keepaliveSeconds, tab.via?.address);
+    // A console goes back to the same port at the same speed; an SSH
+    // session the way it went the first time.
+    const id = tab.console
+      ? await ipc.consoleOpen(tab.console.port, tab.console.baud)
+      : await ipc.sshOpen(tab.address, tab.credentialId!, { cols: held.term.cols, rows: held.term.rows }, undefined, keepaliveSeconds, tab.via?.address);
     terminals.set(id, held);
     terminals.delete(held.id);
     held.id = id;
@@ -152,6 +157,50 @@ export function SshPanel() {
   const [confirming, setConfirming] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
+  // The console: the ports last listed, and one picked by hand ('' is
+  // automatic — the only USB serial adapter).
+  const [ports, setPorts] = useState<ConsolePort[]>([]);
+  const [port, setPort] = useState('');
+  const listPorts = () => {
+    void ipc.consolePorts().then((found) => setPorts(found.ports)).catch(() => undefined);
+  };
+  const consoleBar = isDesktop ? (
+    <div className="cv-ssh-console" data-region="console">
+      <button type="button" className="cv-btn cv-btn-small" title={t('console.openHint')}
+        onClick={() => {
+          void openConsole(port).then((found) => {
+            if (!found) return;
+            setPorts(found);
+            // A port that has gone is not kept as the choice.
+            if (port && !found.some((p) => p.name === port)) setPort('');
+          });
+        }}>
+        {t('console.open')}
+      </button>
+      <label className="cv-field cv-field-narrow" title={t('console.portHint')}>
+        <span>{t('console.port')}</span>
+        {/* Listed when it is reached for, so a cable plugged in a moment
+            ago is there. */}
+        <select className="cv-input" value={port} onFocus={listPorts} onMouseDown={listPorts}
+          onChange={(e) => setPort(e.target.value)}>
+          <option value="">{t('console.portAuto')}</option>
+          {ports.map((p) => (
+            <option key={p.name} value={p.name}>{portOption(p)}</option>
+          ))}
+        </select>
+      </label>
+      <label className="cv-field cv-field-narrow" title={t('console.speedHint')}>
+        <span>{t('console.speed')}</span>
+        <select className="cv-input" value={terminal.consoleBaud}
+          onChange={(e) => setTerminal({ consoleBaud: Number(e.target.value) })}>
+          {CONSOLE_SPEEDS.map((speed) => (
+            <option key={speed} value={speed}>{speed}</option>
+          ))}
+        </select>
+      </label>
+    </div>
+  ) : null;
+
   const current = tabs.find((tab) => tab.id === active);
   const open = tabs.filter((tab) => tab.status === 'open');
   const chosen = open.filter((tab) => targets.has(tab.id));
@@ -239,7 +288,8 @@ export function SshPanel() {
           if (held?.colour.pending) held.term.write(held.colour.flush());
           held?.term.write(`\r\n\x1b[2m${e.reason}\x1b[0m\r\n`);
           // And how to get it back, where that is possible.
-          if (useStore.getState().sshSessions.find((x) => x.id === e.id)?.credentialId) {
+          const ended = useStore.getState().sshSessions.find((x) => x.id === e.id);
+          if (ended?.credentialId || ended?.console) {
             held?.term.write(`\x1b[2m${t('ssh.pressEnter')}\x1b[0m\r\n`);
           }
           useStore.getState().endSshTab(e.id, e.reason);
@@ -367,6 +417,19 @@ export function SshPanel() {
             }
           }} />
       </label>
+      {/* Only where there is a line to hold: a console session, still open. */}
+      {current?.console && (
+        <button type="button" className="cv-btn cv-btn-small" title={t('console.breakHint')}
+          disabled={current.status !== 'open'}
+          onClick={() => {
+            setProblem(null);
+            void ipc.consoleBreak(current.id)
+              .then(() => setNote(t('console.breakSent', { port: current.address })))
+              .catch((e: unknown) => setProblem(e instanceof Error ? e.message : String(e)));
+          }}>
+          {t('console.break')}
+        </button>
+      )}
       <button type="button" className="cv-btn cv-btn-small" onClick={() => setFindOpen((was) => !was)}
         disabled={!current} aria-expanded={findOpen}>
         {t('ssh.find')}
@@ -385,6 +448,7 @@ export function SshPanel() {
     return (
       <div className="cv-ssh cv-ssh-empty">
         <p className="cv-help">{t('ssh.empty')}</p>
+        {consoleBar}
         <div className="cv-ssh-foot" data-region="ssh-foot">
           <span className="cv-ssh-foot-name">{t('ssh.noSession')}</span>
         </div>
@@ -429,7 +493,7 @@ export function SshPanel() {
             <button type="button" role="tab" aria-selected={tab.id === active}
               tabIndex={tab.id === active ? 0 : -1}
               className={tab.id === active ? 'is-active' : ''}
-              title={tab.status === 'closed' ? tab.reason : tab.via ? t('ssh.tabThrough', { address: tab.address, via: tab.via.label }) : tab.address}
+              title={tab.status === 'closed' ? tab.reason : tab.console ? t('console.tabTitle', { port: tab.address, baud: tab.console.baud }) : tab.via ? t('ssh.tabThrough', { address: tab.address, via: tab.via.label }) : tab.address}
               aria-keyshortcuts="Control+Shift+ArrowLeft Control+Shift+ArrowRight"
               onKeyDown={(e) => {
                 // The same move without a pointer: one place left or right.
@@ -454,6 +518,7 @@ export function SshPanel() {
         ))}
       </div>
       {controls}
+      {consoleBar}
       {findOpen && (
         <div className="cv-ssh-find">
           <input className="cv-input" value={finding} autoFocus

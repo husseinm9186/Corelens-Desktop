@@ -1622,3 +1622,83 @@ describe("a crawled device's own interface addresses", () => {
     expect(again.updated[0]?.data.addresses).toBeUndefined();
   });
 });
+
+describe('devices that share an address are not thereby one device', () => {
+  // Six switches behind one management switch, each plugged in by a port of
+  // the same name — and each, for whatever reason, advertising one address.
+  const NAMES = ['LEAF-A', 'LEAF-B', 'BORDER-A', 'BORDER-B', 'SPINE-A', 'SPINE-B'];
+  const reports = (address: (i: number) => string, serial: (i: number) => string | null = (i) => `FDO0000TES${i}`) =>
+    NAMES.map((n, i) =>
+      neighbor(`${n}.example.net`, `GigabitEthernet1/0/${7 + i}`, 'mgmt0', {
+        serial: serial(i),
+        addresses: [{ ip: address(i), interface: null, isManagement: true }],
+      }),
+    );
+  const linksOf = (t: ReturnType<typeof buildTopology>, all: { id: string; data: unknown }[], label: string) => {
+    const id = all.find((n) => (n.data as DeviceNodeData).label === label)?.id;
+    return t.edges.filter((e) => e.source === id || e.target === id).length;
+  };
+
+  it('six switches with six serials advertising one address are six devices, a link each', () => {
+    const t = buildTopology({ devices: [device('MGMT', '192.0.2.1', reports(() => '198.51.100.1'))], notVisited: [] }, 'p');
+    const labels = t.nodes.map((n) => (n.data as DeviceNodeData).label).sort();
+    expect(labels).toEqual([...NAMES, 'MGMT'].sort());
+    for (const name of NAMES) expect(linksOf(t, t.nodes, name), name).toBe(1);
+  });
+
+  it('a drawn device that lists a shared address on an interface does not swallow the others', () => {
+    // LEAF-A as an earlier run left it: its own serial, and its interface
+    // addresses under its checks — one of them an address the others share.
+    const drawn = {
+      ...sweptNode('leaf-a', 'LEAF-A', '192.0.2.101'),
+    };
+    (drawn.data as DeviceNodeData).serial = 'FDO0000TES0';
+    (drawn.data as DeviceNodeData).addresses!.push({ id: 'lo', label: 'loopback1', address: '198.51.100.1', isPrimary: false });
+    const t = buildTopology(
+      { devices: [device('MGMT', '192.0.2.1', reports((i) => (i === 0 ? '192.0.2.101' : '198.51.100.1')))], notVisited: [] },
+      'p',
+      { existingNodes: [drawn as never] },
+    );
+    const all = [drawn, ...t.nodes];
+    expect(linksOf(t, all, 'LEAF-A')).toBe(1);
+    expect(t.nodes.map((n) => (n.data as DeviceNodeData).label).sort()).toEqual([...NAMES.slice(1), 'MGMT'].sort());
+    // And nobody else's address became LEAF-A's.
+    const patched = t.updated.find((u) => u.id === 'leaf-a')?.data.addresses;
+    expect((patched ?? drawn.data.addresses)!.find((a) => a.isPrimary)?.address).toBe('192.0.2.101');
+  });
+
+  it('without serials, a differently named sighting at a non-primary address is still another device', () => {
+    const drawn = sweptNode('leaf-a', 'LEAF-A', '192.0.2.101');
+    (drawn.data as DeviceNodeData).addresses!.push({ id: 'lo', label: 'Vlan10', address: '198.51.100.1', isPrimary: false });
+    const t = buildTopology(
+      { devices: [device('MGMT', '192.0.2.1', [neighbor('LEAF-B.example.net', 'Gi1/0/8', 'mgmt0', { addresses: [{ ip: '198.51.100.1', interface: null, isManagement: true }] })])], notVisited: [] },
+      'p',
+      { existingNodes: [drawn as never] },
+    );
+    expect(t.nodes.map((n) => (n.data as DeviceNodeData).label).sort()).toEqual(['LEAF-B', 'MGMT']);
+    expect(linksOf(t, [drawn, ...t.nodes], 'LEAF-A')).toBe(0);
+  });
+
+  it('a device known by another name at its own primary address is still found again', () => {
+    // What the fold by address is for: a switch drawn under one name and
+    // reported under another, at the address it is managed on.
+    const drawn = sweptNode('acc', 'LAB-ACC-SW', '192.0.2.50');
+    const t = buildTopology(
+      { devices: [device('MGMT', '192.0.2.1', [neighbor('USW-Lite-8-PoE', 'Gi1/0/3', 'Port 1', { addresses: [{ ip: '192.0.2.50', interface: null, isManagement: true }] })])], notVisited: [] },
+      'p',
+      { existingNodes: [drawn as never] },
+    );
+    expect(t.nodes.map((n) => (n.data as DeviceNodeData).label)).toEqual(['MGMT']);
+    expect(linksOf(t, [drawn, ...t.nodes], 'LAB-ACC-SW')).toBe(1);
+  });
+
+  it('one stack reported under two names with two members\' serials at one address stays one device', () => {
+    // Two members of one stack have two serials; that alone does not make
+    // two devices when a serial is all that differs and one sighting is the
+    // device itself, logged in to.
+    const stack = device('CORE', '192.0.2.9', [], { serial: 'FOC0000TES1, FOC0000TES2' });
+    const seenBy = device('MGMT', '192.0.2.1', [neighbor('CORE-STACK', 'Gi1/0/1', 'Gi2/0/1', { serial: 'FOC0000TES2', addresses: [{ ip: '192.0.2.9', interface: null, isManagement: true }] })]);
+    const t = buildTopology({ devices: [stack, seenBy], notVisited: [] }, 'p');
+    expect(t.nodes.map((n) => (n.data as DeviceNodeData).label).sort()).toEqual(['CORE', 'MGMT']);
+  });
+});

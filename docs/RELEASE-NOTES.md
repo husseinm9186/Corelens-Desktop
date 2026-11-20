@@ -2,6 +2,19 @@
 
 Newest first.
 
+## 2.18.1 — 2026-11-20
+
+**Fixed**
+- Several devices could be drawn as one, with every one's links on it,
+  because they shared an address: an anycast gateway, the address a pair
+  answers on, or any address one of them lists on an interface. Devices
+  whose serial numbers differ are never taken for one device now, and an
+  address that is not a device's management address no longer makes a
+  differently named device that device. A device drawn under one name and
+  reported under another at its management address is still recognised.
+  Links already drawn wrongly are not removed: delete them, or the page,
+  and discover again.
+
 ## 2.18.0 — 2026-11-20
 
 **A serial console in the terminal**

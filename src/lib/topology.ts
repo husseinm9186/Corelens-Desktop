@@ -27,7 +27,7 @@ import { inventoryOf } from './inventory';
 import { hierarchicalLayout } from './hierarchyLayout';
 import { inferRoles, ROLE_LABEL, ROLE_TYPE, type InferredRole, type Role } from './roles';
 import { uid } from './id';
-import { mergeSerials } from './serials';
+import { mergeSerials, parseSerials } from './serials';
 import { behindInferred, type InferredSwitch } from './attached';
 
 /**
@@ -403,6 +403,21 @@ interface LinkEnd {
   iface: string;
 }
 
+/**
+ * Whether two sightings name different chassis.
+ *
+ * A serial is assigned once at the factory. Two sightings that each carry
+ * serials and have none in common are two devices, whatever else they share
+ * — an anycast gateway, a VTEP address a pair answers on, a virtual address.
+ * One side listing several (a stack) agrees with the other naming any one of
+ * them. A side with no serial says nothing either way.
+ */
+export function serialsDisagree(a: string | null | undefined, b: string | null | undefined): boolean {
+  const mine = parseSerials(a ?? '').map((x) => x.toUpperCase());
+  const theirs = new Set(parseSerials(b ?? '').map((x) => x.toUpperCase()));
+  return mine.length > 0 && theirs.size > 0 && !mine.some((x) => theirs.has(x));
+}
+
 function linkKey(a: LinkEnd, b: LinkEnd): string {
   // Sorted, so the same cable reported from both ends collapses to one link.
   // The interface is part of the key: two switches joined by two cables are
@@ -558,6 +573,11 @@ export function buildTopology(
       byAddress.set(e.address, e.key);
       continue;
     }
+    // Unless their serials say they are two chassis. An address can be
+    // shared on purpose — an anycast gateway, the address a pair answers
+    // on — and devices that share one were all drawn as the first of them,
+    // with every one's links on it.
+    if (serialsDisagree(entries.get(seen)?.serial, e.serial)) continue;
     // Keep the entry that was actually reached; it knows more about itself.
     merged.set(e.key, seen);
     const keep = entries.get(seen);
@@ -646,6 +666,36 @@ export function buildTopology(
     return undefined;
   };
 
+  /**
+   * The node already drawn at this sighting's address — if it can be the
+   * same device.
+   *
+   * An address is the weakest of the keys, and a drawn device lists every
+   * address on its interfaces, shared ones included. So two things overrule
+   * it: serials that name different chassis; and, where the address is not
+   * the one the drawn device is managed on, a name of its own that differs.
+   * A device drawn under one name and reported under another *at its
+   * management address* is still the same device — that is what this lookup
+   * is for.
+   */
+  const drawnAtAddress = (e: Entry): string | undefined => {
+    const address = e.address?.trim();
+    if (!address) return undefined;
+    const hit = drawnByAnyKey.get(`a:${address}`);
+    if (!hit) return undefined;
+    const had = drawnDataById.get(hit);
+    if (!had) return hit;
+    if (serialsDisagree(had.serial, e.serial)) return undefined;
+    const bare = (a: string) => a.trim().split('/')[0]!.trim();
+    const primary = had.addresses?.find((a) => a.isPrimary)?.address ?? had.addresses?.[0]?.address ?? '';
+    if (bare(primary) !== address) {
+      const theirs = identity(e.name, '');
+      const mine = [had.label, had.hostname].map((n) => identity(n ?? '', '')).filter((k) => k.startsWith('n:'));
+      if (theirs.startsWith('n:') && mine.length > 0 && !mine.includes(theirs)) return undefined;
+    }
+    return hit;
+  };
+
   // Layered by how far each device is from the seed, which is the shape a
   // network actually has. The old grid said nothing about the topology.
   const byDepth = new Map<number, Entry[]>();
@@ -687,7 +737,9 @@ export function buildTopology(
       // which is the "disconnected" diagram, reported twice.
       const seen =
         alreadyDrawn.get(e.key) ??
-        findDrawn([e.key, e.address ? `a:${e.address}` : null, identity(e.name, '')]);
+        findDrawn([e.key]) ??
+        drawnAtAddress(e) ??
+        findDrawn([identity(e.name, '')]);
       if (seen) {
         nodeFor.set(e.key, seen);
         // Only what a crawl can newly establish. The label is left alone: a

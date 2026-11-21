@@ -1,3 +1,4 @@
+import { followPointer } from '../lib/pointerDrag';
 import { nodeForDrop } from '../lib/paletteDrop';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -231,6 +232,23 @@ export function Canvas() {
   }, [paletteRequest]);
   const [tracerouteTarget, setTracerouteTarget] = useState<string | null>(null);
   const [guides, setGuides] = useState<Guide[]>([]);
+  // A guide belongs to a held pointer: whatever ends the hold ends it too,
+  // including a gesture the system cancels or the window losing focus.
+  // Set when a device drag starts; whatever ends the hold clears it, and
+  // no guide is drawn after that until the next drag starts — a drag that
+  // React Flow keeps alive (an auto-pan at the edge of a window that lost
+  // focus) would otherwise draw them again every frame.
+  const guidesLive = useRef(false);
+  useEffect(() => {
+    const clear = () => {
+      guidesLive.current = false;
+      setGuides((g) => (g.length ? [] : g));
+    };
+    for (const ev of ['pointerup', 'pointercancel', 'blur'] as const) window.addEventListener(ev, clear);
+    return () => {
+      for (const ev of ['pointerup', 'pointercancel', 'blur'] as const) window.removeEventListener(ev, clear);
+    };
+  }, []);
   /** Space held: the pointer becomes a hand and drags the diagram. */
   const [panning, setPanning] = useState(false);
   /** Space was let go mid-drag: the hand stays until the button comes up. */
@@ -1080,7 +1098,9 @@ export function Canvas() {
     window.addEventListener('blur', blur);
     window.addEventListener('pointermove', track);
     window.addEventListener('pointerup', release);
+    window.addEventListener('pointercancel', release);
     return () => {
+      window.removeEventListener('pointercancel', release);
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
@@ -1819,7 +1839,11 @@ export function Canvas() {
       // Guides win; where neither an edge nor a rhythm took an axis,
       // the grid does, if it is on.
       if (gridOn) Object.assign(settled, snapUnguided(settled, keptGuides, spacingGuides, snapStep(rf.getZoom())));
-      setGuides([...keptGuides, ...spacingGuides]);
+      // Shown only while the device is held. The last change of a drag (and
+      // the one React Flow sends when it abandons a drag, which calls no
+      // drag-stop handler) still lands in line, but takes the guides away
+      // rather than drawing them again for nothing to clear.
+      setGuides(guidesLive.current && moving.type === 'position' && moving.dragging === true ? [...keptGuides, ...spacingGuides] : []);
       route(
         changes.map((c) =>
           c === moving ? { ...c, position: { x: settled.x, y: settled.y } } : c,
@@ -1867,8 +1891,6 @@ export function Canvas() {
             }
           };
           const up = () => {
-            window.removeEventListener('pointermove', move);
-            window.removeEventListener('pointerup', up);
             setLasso(null);
             const flow = screen.map((p) => rf.screenToFlowPosition(p));
             const caught = new Set(lassoed(activePage(useStore.getState().doc).nodes, flow));
@@ -1880,8 +1902,8 @@ export function Canvas() {
             );
             if (caught.size > 0) useStore.getState().setStatusMessage(`Lasso caught ${t('plural.object', { count: caught.size })}.`);
           };
-          window.addEventListener('pointermove', move);
-          window.addEventListener('pointerup', up);
+          // A cancelled lasso catches nothing and leaves no outline behind.
+          followPointer(window, move, up, () => setLasso(null));
         }
       }}
       onDrop={onDrop}
@@ -1907,7 +1929,11 @@ export function Canvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={useStore.getState().onEdgesChange}
         onConnect={onConnect}
+        onNodeDragStart={() => {
+          guidesLive.current = true;
+        }}
         onNodeDragStop={() => {
+          guidesLive.current = false;
           setGuides([]);
           // After React Flow's own last change for the drag, if it sent one.
           setTimeout(flushDrag, 0);
@@ -2005,7 +2031,8 @@ export function Canvas() {
         defaultEdgeOptions={{ type: 'live' }}
       >
         <ViewportPortal>
-          {guides.map((g) => (
+          {/* A guide shorter than a device is a dot, not a line to align to. */}
+          {guides.filter((g) => g.to - g.from >= 4).map((g) => (
             <div
               key={`${g.orientation}-${g.at}-${g.from}`}
               className={`cv-guide is-${g.orientation}`}

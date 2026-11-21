@@ -6,6 +6,7 @@
  * its boxes do; "number as they stand" reads rows and positions back off
  * the floor.
  */
+import { followPointer } from '../lib/pointerDrag';
 import { useRef, useState } from 'react';
 
 import { t } from '../i18n';
@@ -48,8 +49,6 @@ export function FloorView({ heading, racks, zoom, airOf, target, onPick, onOpen,
       setDrag(next);
     };
     const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
       const final = dragRef.current;
       dragRef.current = null;
       setDrag(null);
@@ -57,8 +56,10 @@ export function FloorView({ heading, racks, zoom, airOf, target, onPick, onOpen,
         say(store().updateRack(fp.rack.id, { floorX: final.x, floorY: final.y }), t('rackPanel.floorMoved', { name: fp.rack.name, x: (final.x / 1000).toFixed(1), y: (final.y / 1000).toFixed(1) }));
       }
     };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    followPointer(window, move, up, () => {
+      dragRef.current = null;
+      setDrag(null);
+    });
   };
 
   const targetRack = racks.find((r) => r.id === target);

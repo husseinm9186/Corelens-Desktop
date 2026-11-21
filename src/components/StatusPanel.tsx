@@ -1,3 +1,4 @@
+import { followPointer } from '../lib/pointerDrag';
 import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useStableList } from '../lib/useStableList';
 import { useReactFlow } from '@xyflow/react';
@@ -303,13 +304,9 @@ export function StatusPanel() {
     const room = (el.parentElement?.getBoundingClientRect().height ?? window.innerHeight) - 120;
     e.currentTarget.setPointerCapture(e.pointerId);
     const move = (ev: PointerEvent) => setDockHeight(Math.max(120, Math.min(room, startH + (startY - ev.clientY))));
-    const up = (ev: PointerEvent) => {
-      keepHeight(Math.max(120, Math.min(room, startH + (startY - ev.clientY))));
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    const up = (ev: PointerEvent) => keepHeight(Math.max(120, Math.min(room, startH + (startY - ev.clientY))));
+    // Cancelled, the panel goes back to the height it had.
+    followPointer(window, move, up, () => setDockHeight(startH));
   };
   /** Double-click on the grip: a third of the body, or six tenths of it. */
   const toggleHeight = () => {

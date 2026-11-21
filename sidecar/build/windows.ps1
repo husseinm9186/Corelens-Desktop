@@ -26,8 +26,10 @@ $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $out = Join-Path $root "src-tauri\sidecar"
 $tag = $PythonVersion.Split(".")[0] + $PythonVersion.Split(".")[1]   # "312"
 
-$zip = Join-Path $env:RUNNER_TEMP "python-$PythonVersion-embed-amd64.zip"
-if (-not $env:RUNNER_TEMP) { $zip = Join-Path $env:TEMP "python-$PythonVersion-embed-amd64.zip" }
+# A runner's temporary folder, or the user's outside CI. Decided before
+# Join-Path, which refuses an unset (null) folder.
+$tempDir = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { $env:TEMP }
+$zip = Join-Path $tempDir "python-$PythonVersion-embed-amd64.zip"
 Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$PythonVersion/python-$PythonVersion-embed-amd64.zip" -OutFile $zip
 $got = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
 if ($got -ne $PythonSha256.ToLower()) { throw "embeddable zip checksum $got is not the pinned $PythonSha256" }

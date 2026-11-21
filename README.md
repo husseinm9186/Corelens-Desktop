@@ -123,7 +123,8 @@ more useful than a blanket "nothing leaves the machine", which would be false:
 | Ping sweep | Only when you run one, over a range you type | The range you typed |
 | Reverse DNS (PTR) | During a sweep, for addresses that answered | Your OS resolver — this is what `ping -a` does, so a swept host arrives named rather than numbered |
 | `traceroute` | Only when you click Traceroute | The target you chose |
-| SSH | Only when you start a crawl, a backup, a Tracert from a device, a Path check or Path-Trace check from a device, or an SSH tab | Only the devices you listed |
+| SSH | Only when you start a crawl, a backup, a Tracert from a device, a Path check or Path-Trace check from a device, an SSH tab, **Get device info**, or **Fill in drawn links from the devices** | Only the devices you listed — for the last two, the one device you clicked, or the devices drawn on the page, and never an address one of them reports |
+| A serial port of this computer | Only when you press **Console** | The console cable plugged into it. Not network traffic at all; nothing is sent until you type |
 | HTTPS to a device's own API | Only when you pick a saved API login for a run | That device (or its FMC), on the port saved with the login; the certificate is pinned on first use |
 | HTTPS to the Meraki Dashboard | Only when you start a Meraki backup, health check or discovery with your own key | `api.meraki.com` and its regional hosts, nothing else |
 | SNMP (read-only) | Only during a crawl, and only if you supply SNMP credentials | Only the devices you listed |
@@ -454,6 +455,34 @@ machine or run by a device itself, each hop named by the crawled device
 that answered, drawn onto a page of its own like a calculated path. A
 device can also be asked which equal-cost leg it hashes a given flow onto.
 
+**A backup files the device's tables too.** Beside its configuration, each
+device's own interface, ARP, MAC address and routing tables, asked the way
+its platform spells them and read-only. One tick turns it off.
+
+**One device, without a crawl.** For a network that may not be walked:
+right-click a device and **Get device info** logs in to that one device and
+fills in its model, serials, software, stack members and the addresses on
+its own interfaces — asking nothing about its neighbours and contacting
+nothing else. The status line lists every command that was sent.
+
+**A diagram you drew, checked against its devices.** **Fill in drawn links
+from the devices**, on the canvas's right-click menu, asks every device drawn
+on the page who is on its ports, and nobody else. A drawn link the devices
+confirm takes its port at each end and the colour of what the port is made
+of — Ethernet, SFP or QSFP; a drawn link no device reports turns purple;
+management links are drawn sky blue, thinner, and can be hidden. No device
+is added and no neighbour is followed. A legend says what the colours mean,
+on screen and in exports.
+
+**A terminal beside the diagram.** Right-click a device for an SSH session
+in a tab of the dock — several at once, in the order you drag them into,
+with search, a transcript saved beside the device's backups, and one command
+sent to several sessions after a confirmation. **A serial console** has a
+tab of its own: press **Console** and the USB console cable is found and
+opened at 9600 8N1 without your having to know its port name; with two
+cables in it asks rather than guesses. Nothing is sent by opening it, and a
+break is sent only when you press **Send break**.
+
 **Logins are a project's, and a saved secret is never shown again.** A
 saved login belongs to the project it was typed into: it is listed, used and
 deleted there, and nowhere else — not from another project, and not from the
@@ -653,7 +682,7 @@ a job per platform.
   rejected. Unit tests cover the injection cases directly.
 - **`ping` is invoked with an argument vector.** No `cmd.exe`, no PowerShell, no
   string interpolation, and no shell plugin in the capability set.
-- **The IPC surface is a fixed list of named commands** (122 at this
+- **The IPC surface is a fixed list of named commands** (138 at this
   release), each registered by name in `src-tauri/src/main.rs`. No generic
   execute.
 - **File access is mediated by Rust**, and writes go only to a path or folder

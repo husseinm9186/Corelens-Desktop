@@ -13,7 +13,7 @@
 │                                  │                                                             │
 │                          lib/ipc.ts  ← the only IPC surface                                    │
 └──────────────────────────────────┬─────────────────────────────────────────────────────────────┘
-                                   │ named Tauri commands (122 at this release) + 1 event channel
+                                   │ named Tauri commands (138 at this release) + 1 event channel
 ┌──────────────────────────────────┴─────────────────────────────────────────────────────────────┐
 │  Rust                                                                                          │
 │                                                                                                │
@@ -153,7 +153,7 @@ working explanation is `docs/BRAND_AND_LICENSING.md`).
 
 ## Security boundaries
 
-1. **JS → Rust.** A fixed list of named commands (122 at this release). No
+1. **JS → Rust.** A fixed list of named commands (138 at this release). No
    shell plugin, no HTTP plugin, no generic exec. Listed explicitly in
    `main.rs`; `isolation/` checks its command table against that list.
 2. **Rust → OS.** `parse_target` must succeed before any target reaches an argv,
@@ -167,5 +167,13 @@ working explanation is `docs/BRAND_AND_LICENSING.md`).
    logins live in the encrypted vault (`crates/corelens-discover/src/vault.rs`,
    driven by `src-tauri/src/vault_commands.rs`): Argon2id derives the key from
    a passphrase that is never stored, XChaCha20-Poly1305 seals each entry, and
-   the webview only ever holds an id. Live SSH sessions belong to the window
-   and are never written down.
+   the webview only ever holds an id. No command returns a stored secret,
+   and a login, a host key and a run's files belong to one project. Live SSH
+   and serial console sessions belong to the window and are never written
+   down.
+6. **A device is read, not changed, and only when asked.** A crawl follows
+   neighbours inside the limits typed for it. The single-device readers
+   (`corelens-discover/src/deviceinfo.rs`, `devicelinks.rs`) log in to one
+   chosen address, send a listed set of read-only commands — each list held
+   by a test — and never dial an address an answer contains. A serial
+   console (`console.rs`) sends nothing that was not typed.

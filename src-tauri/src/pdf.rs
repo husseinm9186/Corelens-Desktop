@@ -207,9 +207,14 @@ mod tests {
 </svg>"##;
         let bytes = svg_to_pdf(svg).expect("convert");
         assert!(bytes.starts_with(b"%PDF-"));
-        let out = std::env::temp_dir().join("corelens-pdf-check.pdf");
+        let scratch = tempfile::tempdir().expect("a scratch folder");
+        let out = scratch.path().join("corelens-pdf-check.pdf");
         std::fs::write(&out, &bytes).expect("write");
-        eprintln!("wrote {} ({} bytes)", out.display(), bytes.len());
+        // Removed with its folder, unless asked to keep it to look at.
+        if std::env::var_os("CORELENS_KEEP_TEST_OUTPUT").is_some() {
+            let _ = scratch.keep();
+            eprintln!("kept {} ({} bytes)", out.display(), bytes.len());
+        }
     }
 
     #[test]

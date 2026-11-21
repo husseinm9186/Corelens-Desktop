@@ -29,7 +29,9 @@ fn fake_location(script: &serde_json::Value, contexts: &str) -> SidecarLocation 
         .map(|dir| dir.join("examples").join(name))
         .find(|candidate| candidate.exists())
         .unwrap_or_else(|| panic!("no fake sidecar in an `examples` folder above {}", me.display()));
-    let dir = std::env::temp_dir().join(format!("corelens-fake-sidecar-{}", std::process::id()));
+    // Cargo's own folder for an integration test's files, inside target/:
+    // nothing is left behind in the system's temporary folder.
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("corelens-fake-sidecar-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let script_path = dir.join(format!("script-{}.json", rand_suffix()));
     std::fs::write(&script_path, serde_json::to_string(script).unwrap()).unwrap();

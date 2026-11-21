@@ -449,9 +449,14 @@ mod tests {
     #[test]
     fn a_real_drawing_is_written_out() {
         let bytes = to_vsdx(&lab()).expect("vsdx");
-        let out = std::env::temp_dir().join("corelens-visio-check.vsdx");
+        let scratch = tempfile::tempdir().expect("a scratch folder");
+        let out = scratch.path().join("corelens-visio-check.vsdx");
         std::fs::write(&out, &bytes).expect("write");
-        eprintln!("wrote {} ({} bytes)", out.display(), bytes.len());
+        // Removed with its folder, unless asked to keep it to look at.
+        if std::env::var_os("CORELENS_KEEP_TEST_OUTPUT").is_some() {
+            let _ = scratch.keep();
+            eprintln!("kept {} ({} bytes)", out.display(), bytes.len());
+        }
     }
 
     /// Every page, named, each its own part, and a routed link that

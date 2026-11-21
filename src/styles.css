@@ -551,7 +551,10 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
 /* One 40 px row about the project: the name, the health strip and the one
    primary, search, export and the rest; the clock at the right end. */
 .cv-topbar {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center;
+  /* The right-hand column is never narrower than its buttons: when room
+     runs out it is the project's name and save state on the left that give
+     way, not More and the clock dropping to a line the canvas covers. */
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr); align-items: center;
   gap: 0.92307692rem; padding: 0 0.92307692rem; height: 3.07692308rem;
   background: var(--chrome);
   border-bottom: 1px solid var(--chrome-edge);
@@ -590,7 +593,12 @@ a:hover { color: var(--text); }
 .cv-save-state.is-acknowledged { color: var(--healthy); font-weight: 600; }
 .cv-save-tick { font-size: var(--text-md); line-height: 1; }
 
-.cv-topbar-actions { display: flex; align-items: center; gap: 0.46153846rem; flex-wrap: wrap; }
+.cv-topbar-actions { display: flex; align-items: center; gap: 0.46153846rem; flex-wrap: nowrap; }
+/* One row, always. On a narrow window the left side shortens and the clock
+   goes: the time is on every screen already, More is not. */
+.cv-topbar-left .cv-project-name { flex: 0 1 auto; min-width: 3rem; }
+.cv-topbar-left .cv-save-state { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1100px) { .cv-topbar .cv-clock { display: none; } }
 .cv-divider { width: 1px; height: 1.69230769rem; background: var(--line); margin: 0 0.30769231rem; }
 
 /* The health strip: a dot and a number per status, the number faint at
@@ -1074,7 +1082,6 @@ details.cv-discover-advanced[open] > summary::after { content: '▾'; }
 .cv-strip-name { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
 .cv-strip-addr { font-size: var(--text-sm); }
 /* The toolbar wraps rather than pushing its own buttons off the edge. */
-.cv-topbar { flex-wrap: wrap; row-gap: 0.46153846rem; }
 .cv-panel.is-collapsed {
   height: auto; flex-direction: row; align-items: center; gap: 1.07692308rem; padding: 0.46153846rem 0.92307692rem;
 }

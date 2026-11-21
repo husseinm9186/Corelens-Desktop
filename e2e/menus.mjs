@@ -139,6 +139,33 @@ await page.locator(".cv-page-tab").first().click({ button: "right" });
 await expectInside("a page tab's menu", ".cv-menu");
 await close();
 
+// ------------------------------------- the top bar on a narrower window
+
+// Every control in the top bar is what a click on it lands on. When the
+// bar's right-hand group wrapped to a second line, the canvas toolbar lay
+// over it and More could not be pressed.
+for (const width of [1000, 900]) {
+  await page.setViewportSize({ width, height: H });
+  await page.waitForTimeout(300);
+  const covered = await page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll(".cv-topbar button, .cv-topbar summary")) {
+      const closed = el.closest("details:not([open])");
+      if (closed && el.tagName !== "SUMMARY") continue;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (!at || !(el === at || el.contains(at) || at.contains(el))) {
+        out.push(`${(el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 24)} under ${at ? (at.className?.toString?.().split(" ")[0] ?? at.tagName) : "nothing"}`);
+      }
+    }
+    return out;
+  });
+  check(`at ${width} wide every top-bar control can be pressed`, covered.length === 0, covered.join("; "));
+}
+await page.setViewportSize({ width: W, height: H });
+await page.waitForTimeout(300);
+
 // ---------------------------------------------- every dropdown on the screen
 
 const dropdowns = await page.locator("details.cv-dropdown").count();

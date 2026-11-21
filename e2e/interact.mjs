@@ -149,7 +149,7 @@ const dismissRecovery = async () => {
  *  click on `.react-flow__edge` is therefore intercepted by a non-descendant
  *  and never lands. Clicking the band is clicking the link. */
 const clickLink = async (id) => {
-  await page.locator(`.cv-edge-hit[data-id="${id}"] path`).first().click({ force: true });
+  await page.locator(`.cv-edge-hit path[data-id="${id}"]`).first().click({ force: true });
   await page.waitForTimeout(250);
 };
 const nodeCount = () => page.locator(".react-flow__node").count();
@@ -3406,7 +3406,7 @@ await dismissRecovery();
   }
   await page.waitForTimeout(400);
   const zoomedOut = await page.evaluate(() => {
-    const band = document.querySelector('.cv-edge-hit[data-id="d-close"] path');
+    const band = document.querySelector('.cv-edge-hit path[data-id="d-close"]');
     if (!band) return { total: 0, hit: 0 };
     let hit = 0;
     let total = 0;
@@ -3556,7 +3556,7 @@ await dismissRecovery();
   });
   await page.waitForTimeout(300);
   await clickLink("e-healthy");
-  await page.locator('.cv-edge-hit[data-id="e-healthy"] path')
+  await page.locator('.cv-edge-hit path[data-id="e-healthy"]')
     .first().click({ force: true, button: "right" });
   await page.waitForTimeout(300);
   const save = page.locator(".cv-menu button", { hasText: "Save this style as the default" });

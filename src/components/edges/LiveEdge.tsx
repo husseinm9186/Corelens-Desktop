@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -51,6 +52,7 @@ import {
 import { setTraced, tracedEdge } from './traced';
 import { setDots } from './dotStreams';
 import { t } from '../../i18n';
+import { useEdgeHitHost } from './edgeHitLayer';
 
 /** Kept as a named export because the diagram exporter and several panels
  *  import it. The canvas uses the ground-aware set instead. */
@@ -210,6 +212,7 @@ function pathFor(
 }
 
 function LiveEdgeInner(props: EdgeProps) {
+  const hitHost = useEdgeHitHost();
   const {
     id,
     source,
@@ -890,6 +893,36 @@ function LiveEdgeInner(props: EdgeProps) {
     </marker>
   );
 
+  // The band that makes the link clickable above the devices (see below).
+  const band = (
+          <path
+            data-id={id}
+            d={drawnPath}
+            className="nodrag nopan"
+            // Not while a button is held: a pan or a drag passing over links is
+            // not pointing at any of them, and tracing each in turn flickered
+            // the whole diagram — and at 5,000 links cost most of every frame.
+            onPointerEnter={(e) => {
+              if (e.buttons === 0) {
+                setTraced(id);
+                setTipped(true);
+              }
+            }}
+            onPointerLeave={() => {
+              setTraced(null);
+              setTipped(false);
+            }}
+            onPointerDown={(e) => {
+              // Ahead of the pane's own handler, which would clear the
+              // selection this is making.
+              e.stopPropagation();
+              useStore.getState().select(null, id);
+            }}
+          >
+            {tipped && <title>{tooltip}</title>}
+          </path>
+  );
+
   return (
     <>
       {(startShape || endShape) && (
@@ -987,33 +1020,13 @@ function LiveEdgeInner(props: EdgeProps) {
             either side of the line — so it catches a deliberate click on a
             visible line without taking the device underneath it away from the
             pointer. */}
-        <svg className="cv-edge-hit" data-id={id} width="0" height="0" overflow="visible" aria-hidden>
-          <path
-            d={drawnPath}
-            className="nodrag nopan"
-            // Not while a button is held: a pan or a drag passing over links is
-            // not pointing at any of them, and tracing each in turn flickered
-            // the whole diagram — and at 5,000 links cost most of every frame.
-            onPointerEnter={(e) => {
-              if (e.buttons === 0) {
-                setTraced(id);
-                setTipped(true);
-              }
-            }}
-            onPointerLeave={() => {
-              setTraced(null);
-              setTipped(false);
-            }}
-            onPointerDown={(e) => {
-              // Ahead of the pane's own handler, which would clear the
-              // selection this is making.
-              e.stopPropagation();
-              useStore.getState().select(null, id);
-            }}
-          >
-            {tipped && <title>{tooltip}</title>}
-          </path>
-        </svg>
+        {hitHost
+          ? createPortal(band, hitHost)
+          : (
+            <svg className="cv-edge-hit" width="0" height="0" overflow="visible" aria-hidden>
+              {band}
+            </svg>
+          )}
 
         {data.sourcePortLabel ? (
           <div

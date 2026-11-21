@@ -71,6 +71,7 @@ import { PRINT_ACTUAL_ZOOM } from '../lib/pageSize';
 import { Rulers } from './Rulers';
 import { TraceFade } from './edges/traced';
 import { LinkDots } from './edges/LinkDots';
+import { EdgeHitHost, EdgeHitLayer } from './edges/edgeHitLayer';
 import type { DeviceNodeData, DeviceType, LinkData, NoteNodeData, HealthStatus } from '../types/domain';
 
 const nodeTypes = { device: DeviceNode, note: NoteNode };
@@ -197,6 +198,8 @@ interface MenuState {
 export function Canvas() {
   const wrapper = useRef<HTMLDivElement>(null);
   // The outline of a lasso being drawn, in the wrapper's own pixels.
+  // The SVG every link's hit band is drawn into (see edges/edgeHitLayer).
+  const [hitHost, setHitHost] = useState<SVGSVGElement | null>(null);
   const [lasso, setLasso] = useState<Point[] | null>(null);
   const rf = useReactFlow();
   /** React Flow's own store, for cancelling a selection box it has already
@@ -1891,6 +1894,7 @@ export function Canvas() {
           <polygon points={lasso.map((p) => `${p.x},${p.y}`).join(' ')} />
         </svg>
       )}
+      <EdgeHitHost.Provider value={hitHost}>
       <ReactFlow
         nodes={nodes}
         edges={shownEdges}
@@ -2037,7 +2041,9 @@ export function Canvas() {
         {settings.minimap && (
           <HealthMiniMap health={Boolean(pg.canvas.minimapHealth)} ground={ground} />
         )}
+        <EdgeHitLayer onHost={setHitHost} />
       </ReactFlow>
+      </EdgeHitHost.Provider>
       {/* Rulers over the pane's edge, when the page asks for them. */}
       {(pg.canvas.rulers ?? false) && !presenting && <Rulers units={pg.canvas.rulerUnits ?? 'mm'} />}
       <ColourLegend />

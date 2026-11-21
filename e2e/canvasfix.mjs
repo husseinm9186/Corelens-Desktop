@@ -99,7 +99,7 @@ const centre = async (sel) => {
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
 };
 const selectLink = async () => {
-  await page.locator('.cv-edge-hit[data-id="e1"] path').first().click({ force: true });
+  await page.locator('.cv-edge-hit path[data-id="e1"]').first().click({ force: true });
   await page.waitForTimeout(300);
 };
 /** Drags the link's target end (the second endpoint handle) to a point. */
@@ -420,7 +420,7 @@ const onLine = await page.evaluate(() => {
     const p = path.getPointAtLength((len * i) / 40);
     const at = { x: p.x * m.a + p.y * m.c + m.e, y: p.x * m.b + p.y * m.d + m.f };
     const el = document.elementFromPoint(at.x, at.y);
-    if (el?.closest?.('.cv-edge-hit[data-id="e1"], .react-flow__edge[data-id="e1"]')) return at;
+    if (el?.closest?.('.cv-edge-hit [data-id="e1"], .react-flow__edge[data-id="e1"]')) return at;
   }
   return null;
 });

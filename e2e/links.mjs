@@ -170,7 +170,7 @@ const pathEnds = async (edgeId) => {
 
 {
   // Select the core→router link and drag its router end to the router's third port on its left side.
-  await page.locator('.cv-edge-hit[data-id="e2"] path').first().click({ force: true });
+  await page.locator('.cv-edge-hit path[data-id="e2"]').first().click({ force: true });
   await page.waitForTimeout(300);
   const v = await vp();
   const toScreen = (fx, fy) => ({ x: v.ox + v.tx + fx * v.k, y: v.oy + v.ty + fy * v.k });

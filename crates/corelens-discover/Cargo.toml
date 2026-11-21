@@ -6,7 +6,7 @@ edition = "2021"
 license = "LicenseRef-Almoola-Free-Proprietary"
 # Proprietary: never published to crates.io.
 publish = false
-rust-version = "1.77"
+rust-version = "1.90"
 description = "Device discovery and configuration backup. No Tauri dependency, so the credential handling and command construction are unit-testable on their own."
 
 [dependencies]
@@ -18,7 +18,6 @@ thiserror = "1"
 tokio = { version = "1", features = ["macros", "net", "time", "sync", "rt", "rt-multi-thread", "io-util"] }
 tokio-util = "0.7"
 russh = "0.65"
-async-trait = "0.1"
 # heap_buffers: without it every session carries two 65,507-byte buffers
 # inline (about 131 KB), which overflowed a 2 MiB tokio worker in debug builds
 # — a Tauri command's thread — whenever SNMP was used. Measured

@@ -124,7 +124,7 @@ fn columns(header: &str) -> Vec<(String, usize)> {
             continue;
         }
         let start = i;
-        while i < bytes.len() && !(bytes[i] == b' ' && bytes.get(i + 1).map_or(true, |b| *b == b' ')) {
+        while i < bytes.len() && !(bytes[i] == b' ' && bytes.get(i + 1).is_none_or(|b| *b == b' ')) {
             i += 1;
         }
         out.push((header[start..i].trim().to_string(), start));

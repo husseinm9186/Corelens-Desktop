@@ -3,7 +3,7 @@ name = "corelens-collect"
 version = "2.5.0"
 authors = ["Mohammed Almoola <https://www.linkedin.com/in/malmoola>"]
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.90"
 description = "The catalog-driven collector: fingerprint, capabilities, plan, run through the sidecar or a vendor's API, scrub, normalise into the discovery tables. No Tauri, no SQLite."
 license = "LicenseRef-Almoola-Free-Proprietary"
 # Proprietary: never published to crates.io.

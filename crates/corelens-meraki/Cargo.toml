@@ -3,7 +3,7 @@ name = "corelens-meraki"
 version = "2.5.0"
 authors = ["Mohammed Almoola <https://www.linkedin.com/in/malmoola>"]
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.90"
 description = "Read-only client for the Cisco Meraki Dashboard API: organisations, networks, devices and topology"
 license = "LicenseRef-Almoola-Free-Proprietary"
 # Proprietary: never published to crates.io.

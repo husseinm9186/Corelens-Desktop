@@ -3,7 +3,7 @@ name = "corelens-path"
 version = "2.5.0"
 authors = ["Mohammed Almoola <https://www.linkedin.com/in/malmoola>"]
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.90"
 description = "P3's path builder: a collection's discovery tables and P2's graph in, the path a packet would take out — policy routes, longest-prefix match per VRF, ECMP branches, recursive next hops, next hop to device through FHRP, ARP and MACs, the switches between routers, firewall NAT and policy in each vendor's order, the reverse path, what-if, and the comparison with a traceroute. Pure: no SQLite, no Tauri, no network."
 license = "LicenseRef-Almoola-Free-Proprietary"
 # Proprietary: never published to crates.io.

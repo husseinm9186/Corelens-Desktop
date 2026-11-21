@@ -3,7 +3,7 @@ name = "corelens-catalog"
 version = "2.5.0"
 authors = ["Mohammed Almoola <https://www.linkedin.com/in/malmoola>"]
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.90"
 description = "The discovery catalog: one YAML per OS (resources/catalog), its loader and schema check, the gate evaluator, the collection plan and the read-only allowlist — no Tauri, no network"
 license = "LicenseRef-Almoola-Free-Proprietary"
 # Proprietary: never published to crates.io.

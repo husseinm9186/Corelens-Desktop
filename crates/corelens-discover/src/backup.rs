@@ -203,7 +203,7 @@ pub fn stamp_in(filename: &str) -> Option<&str> {
             && w[9..].iter().all(u8::is_ascii_digit);
         let bounded = (i == 0 || !b[i - 1].is_ascii_digit())
             // `map_or`, not `is_none_or`: the crate's MSRV is 1.77.
-            && b.get(i + 15).map_or(true, |c| !c.is_ascii_digit());
+            && b.get(i + 15).is_none_or(|c| !c.is_ascii_digit());
         (shaped && bounded).then(|| &filename[i..i + 15])
     })
 }

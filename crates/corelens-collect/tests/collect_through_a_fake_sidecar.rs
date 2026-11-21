@@ -74,7 +74,7 @@ async fn a_catalyst_is_recognised_probed_planned_and_run_light_first() {
     let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
     let loc = fake_location(&catalyst_script(), "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.expect("the fake sidecar starts");
-    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let run = collect_device(&mut sidecar, &catalogs, &target, &auth(), &RunOptions::default(), &Quiet).await;
     assert_eq!(run.failure, None, "{:?}", run.log);
     assert_eq!(run.os.as_deref(), Some("cisco_ios"));
@@ -118,7 +118,7 @@ async fn a_fortigate_with_vdoms_runs_its_vdom_commands_inside_each_one() {
     });
     let loc = fake_location(&script, r#"["root","dmz"]"#);
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let target = Target { host: "192.0.2.1".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.1".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let run = collect_device(&mut sidecar, &catalogs, &target, &auth(), &RunOptions::default(), &Quiet).await;
     assert_eq!(run.failure, None, "{:?}", run.log);
     assert_eq!(run.os.as_deref(), Some("fortios"));
@@ -142,7 +142,7 @@ async fn a_live_check_asks_inside_the_hops_vdom() {
     let script = json!({"get router info routing-table details 203.0.113.5": {"status": "ok", "raw": "Routing table for VRF=0\nRouting entry for 203.0.113.0/24\n  Known via \"static\", distance 10, metric 0, best\n  * vrf 0 192.0.2.254, via port1\n", "rows": []}});
     let loc = fake_location(&script, r#"["root","dmz"]"#);
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let target = Target { host: "192.0.2.1".into(), port: 22, os_hint: Some("fortios".into()), role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.1".into(), port: 22, os_hint: Some("fortios".into()), role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let vars: std::collections::BTreeMap<String, String> = [("dst", "203.0.113.5"), ("src", "192.0.2.10"), ("vrf", "default")].iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
     let _ = sidecar.drain_events();
     let run = corelens_collect::live::ask(&mut sidecar, fortios, &target, &auth(), &RunOptions::default(), &vars, Some(("vdom".into(), "dmz".into()))).await;
@@ -175,7 +175,7 @@ async fn a_proxmox_host_is_recognised_and_read_through_its_readers() {
     });
     let loc = fake_location(&script, "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let target = Target { host: "192.0.2.40".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.40".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let run = collect_device(&mut sidecar, &catalogs, &target, &auth(), &RunOptions::default(), &Quiet).await;
     assert_eq!(run.failure, None, "{:?}", run.log);
     assert_eq!(run.os.as_deref(), Some("hosts"));
@@ -200,7 +200,7 @@ async fn a_wrong_password_ends_the_run_at_once_with_no_second_try() {
     let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
     let loc = fake_location(&catalyst_script(), "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let bad = Auth { username: "reader".into(), password: "wrong-password-fixture".into(), enable: None, private_key: None };
     let run = collect_device(&mut sidecar, &catalogs, &target, &bad, &RunOptions::default(), &Quiet).await;
     assert_eq!(run.failure.as_deref(), Some("auth"));
@@ -213,7 +213,7 @@ async fn an_os_hint_skips_the_fingerprint_and_an_unknown_device_says_so() {
     let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
     let loc = fake_location(&catalyst_script(), "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: Some("cisco_ios".into()), role_override: Some("router".into()), known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: Some("cisco_ios".into()), role_override: Some("router".into()), known_host_key: None, transport: Default::default(), via: Vec::new() };
     let run = collect_device(&mut sidecar, &catalogs, &target, &auth(), &RunOptions { light_only: true, ..Default::default() }, &Quiet).await;
     assert_eq!(run.failure, None);
     assert_eq!(run.role.as_deref(), Some("router"));
@@ -222,7 +222,7 @@ async fn an_os_hint_skips_the_fingerprint_and_an_unknown_device_says_so() {
 
     let unknown = fake_location(&json!({"show version": {"status": "ok", "raw": "Welcome to NoSuchOS 1.0", "rows": []}}), "[]");
     let mut sidecar2 = Sidecar::spawn(&unknown).await.unwrap();
-    let run2 = collect_device(&mut sidecar2, &catalogs, &Target { host: "192.0.2.99".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() }, &auth(), &RunOptions::default(), &Quiet).await;
+    let run2 = collect_device(&mut sidecar2, &catalogs, &Target { host: "192.0.2.99".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() }, &auth(), &RunOptions::default(), &Quiet).await;
     assert_eq!(run2.failure.as_deref(), Some("unrecognised"));
     sidecar.quit().await;
     sidecar2.quit().await;
@@ -249,7 +249,7 @@ async fn parse_answers_without_a_device_and_a_dead_sidecar_is_an_error_not_a_han
 async fn a_refused_command_never_reaches_the_sidecar_process() {
     let loc = fake_location(&json!({"show version": {"status": "ok", "raw": "Cisco IOS Software", "rows": []}}), "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let opened = sidecar.open("s", "192.0.2.10", 22, "cisco_ios", &auth(), &json!({}), 5000, 5000, None, "ssh").await.unwrap();
+    let opened = sidecar.open("s", "192.0.2.10", 22, "cisco_ios", &auth(), &json!({}), 5000, 5000, None, "ssh", &[]).await.unwrap();
     assert_eq!(opened.status, "ok");
     let ok = sidecar.run("s", "show version", "none", &[], 5000).await.unwrap();
     assert_eq!(ok.status, "ok");
@@ -283,7 +283,7 @@ async fn shadow_mode_compares_both_parsers_and_a_flipped_os_parses_in_rust() {
     let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
     let loc = fake_location(&script, "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: Some("cisco_ios".into()), role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: Some("cisco_ios".into()), role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let options = RunOptions { engine: Some(engine.clone()), shadow: true, ..Default::default() };
     let run = collect_device(&mut sidecar, &catalogs, &target, &auth(), &options, &Quiet).await;
     let by = |cmd: &str| run.results.iter().find(|r| r.step.cmd == cmd).unwrap().outcome.clone();
@@ -320,7 +320,7 @@ async fn a_sidecar_that_dies_on_one_device_is_replaced_and_the_next_device_is_st
     script["show cdp neighbors detail"]["crash_once"] = json!(true);
     let mut slot = SidecarSlot::new(fake_location(&script, "[]"));
     let never = tokio_util::sync::CancellationToken::new();
-    let target = |h: &str| Target { host: h.into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = |h: &str| Target { host: h.into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let started = std::time::Instant::now();
     let first = slot.collect(&catalogs, &target("192.0.2.10"), &auth(), &RunOptions::default(), &Quiet, &never).await.expect("not cancelled");
     assert_eq!(first.failure.as_deref(), Some("sidecar"), "{:?}", first.log);
@@ -346,7 +346,7 @@ async fn stop_ends_a_device_stuck_on_a_command_at_once() {
         stopper.cancel();
     });
     let started = std::time::Instant::now();
-    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let out = slot.collect(&catalogs, &target, &auth(), &RunOptions::default(), &Quiet, &stop).await;
     assert!(out.is_none(), "a cancelled device reports nothing");
     assert!(started.elapsed() < std::time::Duration::from_secs(5), "Stop waited {:?}", started.elapsed());
@@ -363,7 +363,7 @@ async fn a_stuck_fingerprint_probe_is_not_followed_by_a_close_wait() {
     script["show version"]["stall"] = json!(true);
     let loc = fake_location(&script, "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let started = std::time::Instant::now();
     let run = collect_device(&mut sidecar, &catalogs, &target, &auth(), &RunOptions::default(), &Quiet).await;
     assert_eq!(run.failure.as_deref(), Some("sidecar"));
@@ -380,7 +380,7 @@ async fn a_sidecar_that_cannot_start_is_the_runs_end() {
     loc.python = std::path::PathBuf::from("/nonexistent/python-fixture");
     let mut slot = SidecarSlot::new(loc);
     let never = tokio_util::sync::CancellationToken::new();
-    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let run = slot.collect(&catalogs, &target, &auth(), &RunOptions::default(), &Quiet, &never).await.expect("a run, failed");
     assert_eq!(run.failure.as_deref(), Some("sidecar"));
     assert!(slot.lost(), "the slot says the sidecar is gone for good");
@@ -398,7 +398,7 @@ async fn a_timed_out_command_ends_the_device_and_keeps_the_sidecar() {
     script["show cdp neighbors detail"]["status_once"] = json!("timeout");
     let mut slot = SidecarSlot::new(fake_location(&script, "[]"));
     let never = tokio_util::sync::CancellationToken::new();
-    let target = |h: &str| Target { host: h.into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = |h: &str| Target { host: h.into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let first = slot.collect(&catalogs, &target("192.0.2.10"), &auth(), &RunOptions::default(), &Quiet, &never).await.unwrap();
     assert_eq!(first.failure.as_deref(), Some("timeout"), "{:?}", first.log);
     assert!(first.results.iter().any(|r| r.step.cmd == "show version"), "what came before it stands");
@@ -416,7 +416,7 @@ async fn a_command_refused_last_time_is_not_asked_again() {
     let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
     let loc = fake_location(&catalyst_script(), "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: Some("cisco_ios".into()), role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "192.0.2.10".into(), port: 22, os_hint: Some("cisco_ios".into()), role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let mut known = std::collections::BTreeMap::new();
     known.insert("192.0.2.10".to_string(), ["show_version".to_string()].into_iter().collect::<std::collections::BTreeSet<_>>());
     let options = RunOptions { light_only: true, known_unsupported: known, ..Default::default() };
@@ -439,7 +439,7 @@ async fn telnet_is_tried_after_ssh_only_when_the_policy_says_so() {
     let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
     let loc = fake_location(&catalyst_script(), "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.unwrap();
-    let ssh_only = Target { host: "192.0.2.23".into(), port: 22, os_hint: Some("cisco_ios".into()), role_override: None, known_host_key: None, transport: Transport::Ssh };
+    let ssh_only = Target { host: "192.0.2.23".into(), port: 22, os_hint: Some("cisco_ios".into()), role_override: None, known_host_key: None, transport: Transport::Ssh, via: Vec::new() };
     let run = collect_device(&mut sidecar, &catalogs, &ssh_only, &auth(), &RunOptions { light_only: true, ..Default::default() }, &Quiet).await;
     assert_eq!(run.failure.as_deref(), Some("timeout"));
     let then_telnet = Target { transport: Transport::SshThenTelnet, ..ssh_only.clone() };
@@ -503,7 +503,7 @@ async fn a_cumulus_5_switch_is_collected_through_nvue_json_and_its_tables() {
     let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
     let loc = fake_location(&script, "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.expect("the fake sidecar starts");
-    let target = Target { host: "198.51.100.12".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "198.51.100.12".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let run = collect_device(&mut sidecar, &catalogs, &target, &auth(), &RunOptions::default(), &Quiet).await;
     assert_eq!(run.failure, None, "{:?}", run.log);
     assert_eq!(run.os.as_deref(), Some("cumulus_nvue"));
@@ -554,7 +554,7 @@ async fn an_aruba_cx_on_10_18_is_recognised_and_collected() {
     let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
     let loc = fake_location(&script, "[]");
     let mut sidecar = Sidecar::spawn(&loc).await.expect("the fake sidecar starts");
-    let target = Target { host: "198.51.100.4".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "198.51.100.4".into(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let run = collect_device(&mut sidecar, &catalogs, &target, &auth(), &RunOptions::default(), &Quiet).await;
     assert_eq!(run.failure, None, "{:?}", run.log);
     assert_eq!(run.os.as_deref(), Some("aoscx"), "{:?}", run.log);
@@ -565,4 +565,39 @@ async fn an_aruba_cx_on_10_18_is_recognised_and_collected() {
     }
     let lldp = run.results.iter().find(|r| r.step.cmd == "show lldp neighbor-info detail").unwrap();
     assert_eq!(lldp.outcome.rows[0]["neighbor_sysname"], "leaf-b02");
+}
+
+/// Hopping: a device reached through the one that found it, the hop's
+/// command spelled for that device's platform; and a hop that does not land
+/// falling back to a session straight from here, as the classic crawler's does.
+#[tokio::test]
+async fn a_device_is_reached_through_another_and_a_hop_that_fails_falls_back_to_direct() {
+    use corelens_collect::run::{hop_command, Transport, ViaHop};
+    let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
+    let through = |jump: &str| Target {
+        host: "198.51.100.40".into(), port: 22, os_hint: Some("cisco_ios".into()), role_override: None, known_host_key: None, transport: Transport::Ssh,
+        via: vec![ViaHop { host: jump.into(), port: 22, known_host_key: None, hop_command: hop_command("cisco_ios", "reader", "198.51.100.40").unwrap() }],
+    };
+    let mut sidecar = Sidecar::spawn(&fake_location(&catalyst_script(), "[]")).await.unwrap();
+    let run = collect_device(&mut sidecar, &catalogs, &through("192.0.2.1"), &auth(), &RunOptions::default(), &Quiet).await;
+    assert!(run.failure.is_none(), "{:?}", run.log);
+    assert_eq!(run.reached_via, vec!["192.0.2.1".to_string()], "{:?}", run.log);
+    assert!(run.log.iter().any(|l| l.contains("reaching 198.51.100.40 through 192.0.2.1")), "{:?}", run.log);
+
+    let mut sidecar = Sidecar::spawn(&fake_location(&catalyst_script(), "[]")).await.unwrap();
+    let run = collect_device(&mut sidecar, &catalogs, &through("192.0.2.66"), &auth(), &RunOptions::default(), &Quiet).await;
+    assert!(run.failure.is_none(), "{:?}", run.log);
+    assert!(run.reached_via.is_empty(), "the direct session is not a hop: {:?}", run.reached_via);
+    assert!(run.log.iter().any(|l| l.contains("the hop did not land") && l.contains("reaching 198.51.100.40 directly")), "{:?}", run.log);
+}
+
+#[test]
+fn the_hop_command_is_spelled_for_the_device_it_runs_on() {
+    use corelens_collect::run::hop_command;
+    assert_eq!(hop_command("cisco_ios", "ops", "192.0.2.5").as_deref(), Some("ssh -l ops 192.0.2.5"));
+    assert_eq!(hop_command("fortios", "ops", "192.0.2.5").as_deref(), Some("execute ssh ops@192.0.2.5"));
+    assert_eq!(hop_command("arista_eos", "ops", "192.0.2.5").as_deref(), Some("ssh ops@192.0.2.5"));
+    assert!(hop_command("cumulus", "ops", "192.0.2.5").unwrap().contains("UserKnownHostsFile=/dev/null"));
+    // A wireless controller is reached past, never hopped from.
+    assert_eq!(hop_command("cisco_wlc_aireos", "ops", "192.0.2.5"), None);
 }

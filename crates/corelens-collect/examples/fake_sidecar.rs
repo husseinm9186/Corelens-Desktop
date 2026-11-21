@@ -37,6 +37,13 @@ fn main() {
         let reply = match op {
             "hello" => json!({"id": id, "status": "ok", "sidecar": "fake", "protocol": 1, "templates_dir": req["templates_dir"]}),
             "open" => {
+                let via: Vec<String> = req["via"].as_array().map(|a| a.iter().filter_map(|v| v["host"].as_str().map(str::to_string)).collect()).unwrap_or_default();
+                // Through 192.0.2.66 nothing lands, so the fall back to a direct session can be tested.
+                if via.iter().any(|h| h == "192.0.2.66") {
+                    json!({"id": id, "status": "error", "session": session, "error": "through 192.0.2.66: the next device could not be reached from the one before it"})
+                } else if !via.is_empty() {
+                    json!({"id": id, "status": "ok", "session": session, "device": req["host"], "prompt": "FAKE#", "contexts": [], "context_kind": null, "host_key": null, "host_key_first_seen": false, "via": via})
+                } else
                 // 192.0.2.23 answers telnet and nothing on SSH, so the fallback can be tested.
                 if req["host"].as_str() == Some("192.0.2.23") && req["transport"].as_str() != Some("telnet") {
                     json!({"id": id, "status": "timeout", "session": session, "error": "connection timed out"})

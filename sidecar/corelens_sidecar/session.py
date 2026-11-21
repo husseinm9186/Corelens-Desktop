@@ -125,10 +125,9 @@ def fingerprint_of(key) -> str:
     return "SHA256:" + base64.b64encode(digest).decode().rstrip("=")
 
 
-class SessionError(Exception):
-    def __init__(self, status: str, message: str):
-        super().__init__(message)
-        self.status = status
+# Defined beside the hop module, which raises it too; re-exported here.
+from .session_errors import SessionError  # noqa: E402
+from .hop import DESCRIBE as _HOP_DESCRIBE, Hop as _Hop, check_hop_command, readable as _readable  # noqa: E402
 
 
 def _fill(step: str, name: str, kind: str) -> str:
@@ -136,9 +135,27 @@ def _fill(step: str, name: str, kind: str) -> str:
 
 
 class Session:
-    def __init__(self, sid: str, host: str, port: int, os_name: str, auth: dict, spec: dict, timeouts: dict, emit, known_key: Optional[str] = None, transport: str = "ssh"):
+    def __init__(self, sid: str, host: str, port: int, os_name: str, auth: dict, spec: dict, timeouts: dict, emit, known_key: Optional[str] = None, transport: str = "ssh", via: Optional[list] = None):
         self.id = sid
         self.host = host
+        # The devices to go through, first to last: each one's address, its
+        # SSH port, the host key Corelens remembers for it and the `ssh`
+        # command to run on it to reach the next (Rust spells it for that
+        # device's platform). The session is opened to the first and the
+        # rest is typed, as an engineer would.
+        self.via = list(via or [])
+        for link in self.via:
+            if not isinstance(link, dict) or not isinstance(link.get("host"), str):
+                raise SessionError("error", "each device to go through needs a host")
+            check_hop_command(link.get("hop_command"))
+        if self.via and transport != "ssh":
+            raise SessionError("error", "a hop starts with an SSH session")
+        # The same login goes on to the far device, as the classic crawler sends it.
+        self._hop_password = auth.get("password") or ""
+        if self.via:
+            host = self.via[0]["host"]
+            port = int(self.via[0].get("port") or 22)
+            known_key = self.via[0].get("known_host_key")
         # "ssh" (paramiko) or "telnet" — Rust decides, per its policy;
         # telnet has no host key to verify and sends everything in clear.
         if transport not in ("ssh", "telnet"):
@@ -158,6 +175,7 @@ class Session:
         self.presented_key: Optional[str] = None
         connect_s = max(1, int(timeouts.get("connect_ms", 8000))) / 1000
         auth_s = max(1, int(timeouts.get("auth_ms", 20000))) / 1000
+        self._hop_wait = connect_s + auth_s
         _PatientTransport.banner_wait = max(30.0, auth_s)
         # Scrapli takes the key as a file path and would name an
         # unresolved "path" — the key itself — in its error. Only a path to
@@ -184,7 +202,11 @@ class Session:
             "timeout_transport": auth_s,
             "timeout_ops": 30,
         }
-        platform = PLATFORMS.get(os_name)
+        # Through a device, the session starts at that device, whatever it
+        # is, so the driver is the generic one with a prompt pattern that
+        # matches every CLI; the far device's own pattern takes over once
+        # the hop has landed.
+        platform = None if self.via else PLATFORMS.get(os_name)
         self.enable_secret = common["auth_secondary"]
         if platform is None:
             # "generic" (the fingerprint pass, before the OS is known) and any OS
@@ -192,7 +214,7 @@ class Session:
             # catalog's prompt pattern, or a loose one that matches every CLI.
             # GenericDriver knows no privilege levels, so no auth_secondary.
             del common["auth_secondary"]
-            prompt = self.spec.get("prompt_pattern") or r"^.*[>#$%\]]\s*$"
+            prompt = (None if self.via else self.spec.get("prompt_pattern")) or r"^.*[>#$%\]]\s*$"
             self.conn = GenericDriver(comms_prompt_pattern=prompt, **common)
             self.generic = True
         else:
@@ -230,6 +252,13 @@ class Session:
     def open(self) -> dict:
         try:
             self.conn.open()
+            if self.via:
+                for link in self.via:
+                    self._hop(link)
+                self.jump_key, self.presented_key = self.presented_key, None
+                pattern = self.spec.get("prompt_pattern")
+                if pattern:
+                    self.conn.comms_prompt_pattern = pattern
         except SessionError:
             raise
         except ScrapliAuthenticationFailed as e:
@@ -260,6 +289,20 @@ class Session:
             if isinstance(e, (ScrapliConnectionError, ScrapliConnectionNotOpened, OSError)):
                 raise SessionError("error", str(e)) from None
             raise
+        if self.via:
+            # The far device's key was checked by the last jump's own ssh
+            # client, not here, so there is none to report or remember; the
+            # first jump's is, for that device.
+            return {
+                "prompt": self._prompt(),
+                "contexts": self.contexts,
+                "context_kind": self.context_kind,
+                "host_key": None,
+                "host_key_first_seen": False,
+                "via": [link["host"] for link in self.via],
+                "via_host_key": getattr(self, "jump_key", None),
+                "via_host_key_first_seen": not self.known_key,
+            }
         return {
             "prompt": self._prompt(),
             "contexts": self.contexts,
@@ -267,6 +310,42 @@ class Session:
             "host_key": self.presented_key,
             "host_key_first_seen": not self.known_key,
         }
+
+    def _hop(self, link: dict) -> None:
+        """Run `link`'s ssh on the device the session is at, and drive the
+        login on the next one until its prompt is drawn."""
+        command = check_hop_command(link["hop_command"])
+        at = link["host"]
+        channel = self.conn.transport.session_channel
+        hop = _Hop(self._prompt())
+        self.conn.channel.write(command)
+        self.conn.channel.send_return()
+        buffer = ""
+        deadline = time.monotonic() + self._hop_wait
+        while True:
+            if time.monotonic() > deadline:
+                raise SessionError("timeout", f"no prompt came back through {at}")
+            if channel.recv_ready():
+                buffer += channel.recv(65535).decode("utf-8", errors="replace")
+            elif channel.closed or channel.exit_status_ready():
+                raise SessionError("error", f"{at} closed the session during the hop")
+            else:
+                time.sleep(0.05)
+                continue
+            action, arg = hop.advance(_readable(buffer))
+            if action == "send":
+                self.conn.channel.write(arg)
+                self.conn.channel.send_return()
+                buffer = ""
+            elif action == "password":
+                self.conn.channel.write(self._hop_password, redacted=True)
+                self.conn.channel.send_return()
+                buffer = ""
+            elif action == "failed":
+                raise SessionError("auth" if arg == "rejected" else "error", f"through {at}: {_HOP_DESCRIBE[arg]}")
+            elif action == "landed":
+                self.emit("log", level="info", msg=f"reached {self.host} through {at}")
+                return
 
     def _prepare(self) -> None:
         """Everything after the SSH session is up: paging, privilege, contexts."""

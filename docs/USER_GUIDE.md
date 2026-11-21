@@ -760,7 +760,7 @@ say so beside them when the collector is chosen; Telnet, the second login and
 the device classes work with either engine.
 
 **Reach devices by hopping through the ones that found them.** Tick this on
-the Discover form and the classic crawler, instead of opening an SSH session
+the Discover form and either engine, instead of opening an SSH session
 to every address straight from this machine, logs in to a seed, then runs
 that device's own `ssh` to the next device it found, and on down the chain —
 the way you reach a switch only the core can see. It works from any platform
@@ -770,7 +770,9 @@ IOS, IOS-XE, IOS-XR and NX-OS, `execute ssh` on FortiOS. The run's own login
 is used the whole way. Corelens never writes to a device it passes through
 and types the password only at the next device's own prompt. If a hop can't
 be made, that one device is reached directly instead, so nothing is lost.
-This runs on the classic crawler.
+Both engines hop. The collector checks the host key of the first device it
+logs in to against the ones Corelens remembers; the key of a device behind
+it is checked by that device's own `ssh`, so it is not remembered here.
 
 **NVIDIA Cumulus Linux 5 and Aruba CX.** Both engines read a Cumulus 5
 switch (an SN2010 and its kin) through NVUE: each `nv show` is asked as

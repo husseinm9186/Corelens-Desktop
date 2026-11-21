@@ -54,6 +54,12 @@ pub struct CollectionInput {
     /// "ssh", "sshThenTelnet" or "telnet".
     #[serde(default)]
     pub transport: Option<String>,
+    /// Reach each followed device by logging in to the one that found it
+    /// and running that device's own `ssh`, falling back to a direct
+    /// session where the hop does not land — the classic crawler's
+    /// "hop through devices".
+    #[serde(default)]
+    pub hop_through: bool,
     pub connect_timeout_secs: Option<u64>,
     pub auth_timeout_secs: Option<u64>,
     /// A saved API login for a device's own REST API (FortiOS,
@@ -597,6 +603,9 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
     let scan_subnets = corelens_discover::subnetscan::parse_scan_subnets(&input.scan_subnets)?;
     // Following neighbours, when asked; otherwise the targets alone.
     let following = input.follow.is_some();
+    // Hopping only means something while neighbours are followed: a target
+    // the operator named is always reached from here.
+    let hop_through = input.hop_through && following;
     let limits = match &input.follow {
         Some(f) => corelens_collect::follow::Limits {
             login_classes: crate::discovery::parse_classes(&input.login_classes),
@@ -636,6 +645,11 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
         let mut failed = 0usize;
         let mut cancelled = false;
         let mut frontier = corelens_collect::follow::Frontier::new(&targets, limits);
+        // With hopping: which collected device first listed each address,
+        // and, per collected device, the chain that reached it and its OS —
+        // what the next hop through it is built from.
+        let mut found_by: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut reached: std::collections::HashMap<String, (Vec<corelens_collect::run::ViaHop>, Option<String>)> = std::collections::HashMap::new();
         // The ticked subnets are swept while the neighbours are
         // collected; what answered is queued once the neighbours run out.
         let mut sweep = (!scan_subnets.is_empty()).then(|| {
@@ -675,7 +689,24 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
             let sink = Emit { app: app2.clone(), epoch, run_id: run_id2.clone(), device_id: device_id.clone() };
             let known_host_key = host_keys.lock().ok().and_then(|k| k.known(host, port));
             // The hint and the role override are for what the operator named, not what was followed.
-            let target = Target { host: host.clone(), port, os_hint: (hop == 0).then(|| os_hint.clone()).flatten(), role_override: (hop == 0).then(|| role_override.clone()).flatten(), known_host_key, transport };
+            // Through the device that found it, the way that device was reached
+            // plus one hop spelled for its platform; a parent with no ssh client
+            // (a controller) or none known leaves it to be reached directly.
+            let via = if hop_through {
+                found_by
+                    .get(host)
+                    .and_then(|parent| {
+                        let (chain, os) = reached.get(parent)?;
+                        let hop_command = corelens_collect::run::hop_command(os.as_deref()?, &auth.username, host)?;
+                        let mut via = chain.clone();
+                        via.push(corelens_collect::run::ViaHop { host: parent.clone(), port, known_host_key: host_keys.lock().ok().and_then(|k| k.known(parent, port)), hop_command });
+                        Some(via)
+                    })
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+            let target = Target { host: host.clone(), port, os_hint: (hop == 0).then(|| os_hint.clone()).flatten(), role_override: (hop == 0).then(|| role_override.clone()).flatten(), known_host_key, transport, via };
             // Stop ends the device in progress at once.
             let Some(mut run) = slot.collect(&catalogs, &target, &auth, &options, &sink, &token).await else {
                 cancelled = true;
@@ -761,6 +792,15 @@ pub async fn start_collection(app: AppHandle, state: State<'_, AppState>, input:
                 // Neighbours with no address to reach them on are listed, not dropped.
                 let found = corelens_collect::follow::found_of_run(&run);
                 frontier.learn_found(hop, &found);
+                if hop_through && run.failure.is_none() {
+                    // Reached through the chain only if the hop landed; a
+                    // fallback to a direct session is a direct device.
+                    let chain = if run.reached_via.is_empty() { Vec::new() } else { target.via.clone() };
+                    reached.insert(host.clone(), (chain, run.os.clone()));
+                    for next in &found.next {
+                        found_by.entry(next.clone()).or_insert_with(|| host.clone());
+                    }
+                }
             }
             devices += 1;
             if run.failure.is_some() {
@@ -1358,7 +1398,7 @@ pub async fn collection_live(app: AppHandle, state: State<'_, AppState>, input: 
             continue;
         };
         let known_host_key = host_keys.lock().ok().and_then(|k| k.known(&host_s, input.port));
-        let target = Target { host: host_s.clone(), port: input.port, os_hint: Some(os_s.clone()), role_override: None, known_host_key, transport: Default::default() };
+        let target = Target { host: host_s.clone(), port: input.port, os_hint: Some(os_s.clone()), role_override: None, known_host_key, transport: Default::default(), via: Vec::new() };
         let mut vars = live_vars(hop, &os_s, &input.request);
         // A hop in a VDOM or context is asked inside it, where its table is the default one.
         let context = contexts.get(&host_s).filter(|(k, list)| (k == "vdom" || k == "context") && list.contains(&hop.vrf)).map(|(k, _)| (k.clone(), hop.vrf.clone()));

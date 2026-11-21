@@ -424,9 +424,15 @@ await panel.locator('.cv-step[data-step="logins"]').getByLabel("API login").sele
 // Discover everything, ticked for this run: the collector is told to follow
 // neighbours beyond the subnets.
 await panel.locator('[data-region="follow-anywhere"] input').check();
+// Hopping, ticked: the collector reaches each followed device through the one that found it.
+const hop = panel.locator("label.cv-check", { hasText: "Reach each device by hopping" }).locator("input");
+await hop.check();
+check("the hop tick is offered with the collector, and its note says both engines hop",
+  (await hop.isChecked()) && !(await hop.isDisabled()) && /Both engines hop/.test(await panel.locator('[data-region="hop-note"]').textContent()));
 await panel.locator("button", { hasText: /^Discover$/ }).click();
 await page.waitForTimeout(400);
 const collected = await lastCall("start_collection");
+check("and it travels with the collector's run", collected?.input?.hopThrough === true, JSON.stringify(collected?.input));
 check("Discover everything, ticked, travels with the collector's follow limits", collected?.input?.follow?.followAnywhere === true, JSON.stringify(collected?.input?.follow));
 check("the API login chosen on the panel travels with the run", collected?.input?.apiCredentialId === "cred-api", JSON.stringify(collected?.input));
 check("the collector starts from the seed and follows neighbours within the panel's limits",

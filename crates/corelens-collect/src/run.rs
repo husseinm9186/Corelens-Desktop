@@ -28,6 +28,45 @@ pub struct Target {
     pub role_override: Option<String>,
     /// How the device is reached.
     pub transport: Transport,
+    /// Devices to go through, first to last, for one this machine may not
+    /// reach directly: the session opens to the first and runs each one's
+    /// own `ssh` to the next. Empty: straight from here. A hop that does
+    /// not land falls back to a direct session, as the classic crawler's
+    /// does, so no device is lost to it.
+    pub via: Vec<ViaHop>,
+}
+
+/// One device a session goes through.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct ViaHop {
+    pub host: String,
+    pub port: u16,
+    /// The host key Corelens remembers for this device, checked before any
+    /// credential is sent to it.
+    pub known_host_key: Option<String>,
+    /// The command run on this device to reach the next one, spelled for
+    /// its platform (`hop_command`).
+    pub hop_command: String,
+}
+
+/// How a device of this catalog `os` spells `ssh` to the next device, as
+/// the classic crawler's `dialect::hop_dialect_for` decides it per family;
+/// `None` for one with no client to hop from (a wireless controller, a
+/// device answering only an API).
+pub fn hop_dialect_for_os(os: &str) -> Option<corelens_discover::hop::HopDialect> {
+    use corelens_discover::hop::HopDialect;
+    match os {
+        "cumulus" | "cumulus_nvue" | "sonic" | "vyos" | "ubiquiti_edgeos" | "hosts" | "esxi" => Some(HopDialect::OpenSsh),
+        "cisco_ios" | "cisco_nxos" | "cisco_iosxr" => Some(HopDialect::CiscoDashL),
+        "fortios" => Some(HopDialect::FortiOs),
+        "cisco_wlc_aireos" | "aruba_os" | "meraki" | "windows" | "cisco_viptela" | "generic" => None,
+        _ => Some(HopDialect::UserAtHost),
+    }
+}
+
+/// The command `via` runs to reach `next` as `user`.
+pub fn hop_command(os: &str, user: &str, next: &str) -> Option<String> {
+    hop_dialect_for_os(os).map(|d| d.ssh_command(user, next))
 }
 
 /// SSH, telnet when SSH does not answer, or telnet alone. Telnet is
@@ -64,14 +103,23 @@ fn telnet_port(target: &Target) -> u16 {
 /// attempt's; `run.log` says what was tried.
 #[allow(clippy::too_many_arguments)] // one open, every part of it
 async fn open_by_policy(sidecar: &mut Sidecar, session: &str, target: &Target, os: &str, auth: &Auth, spec: &Value, options: &RunOptions, known: Option<&str>, run: &mut DeviceRun) -> Result<Reply, SidecarError> {
+    if !target.via.is_empty() && target.transport != Transport::Telnet {
+        let path = target.via.iter().map(|v| v.host.as_str()).collect::<Vec<_>>().join(" → ");
+        run.log.push(format!("reaching {} through {path}", target.host));
+        let through = sidecar.open(session, &target.host, target.port, os, auth, spec, options.connect_ms, options.auth_ms, None, "ssh", &target.via).await?;
+        if through.status == "ok" {
+            return Ok(through);
+        }
+        run.log.push(format!("the hop did not land ({}); reaching {} directly", through.error.clone().unwrap_or_else(|| through.status.clone()), target.host));
+    }
     if target.transport == Transport::Telnet {
         run.log.push(format!("reaching {} over telnet, port {}", target.host, telnet_port(target)));
-        return sidecar.open(session, &target.host, telnet_port(target), os, auth, spec, options.connect_ms, options.auth_ms, None, "telnet").await;
+        return sidecar.open(session, &target.host, telnet_port(target), os, auth, spec, options.connect_ms, options.auth_ms, None, "telnet", &[]).await;
     }
-    let first = sidecar.open(session, &target.host, target.port, os, auth, spec, options.connect_ms, options.auth_ms, known, "ssh").await?;
+    let first = sidecar.open(session, &target.host, target.port, os, auth, spec, options.connect_ms, options.auth_ms, known, "ssh", &[]).await?;
     if target.transport == Transport::SshThenTelnet && matches!(first.status.as_str(), "timeout" | "error") {
         run.log.push(format!("SSH did not answer ({}); trying telnet on port {}", first.error.clone().unwrap_or_else(|| first.status.clone()), telnet_port(target)));
-        return sidecar.open(session, &target.host, telnet_port(target), os, auth, spec, options.connect_ms, options.auth_ms, None, "telnet").await;
+        return sidecar.open(session, &target.host, telnet_port(target), os, auth, spec, options.connect_ms, options.auth_ms, None, "telnet", &[]).await;
     }
     Ok(first)
 }
@@ -273,6 +321,9 @@ pub struct DeviceRun {
     pub host_key_first_seen: bool,
     /// Why the run stopped before its plan, if it did: `auth`, `host_key`, `timeout`, `unrecognised`, `sidecar`, …
     pub failure: Option<String>,
+    /// The devices the session went through, first to last, when it was
+    /// reached by hopping; empty when it was reached directly.
+    pub reached_via: Vec<String>,
 }
 
 /// Progress, for a screen that watches the run.
@@ -477,6 +528,13 @@ pub async fn collect_device(sidecar: &mut Sidecar, catalogs: &[Catalog], target:
 
 /// Record the key the device presented; first sight only when Corelens had none.
 fn note_host_key(run: &mut DeviceRun, target: &Target, opened: &crate::sidecar::Reply) {
+    if let Some(via) = opened.extra.get("via").and_then(Value::as_array) {
+        run.reached_via = via.iter().filter_map(Value::as_str).map(str::to_string).collect();
+        // The far device's key was checked by the last device's own client;
+        // there is none of it here to remember.
+        return;
+    }
+    run.reached_via.clear();
     if let Some(k) = opened.extra.get("host_key").and_then(Value::as_str) {
         if run.host_key.is_none() {
             run.host_key_first_seen = target.known_host_key.is_none();

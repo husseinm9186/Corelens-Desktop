@@ -509,6 +509,8 @@ export type CollectionInput = {
   loginClasses?: string[];
   /** 'ssh', 'sshThenTelnet' or 'telnet'. */
   transport?: 'ssh' | 'sshThenTelnet' | 'telnet';
+  /** Reach each followed device through the one that found it. */
+  hopThrough?: boolean;
   connectTimeoutSecs?: number;
   authTimeoutSecs?: number;
   /** A saved API login for FortiOS/AOS-CX REST, and for an FMC. */

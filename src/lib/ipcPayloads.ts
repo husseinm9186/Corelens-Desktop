@@ -99,7 +99,7 @@ export const backupInput = (input: object) => {
 /** `CollectionInput` in `src-tauri/src/collection.rs`. */
 export const collectionInput = (o: object) => {
   const i = o as Obj;
-  const out = pickAll(i, ['projectId', 'targets', 'port', 'osHint', 'roleOverride', 'planOnly', 'lightOnly', 'credentialId', 'keepDiagnostic', 'askAgain', 'loginClasses', 'transport', 'connectTimeoutSecs', 'authTimeoutSecs', 'apiCredentialId', 'fmcHost', 'snmpCredentialId', 'follow', 'fallbackCredentialIds', 'scanSubnets']);
+  const out = pickAll(i, ['projectId', 'targets', 'port', 'osHint', 'roleOverride', 'planOnly', 'lightOnly', 'credentialId', 'keepDiagnostic', 'askAgain', 'loginClasses', 'transport', 'hopThrough', 'connectTimeoutSecs', 'authTimeoutSecs', 'apiCredentialId', 'fmcHost', 'snmpCredentialId', 'follow', 'fallbackCredentialIds', 'scanSubnets']);
   // How far to follow neighbours.
   if (i.follow && typeof i.follow === 'object') out.follow = pickAll(i.follow, ['maxHops', 'maxDevices', 'subnetLimit', 'followAnywhere']);
   return out;

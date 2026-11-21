@@ -156,7 +156,7 @@ pub async fn ask(sidecar: &mut Sidecar, catalog: &Catalog, target: &Target, auth
     }
     let session = format!("live-{}", target.host);
     let spec = serde_json::to_value(&catalog.session).unwrap_or(Value::Null);
-    let opened = match sidecar.open(&session, &target.host, target.port, &catalog.os, auth, &spec, options.connect_ms, options.auth_ms, target.known_host_key.as_deref(), "ssh").await {
+    let opened = match sidecar.open(&session, &target.host, target.port, &catalog.os, auth, &spec, options.connect_ms, options.auth_ms, target.known_host_key.as_deref(), "ssh", &[]).await {
         Ok(r) => r,
         Err(e) => {
             run.failure = Some("sidecar".into());

@@ -132,7 +132,7 @@ async fn collected(hosts: &[String], user: &str, out: &std::path::Path, catalogs
         let host = &host;
         let mut sidecar = Sidecar::spawn(&location).await.expect("the sidecar starts");
         let started = std::time::Instant::now();
-        let target = Target { host: host.clone(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+        let target = Target { host: host.clone(), port: 22, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
         let mut run = collect_device(&mut sidecar, catalogs, &target, &auth, &options, &Quiet).await;
         sidecar.quit().await;
         if let Some(login) = &api {

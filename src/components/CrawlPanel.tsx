@@ -558,6 +558,7 @@ export function CrawlPanel({
             // The chips and the transport apply to the collector too.
             loginClasses,
             transport,
+            hopThrough,
             apiCredentialId: apiCredentialId || undefined,
             snmpCredentialId: snmpSaved || undefined,
             follow: { maxHops, maxDevices: 500, subnetLimit: subnets.join(', ') || undefined, followAnywhere },
@@ -1040,7 +1041,7 @@ export function CrawlPanel({
           device it found, and on down the chain — every CDP or LLDP neighbour of a kind you
           chose above. It never connects straight from this machine except to a seed, and never
           writes to a device it passes through. If a hop cannot be made, that one device is
-          reached directly instead. This runs on the classic crawler.
+          reached directly instead. Both engines hop.
         </p>
       )}
 

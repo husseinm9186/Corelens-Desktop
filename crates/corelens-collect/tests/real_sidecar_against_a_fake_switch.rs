@@ -170,7 +170,7 @@ async fn the_real_sidecar_logs_into_a_fake_switch_and_the_collector_reads_it() {
     let mut sidecar = Sidecar::spawn(&location).await.expect("the sidecar starts from the venv");
     let hello = sidecar.hello.clone().unwrap();
     assert_eq!(hello.extra.get("protocol").and_then(|v| v.as_u64()), Some(1));
-    let target = Target { host: "127.0.0.1".into(), port, os_hint: None, role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "127.0.0.1".into(), port, os_hint: None, role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let auth = Auth { username: "reader".into(), password: "correct-horse-fixture".into(), enable: None, private_key: None };
     let run = collect_device(&mut sidecar, &catalogs, &target, &auth, &RunOptions::default(), &Quiet).await;
     let events = sidecar.drain_events();
@@ -235,7 +235,7 @@ async fn a_live_check_asks_the_device_about_one_destination() {
     let catalogs = load_dir(&repo().join("resources/catalog")).unwrap();
     let ios = catalogs.iter().find(|c| c.os == "cisco_ios").unwrap();
     let mut sidecar = Sidecar::spawn(&location).await.expect("the sidecar starts from the venv");
-    let target = Target { host: "127.0.0.1".into(), port, os_hint: Some("cisco_ios".into()), role_override: None, known_host_key: None, transport: Default::default() };
+    let target = Target { host: "127.0.0.1".into(), port, os_hint: Some("cisco_ios".into()), role_override: None, known_host_key: None, transport: Default::default(), via: Vec::new() };
     let auth = Auth { username: "reader".into(), password: "correct-horse-fixture".into(), enable: None, private_key: None };
     let vars: std::collections::BTreeMap<String, String> =
         [("dst", "203.0.113.5"), ("src", "192.0.2.10"), ("vrf", "default"), ("nh", "198.51.100.2")].iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();

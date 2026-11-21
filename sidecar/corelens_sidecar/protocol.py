@@ -12,6 +12,11 @@ Requests:
      "known_host_key":"SHA256:…" or null}      (the fingerprint Corelens remembers;
                                                 a different key ends the open with status
                                                 "host_key" before any credential is sent)
+     "via":[{"host":..,"port":22,"known_host_key":..,"hop_command":"ssh -l user host"}, …]
+                                               (optional: devices to go through, first to
+                                                last; the session opens to the first and runs
+                                                each one's hop_command — one of the four ssh
+                                                spellings, nothing else — to reach the next)
     {"op":"run","id":..,"session":"s1","cmd":"show ip route","parser":"textfsm:cisco_ios_show_ip_route","also":[],"timeout_ms":30000}
     {"op":"switch","id":..,"session":"s1","context":{"kind":"vdom","name":"root"}}
     {"op":"parse","id":..,"os":"cisco_ios","cmd":"show ip arp","parser":"textfsm:…","raw":"…"}

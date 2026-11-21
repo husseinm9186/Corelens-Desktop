@@ -453,21 +453,46 @@ jobs:
 
       - run: npm ci
 
+      # The collector sidecar, as on Windows: a relocatable CPython
+      # (python-build-standalone, checksum pinned in the script), the hashed
+      # wheels and the package, laid under src-tauri/sidecar/, every Mach-O
+      # in it signed ad hoc, proved by sidecar/build/smoke.py, and shipped by
+      # tauri.sidecar.conf.json as a resource. Apple Silicon only (the
+      # script says why); this runner is Apple Silicon, so the smoke test
+      # runs the interpreter that ships.
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: sidecar/.python-version
+
+      - name: Lay the collector sidecar
+        run: bash sidecar/build/macos.sh python
+
       # With the minisign key configured, the build also writes the
       # update archive (Corelens-Desktop.app.tar.gz) and its signature, which is
-      # what an installed copy downloads when it updates itself.
+      # what an installed copy downloads when it updates itself. With no
+      # Apple certificate the app is signed ad hoc ("-"): an unsigned arm64
+      # app downloaded from the internet is refused as damaged, an ad hoc
+      # one can be opened from Privacy & Security.
       - name: Build bundles
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          extra=()
+          extra=(--config src-tauri/tauri.sidecar.conf.json --config '{"bundle":{"macOS":{"signingIdentity":"-"}}}')
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            extra=(--config src-tauri/tauri.updater.conf.json)
+            extra+=(--config src-tauri/tauri.updater.conf.json)
           else
             echo "::notice title=Updater::TAURI_SIGNING_PRIVATE_KEY is not set, so no updater archive is produced"
           fi
           npm run tauri build -- --target universal-apple-darwin "${extra[@]}"
           node scripts/asset-names.mjs target/universal-apple-darwin/release/bundle/dmg target/universal-apple-darwin/release/bundle/macos
+
+      # The sidecar as it ships: from inside the built app, not the folder
+      # it was copied from.
+      - name: The collector inside the app
+        run: |
+          app=$(ls -d target/universal-apple-darwin/release/bundle/macos/*.app | head -1)
+          python sidecar/build/smoke.py "$app/Contents/Resources/sidecar/bin/python" resources/templates/ntc
+          codesign --verify --verbose=1 "$app"
 
       - name: The build's version, for the artifact name
         id: ver

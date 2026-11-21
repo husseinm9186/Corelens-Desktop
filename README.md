@@ -233,7 +233,8 @@ Stated so the list above is not mistaken for more than it is:
   system's job. Anyone with your user account has your projects.
 - The app has no permissions model. If you can open it, you can use all of it.
 - CSV and Markdown exports are plain text by design.
-- Corelens is unsigned on macOS and Linux (Windows builds are signed when a
+- Corelens is signed ad hoc on macOS — not with an Apple Developer ID, not
+  notarized — and unsigned on Linux (Windows builds are signed when a
   certificate is configured). See the macOS note below.
 
 ---
@@ -256,7 +257,7 @@ by default; the privacy section above says exactly what the request carries.
 | Platform | Artifact | Contents |
 | --- | --- | --- |
 | Windows | `corelens-windows-v<version>` | NSIS `.exe`, signed, with `SHA256SUMS.txt` and the SBOMs |
-| macOS | `corelens-macos-v<version>` | universal `.dmg` |
+| macOS | `corelens-macos-v<version>` | universal `.dmg`, signed ad hoc, with the collector's Python for Apple Silicon |
 
 Windows administrators: the installer is signed with the Corelens certificate,
 and `docs/INSTALL-WINDOWS.md` is how to check it and trust it (and what that
@@ -272,6 +273,11 @@ Every Windows installer is scanned on VirusTotal before it is published, and a
 single detection fails the build.
 
 ### macOS: installing it, and the "damaged" warning
+
+`docs/INSTALL-MACOS.md` is the short version: how to open an app that is
+not notarized, what the collector needs on a Mac, and where the app keeps
+things. The app is signed ad hoc from 2.18.3 on; what follows is for the
+"damaged" message an unsigned or quarantined copy gets.
 
 The `.dmg` is unsigned and un-notarised — there is no Apple Developer
 certificate configured, the way there is for Windows. macOS quarantines
@@ -767,6 +773,8 @@ unmodified, and the notices say where their source is.
 - `ARCHITECTURE.md` — structure, data model, probe lifecycle, security boundaries
 - `docs/USER_GUIDE.md` — how to use it (also built into the app's Help)
 - `docs/INSTALL-WINDOWS.md` — installing on Windows and trusting the signature
+- `docs/INSTALL-MACOS.md` — installing on a Mac: first open, the collector on Apple Silicon, where it keeps things
+- `docs/BUILD-WINDOWS.md` — building the Windows installer on a Windows PC
 - `docs/SIGNING.md` — how the Windows installer is signed and scanned
 - `docs/PROBE_BEHAVIOR.md` — exact threshold and state-machine behaviour
 - `docs/BRAND_AND_LICENSING.md` — why no vendor icons ship, and where yours go

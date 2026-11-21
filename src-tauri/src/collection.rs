@@ -180,6 +180,25 @@ fn templates_dir(app: &AppHandle) -> CmdResult<PathBuf> {
         .ok_or_else(|| "The parser templates are not installed.".to_string())
 }
 
+/// Whether this build runs on an Intel Mac, where the bundled sidecar's
+/// interpreter cannot: the macOS bundle carries an Apple Silicon one only,
+/// since its cryptography release publishes no Intel macOS wheel.
+const INTEL_MAC: bool = cfg!(all(target_os = "macos", target_arch = "x86_64"));
+
+/// The interpreter of a bundled sidecar folder, if there is one this
+/// machine can run; on an Intel Mac a bundled one is said plainly rather
+/// than left to fail with "bad CPU type".
+fn bundled_python(dir: &std::path::Path, intel_mac: bool) -> CmdResult<Option<PathBuf>> {
+    let python = if cfg!(windows) { dir.join("python.exe") } else { dir.join("bin/python") };
+    if !python.exists() {
+        return Ok(None);
+    }
+    if intel_mac {
+        return Err("The Corelens collector's Python is built for Apple Silicon Macs only, so it cannot run on this Intel Mac. Choose the Classic crawler under Discover → Advanced → Engine.".into());
+    }
+    Ok(Some(python))
+}
+
 /// Where the sidecar's interpreter is. `CORELENS_SIDECAR_PYTHON` and
 /// `CORELENS_SIDECAR_DIR` override for development; otherwise the bundled
 /// `sidecar/` resource; otherwise the repository's venv.
@@ -193,8 +212,7 @@ pub fn sidecar_location(app: &AppHandle) -> CmdResult<SidecarLocation> {
     // Lib\site-packages — where the package is — on its path; spawned by
     // absolute path from the install directory, never from a temp folder.
     if let Some(dir) = resource(app, "sidecar") {
-        let python = if cfg!(windows) { dir.join("python.exe") } else { dir.join("bin/python") };
-        if python.exists() {
+        if let Some(python) = bundled_python(&dir, INTEL_MAC)? {
             return Ok(SidecarLocation { python, cwd: dir, templates_dir: templates });
         }
     }
@@ -1101,6 +1119,19 @@ async fn import_one(sidecar: &mut Sidecar, catalogs: &[Catalog], host: &str, fil
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_bundled_sidecar_is_found_and_an_intel_mac_is_told_why_it_cannot_run_it() {
+        let scratch = tempfile::tempdir().expect("a scratch folder");
+        let dir = scratch.path().join("sidecar");
+        let python = if cfg!(windows) { dir.join("python.exe") } else { dir.join("bin/python") };
+        assert_eq!(bundled_python(&dir, false), Ok(None));
+        std::fs::create_dir_all(python.parent().unwrap()).unwrap();
+        std::fs::write(&python, b"").unwrap();
+        assert_eq!(bundled_python(&dir, false), Ok(Some(python.clone())));
+        let err = bundled_python(&dir, true).unwrap_err();
+        assert!(err.contains("Apple Silicon") && err.contains("Classic crawler"), "{err}");
+    }
     /// What `collection_raw` lets through.
     #[test]
     fn a_reply_reference_stays_inside_the_run() {

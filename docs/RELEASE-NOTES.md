@@ -2,6 +2,42 @@
 
 Newest first.
 
+## 2.18.3 — 2026-11-21
+
+**Fixed**
+- On a narrow window the top bar's right-hand buttons dropped to a second
+  line under the canvas toolbar, and **More** could not be clicked. The bar
+  stays one row: the project's name and save state give way, and below
+  1,100 pixels the clock is left out.
+- A drag that the system cancelled — a touchpad gesture, a pen, the window
+  losing focus — never ended: a link's end, its snap ring or an alignment
+  guide went on following the pointer. Every such drag now ends, and puts
+  back what it showed. Alignment guides are drawn only while a device is
+  held.
+- Two commands that both needed the vault and the database could each take
+  one and wait for the other. The vault is always taken first now.
+
+**The collector hops too**
+- *Reach each device by hopping* now works with both engines: a followed
+  device is reached through the device that found it, by that device's own
+  `ssh`. The host key of the first device is checked against the ones
+  Corelens remembers; a device behind it is checked by the device before it.
+
+**The macOS app carries the collector**
+- The `.dmg` now includes the collector's Python for Apple Silicon Macs, so
+  the default Discover engine works there; an Intel Mac is told to choose
+  the Classic crawler. The app is signed ad hoc, which lets macOS open it
+  from *Privacy & Security* instead of calling it damaged.
+  `docs/INSTALL-MACOS.md`.
+
+**Under the surface**
+- Every link's click band is drawn into one shared layer: 209 fewer page
+  elements on a 154-device diagram.
+- `scripts/build-windows-local.ps1` builds the Windows installer on a
+  Windows PC the way the release build does (`docs/BUILD-WINDOWS.md`).
+- The sidecar's lock files are compiled for Python 3.12, the one that runs
+  them; tests leave nothing in the system's temporary folder.
+
 ## 2.18.2 — 2026-11-20
 
 **The console has a tab of its own**

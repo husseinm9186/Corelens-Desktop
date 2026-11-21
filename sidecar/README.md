@@ -53,3 +53,9 @@ as a resource — a folder, spawned by absolute path from the install
 directory, never from `%TEMP%`, no self-extracting archive, no UPX.
 Every PE inside is signed by the release workflow's `signCommand`.
 `build/linux.sh` does the same with a venv for the Linux bundles.
+`build/macos.sh` does it for the macOS bundle with a relocatable CPython
+from python-build-standalone (checksum pinned), every Mach-O signed ad
+hoc; Apple Silicon only, because the pinned cryptography publishes no
+Intel macOS wheel, and an Intel Mac says so and offers the Classic
+crawler. `build/smoke.py` proves a laid sidecar the way Corelens runs it:
+the native modules load, `hello`, a `parse` of an ntc fixture, `quit`.

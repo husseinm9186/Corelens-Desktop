@@ -117,13 +117,15 @@ pub fn unlock_vault_from_keychain(state: State<'_, AppState>) -> CmdResult<Strin
         }
     };
     let outcome = crate::keychain::recall_or_adopt(&crate::keychain::entry()?, &crate::keychain::previous_entries(), &header)?;
-    let conn = state.db.lock().map_err(db_err)?;
     Ok(match outcome {
         crate::keychain::Recalled::Opened(key) => {
             *state.vault_key.lock().map_err(db_err)? = Some(key);
             "opened".into()
         }
         crate::keychain::Recalled::NothingKept | crate::keychain::Recalled::Stale => {
+            // Taken only here: the database is never held while the vault
+            // is being locked.
+            let conn = state.db.lock().map_err(db_err)?;
             db::set_setting(&conn, KEYCHAIN_SETTING, None).map_err(db_err)?;
             "stale".into()
         }
@@ -150,13 +152,15 @@ pub struct CredentialSummary {
 
 #[tauri::command(async)]
 pub fn vault_status(state: State<'_, AppState>) -> CmdResult<VaultStatus> {
+    // Read before the database is taken: the vault comes first wherever
+    // both are wanted.
+    let unlocked = state.vault_key.lock().map_err(db_err)?.is_some();
     let conn = state.db.lock().map_err(db_err)?;
     let exists = db::vault_header(&conn).map_err(db_err)?.is_some();
     let credentials = match crate::commands::open_project(&state) {
         Some(project) => db::list_credentials(&conn, &project).map_err(db_err)?.len(),
         None => 0,
     };
-    let unlocked = state.vault_key.lock().map_err(db_err)?.is_some();
     Ok(VaultStatus {
         exists,
         unlocked,
@@ -171,13 +175,15 @@ pub fn vault_status(state: State<'_, AppState>) -> CmdResult<VaultStatus> {
 /// Creates the vault and leaves it unlocked for this session.
 #[tauri::command(async)]
 pub fn create_vault(state: State<'_, AppState>, passphrase: String) -> CmdResult<()> {
+    // The vault before the database, wherever both are held.
+    let mut slot = state.vault_key.lock().map_err(db_err)?;
     let conn = state.db.lock().map_err(db_err)?;
     if db::vault_header(&conn).map_err(db_err)?.is_some() {
         return Err("A vault already exists. Unlock it, or discard it and start again.".into());
     }
     let (header, key) = vault::create(&passphrase).map_err(|e| e.to_string())?;
     db::create_vault(&conn, &header.salt, &header.verifier, now_ms()).map_err(db_err)?;
-    *state.vault_key.lock().map_err(db_err)? = Some(key);
+    *slot = Some(key);
     Ok(())
 }
 
@@ -217,9 +223,12 @@ pub fn lock_vault(state: State<'_, AppState>) -> CmdResult<()> {
 /// contents. Returns how many credentials went, for the confirmation.
 #[tauri::command(async)]
 pub fn discard_vault(state: State<'_, AppState>) -> CmdResult<usize> {
+    // The vault before the database, wherever both are held.
+    let mut slot = state.vault_key.lock().map_err(db_err)?;
     let conn = state.db.lock().map_err(db_err)?;
     let removed = db::destroy_vault(&conn).map_err(db_err)?;
-    *state.vault_key.lock().map_err(db_err)? = None;
+    *slot = None;
+    drop(slot);
     // A key kept for the vault that is gone goes with it.
     if kept_in_keychain(&conn)? {
         if let Ok(entry) = crate::keychain::entry() {
@@ -698,6 +707,52 @@ mod tests {
     /// or `vault_status` would look perfectly reasonable in review. This
     /// fails on it — and on a command written to show a secret on purpose,
     /// which is the thing that must not come back.
+    /// The vault before the database, wherever both are held. Some
+    /// functions take the vault and then the database (to save a login, to
+    /// open one); one that took them the other way round could meet one of
+    /// those half-way, each holding what the other wants, and the app would
+    /// stop answering. Read from the source: a `state.db.lock()` still in
+    /// scope when `vault_key.lock()` is reached is the fault.
+    #[test]
+    fn the_vault_is_locked_before_the_database_wherever_both_are_held() {
+        let source = include_str!("vault_commands.rs");
+        // Everything above the tests; this function's own text names both.
+        let source = source.split("#[cfg(test)]").next().unwrap_or(source);
+        let mut offenders = Vec::new();
+        let mut functions = 0;
+        for body in source.split("\nfn ").chain(source.split("\npub fn ").skip(1)) {
+            let name: String = body.chars().take_while(|c| c.is_alphanumeric() || *c == '_').collect();
+            // One function: up to the brace that closes it at the margin.
+            let body = body.split("\n}\n").next().unwrap_or(body);
+            functions += 1;
+            let bytes = body.as_bytes();
+            let (mut depth, mut held_at): (i32, Option<i32>) = (0, None);
+            let mut i = 0;
+            while i < bytes.len() {
+                match bytes[i] {
+                    b'{' => depth += 1,
+                    b'}' => {
+                        depth -= 1;
+                        if held_at.is_some_and(|d| depth < d) {
+                            held_at = None;
+                        }
+                    }
+                    _ => {}
+                }
+                if bytes[i..].starts_with(b"state.db.lock()") && held_at.is_none() {
+                    held_at = Some(depth);
+                }
+                if bytes[i..].starts_with(b"vault_key.lock()") && held_at.is_some() {
+                    offenders.push(name.clone());
+                    break;
+                }
+                i += 1;
+            }
+        }
+        assert!(functions > 20, "the functions were not found");
+        assert!(offenders.is_empty(), "the database is held while the vault is locked in: {offenders:?}");
+    }
+
     #[test]
     fn no_command_returns_a_secret() {
         let commands = commands();

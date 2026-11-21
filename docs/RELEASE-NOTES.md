@@ -2,7 +2,7 @@
 
 Newest first.
 
-## 2.18.3 — 2026-11-21
+## 2.18.3 — 2026-11-20
 
 **Fixed**
 - On a narrow window the top bar's right-hand buttons dropped to a second

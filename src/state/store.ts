@@ -694,6 +694,13 @@ interface Store {
   setToolsOpen: (on: boolean, view?: 'compare' | 'racks' | 'csv' | 'visio' | 'lifecycle' | 'settings') => void;
   /** The Import dialog: choosing a source, or one of the two open. */
   importOpen: 'choose' | 'csv' | 'visio' | null;
+  /** The application's settings on the start screen: closed, or open at a
+   *  section (`''` for the top). Only ever shown with no project open. */
+  appSettings: string | null;
+  setAppSettings: (section: string | null) => void;
+  /** A newer release, from inside a project: the project is saved and
+   *  closed, and the start screen's Settings opens at Updates. */
+  openUpdateFromProject: () => Promise<void>;
   setImportOpen: (open: 'choose' | 'csv' | 'visio' | null) => void;
   setToolsView: (view: 'compare' | 'racks' | 'csv' | 'visio' | 'lifecycle' | 'settings') => void;
   /** True while the canvas is being printed, so views set not to
@@ -1488,6 +1495,7 @@ export const useStore = create<Store>((set, get) => ({
   toolsOpen: false,
   toolsView: 'settings',
   importOpen: null,
+  appSettings: null,
   sshSessions: [],
   sshActive: null,
   jobs: [],
@@ -2229,6 +2237,15 @@ export const useStore = create<Store>((set, get) => ({
     set({ toolsOpen: on, ...(view ? { toolsView: view } : {}), ...(on ? { registerOpen: false, helpOpen: false } : {}) });
   },
 
+  setAppSettings(section) {
+    set({ appSettings: section });
+  },
+  async openUpdateFromProject() {
+    await get().closeProject();
+    // A save that failed keeps the project open, and says why.
+    if (get().meta) return;
+    set({ appSettings: 'updates' });
+  },
   setImportOpen(open) {
     set({ importOpen: open });
   },

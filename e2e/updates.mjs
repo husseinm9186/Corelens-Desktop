@@ -79,25 +79,37 @@ const start = async () => {
   await page.waitForTimeout(500);
 };
 
-/** Into the project, then Settings on the rail; the Updates block. */
+/** The start screen's Settings, where the application's are; the Updates block. */
 const openSettings = async () => {
+  await start();
+  await page.locator('[data-action="app-settings"]').click();
+  await page.waitForTimeout(400);
+  return page.locator('[data-region="updates"]');
+};
+/** Into the project, where the top bar is. */
+const openProject = async () => {
   await start();
   await page.locator(".cv-project-open").first().click();
   await page.waitForTimeout(700);
-  await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
-  await page.waitForTimeout(400);
-  return page.locator('[data-region="updates"]');
 };
 const sent = (cmd) => page.evaluate((c) => window.__calls.filter((x) => x.cmd === c).length, cmd);
 const setFound = async (found) => { backend.found = found; await page.evaluate((f) => { window.__found = f; }, found); };
 
 // ------------------------------------------------- off by default: silence
 let updates = await openSettings();
-check("Settings has an Updates block", (await updates.count()) === 1);
+check("the start screen's Settings has an Updates block", (await updates.count()) === 1);
 check("it says Corelens never contacts GitHub on its own", /never contacts GitHub on its own/.test(await updates.innerText()), (await updates.innerText()).slice(0, 200));
 check("the at-start tick is off until somebody ticks it", !(await updates.locator('[data-field="update-on-start"]').isChecked()));
 check("and nothing was sent to GitHub on load", (await sent("check_for_update")) === 0, String(await sent("check_for_update")));
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(300);
+await page.locator(".cv-project-open").first().click();
+await page.waitForTimeout(700);
 check("the top bar announces nothing", (await page.locator('[data-action="update-available"]').count()) === 0);
+await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
+await page.waitForTimeout(400);
+check("a project's Settings has no Updates block: it is the application's", (await page.locator('[data-region="updates"]').count()) === 0);
+updates = await openSettings();
 
 // ------------------------------------------------- the button: up to date
 await updates.locator('[data-action="check-updates"]').click();
@@ -125,8 +137,18 @@ check("its date is shown", /Published 2026-10-20/.test(await found.innerText()),
 await found.locator("summary", { hasText: "What changed" }).click();
 check("its notes open on request", /An invented fix/.test(await found.innerText()));
 check("and the install button says it restarts", (await found.locator('[data-action="install-update"]').innerText()).includes("Install and restart"));
-check("the top bar now offers the update", (await page.locator('[data-action="update-available"]').innerText()).includes("Update to 2.9.1"));
 check("every check was one request; nothing else was sent to GitHub", (await sent("check_for_update")) === 3 && (await sent("install_update")) === 0);
+// Inside a project, the top bar carries it; pressing it saves and closes
+// the project and opens the start screen's Settings at the update.
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(300);
+await page.locator(".cv-project-open").first().click();
+await page.waitForTimeout(700);
+check("the top bar now offers the update", (await page.locator('[data-action="update-available"]').innerText()).includes("Update to 2.9.1"));
+await page.locator('[data-action="update-available"]').click();
+await page.waitForTimeout(700);
+check("pressing it closes the project and opens the start screen's Settings at the update",
+  (await page.evaluate(() => window.__cvStore.getState().meta)) === null && (await found.locator('[data-action="install-update"]').count()) === 1);
 
 // ------------------------------------------------- installing: a refused download
 await setFound("install-fails");
@@ -153,18 +175,23 @@ await page.waitForTimeout(300);
 const saved = await page.evaluate(() => window.__calls.filter((c) => c.cmd === "set_setting" && c.args.key === "updateCheckOnStart").at(-1)?.args);
 check("ticking it is kept, as the one setting", saved?.value === "1", JSON.stringify(saved));
 backend.found = "newer";
-updates = await openSettings();
-check("after a restart the tick is still on", await updates.locator('[data-field="update-on-start"]').isChecked());
-check("and one check was sent at start, before any button", (await sent("check_for_update")) === 1, String(await sent("check_for_update")));
+await openProject();
+check("after a restart one check was sent at start, before any button", (await sent("check_for_update")) === 1, String(await sent("check_for_update")));
 check("the top bar says what it found", (await page.locator('[data-action="update-available"]').innerText()).includes("Update to 2.9.1"));
 await page.locator('[data-action="update-available"]').click();
-await page.waitForTimeout(400);
+await page.waitForTimeout(700);
 check("and pressing that opens Settings at the update", (await page.locator('[data-region="updates"] [data-action="install-update"]').count()) === 1);
+check("where the tick is still on", await page.locator('[data-region="updates"] [data-field="update-on-start"]').isChecked());
 
 // A failed automatic check stays quiet: nobody pressed anything.
 backend.found = "refused";
-updates = await openSettings();
+await openProject();
 check("an automatic check that cannot reach GitHub announces nothing in the top bar", (await page.locator('[data-action="update-available"]').count()) === 0);
+await page.evaluate(() => window.__cvStore.getState().closeProject());
+await page.waitForTimeout(500);
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(400);
+updates = page.locator('[data-region="updates"]');
 check("but Settings says why, for whoever looks", /Could not check/.test(await updates.locator('[data-hint="updates"]').innerText()));
 
 // Off again: silence again.

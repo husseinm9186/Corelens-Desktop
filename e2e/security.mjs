@@ -70,6 +70,10 @@ const calls = (cmd) => page.evaluate((cmd) => window.__calls.filter((c) => c.cmd
 
 // ------------------------------------------------------------ keychain
 check("the app asks the keychain once, at start", (await calls("unlock_vault_from_keychain")).length === 1);
+// The vault's lock is one of the application's settings, on the start screen.
+check("the start screen itself lists no saved credentials until Settings is pressed", (await page.locator(".cv-vault").count()) === 0);
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(400);
 const keep = page.getByLabel("Open by itself on this computer");
 check("an open vault offers to open by itself, and shows that it does", (await keep.count()) === 1 && (await keep.isChecked()));
 await keep.click();
@@ -91,6 +95,8 @@ check("and it says where logins are kept", /kept inside the project/.test(await 
 check("no command that reads a secret back is ever called", (await calls("reveal_credential")).length === 0 && (await calls("assign_credential")).length === 0);
 
 // --------------------------------------------- what the backend is sent
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(300);
 await page.locator(".cv-project-open").first().click();
 await page.waitForTimeout(800);
 await page.locator("button", { hasText: "Start checks" }).first().click();

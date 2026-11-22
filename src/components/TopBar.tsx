@@ -811,7 +811,7 @@ export function TopBar({ onExit }: { onExit: () => void }) {
         {updateWaiting && (
           <button type="button" className="cv-btn cv-btn-start cv-btn-update" data-action="update-available"
             title={t('topbar.updateAvailableTitle')}
-            onClick={() => useStore.getState().setToolsOpen(true, 'settings')}>
+            onClick={() => void useStore.getState().openUpdateFromProject()}>
             {t('topbar.updateAvailable', { version: updateWaiting })}
           </button>
         )}

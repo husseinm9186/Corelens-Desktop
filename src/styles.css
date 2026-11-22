@@ -1184,6 +1184,10 @@ details.cv-discover-advanced[open] > summary::after { content: '▾'; }
 .cv-trace-table { display: inline-block; padding: 0.07692308rem 0.46153846rem; border-radius: var(--radius); border: 1px solid var(--line-strong); color: var(--text-dim); font-size: var(--text-xs); white-space: nowrap; }
 .cv-trace-table.is-forwarding { border-color: var(--accent); color: var(--accent); }
 .cv-welcome-head h1 { font-size: var(--text-display); letter-spacing: 0.02em; margin: 0 0 0.61538462rem; }
+/* The name, and the application's settings beside it. */
+.cv-welcome-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.23076923rem; }
+.cv-welcome-title .cv-btn { flex: none; margin-top: 0.30769231rem; display: inline-flex; align-items: center; gap: 0.46153846rem; }
+.cv-welcome .cv-settings { padding: 0; margin-top: 2.61538462rem; }
 .cv-welcome-head p { color: var(--text-dim); max-width: 47.69230769rem; line-height: 1.6; margin: 0; }
 .cv-welcome-actions { display: flex; align-items: center; gap: 0.76923077rem; margin: 2rem 0 0.61538462rem; }
 .cv-welcome-section { margin-top: 2.61538462rem; }

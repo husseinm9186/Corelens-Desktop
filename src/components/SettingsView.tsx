@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { VaultSettings } from './VaultSettings';
 import { HostKeySettings } from './HostKeySettings';
@@ -12,98 +12,103 @@ import { useStore } from '../state/store';
 import { TIME_FORMATS, isLocalFormat, zoneLabel, type TimeFormat } from '../lib/timeFormat';
 
 /**
- * Settings, a screen of its own on the rail.
- *
- * Global SSH and SNMP logins have a settings tab under Tools and Settings in
- * the top menu, and the reason is plain from where those things lived before: the vault was on the
- * project screen, which you have to close a project to see, and the discovery
- * logins were inside the Discover devices form, which is a panel about running
- * a scan. "What does this project log in with" had no place that answered it.
- *
- * **"Global" means global to this project, and to nothing else**.
- * `credentialDefaults` has been per-project — it lives on the
- * document — but this screen used to show the vault's whole contents
- * underneath it, so opening a second project displayed the first one's logins
- * by name and username. The secrets never moved; the fact of them did, and
- * that is a leak. What this screen shows now is what *this* project refers to.
- * The rest of the vault is one disclosure away and says plainly that it is the
- * whole machine.
+ * Settings, in two places by whose they are. The application's — the
+ * display, the terminal, updates, the shared folder, the vault's lock
+ * — are this computer's whatever project is open, and are
+ * reached from the start screen. A project's — its logins, folders, SFTP
+ * server, Meraki, saved logins and host keys — are on the
+ * rail inside that project, and nowhere else.
  */
-type SectionId = 'display' | 'terminal' | 'updates' | 'shared' | 'logins' | 'folders' | 'sftp' | 'meraki' | 'credentials' | 'hostkeys';
+type AppSection = 'display' | 'terminal' | 'updates' | 'shared' | 'vault';
+type ProjectSection = 'logins' | 'folders' | 'sftp' | 'meraki' | 'credentials' | 'hostkeys';
 
-/** The sections, in the order they are shown, grouped by whose they are. */
-const NAV: { key: 'application' | 'project'; sections: SectionId[] }[] = [
-  { key: 'application', sections: ['display', 'terminal', 'updates', 'shared'] },
-  { key: 'project', sections: ['logins', 'folders', 'sftp', 'meraki', 'credentials', 'hostkeys'] },
-];
+/** The application's sections, on the start screen. */
+const APP_SECTIONS: AppSection[] = ['display', 'terminal', 'updates', 'shared', 'vault'];
+/** A project's sections, inside the project. */
+const PROJECT_SECTIONS: ProjectSection[] = ['logins', 'folders', 'sftp', 'meraki', 'credentials', 'hostkeys'];
 
-export function SettingsView() {
-  const uiScale = useStore((s) => s.settings.uiScale);
+/**
+ * Two panes: the sections down the left, the content capped at a reading
+ * width on the right, the nav following whichever section is in view.
+ * The same frame for the application's settings and for a project's.
+ */
+function SettingsFrame({ group, sections, region, lead, at, children }: { group: 'application' | 'project'; sections: readonly (AppSection | ProjectSection)[]; region: string; lead?: ReactNode; at?: string; children: ReactNode }) {
   const reduceMotion = useStore((s) => s.settings.reduceMotion);
-  const [current, setCurrent] = useState<SectionId>('display');
+  const [current, setCurrent] = useState<string>(sections[0] ?? '');
   const mainRef = useRef<HTMLDivElement>(null);
+  // A section chosen in the nav stays current while the scroll settles,
+  // and after it when the last sections are too short to reach the top.
+  const chosenAt = useRef(0);
   // Which section is in view, for the nav: the topmost one that crosses
   // the upper part of the scrolling box.
   useEffect(() => {
-    const root = mainRef.current?.closest('.cv-tools-body') ?? null;
-    const sections = [...document.querySelectorAll<HTMLElement>('[data-settings-section]')];
-    if (sections.length === 0) return;
-    const seen = new Map<SectionId, number>();
+    const root = mainRef.current?.closest('.cv-tools-body, .cv-welcome') ?? null;
+    const found = [...(mainRef.current?.querySelectorAll<HTMLElement>('[data-settings-section]') ?? [])];
+    if (found.length === 0) return;
+    const seen = new Map<string, number>();
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          const id = (e.target as HTMLElement).dataset.settingsSection as SectionId;
+          const id = (e.target as HTMLElement).dataset.settingsSection ?? '';
           if (e.isIntersecting) seen.set(id, e.boundingClientRect.top);
           else seen.delete(id);
         }
         const top = [...seen.entries()].sort((a, b) => a[1] - b[1])[0];
-        if (top) setCurrent(top[0]);
+        if (top && Date.now() - chosenAt.current > 1000) setCurrent(top[0]);
       },
       { root, rootMargin: '0px 0px -60% 0px', threshold: 0 },
     );
-    sections.forEach((el) => io.observe(el));
+    found.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
-  const goTo = (id: SectionId) => {
+  const goTo = (id: string) => {
+    chosenAt.current = Date.now();
     document.getElementById(`settings-${id}`)?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
     setCurrent(id);
   };
+  // Opened at a section — Updates, from the top bar's notice.
+  useEffect(() => {
+    if (!at) return;
+    chosenAt.current = Date.now();
+    document.getElementById(`settings-${at}`)?.scrollIntoView({ block: 'start' });
+    setCurrent(at);
+  }, [at]);
+  return (
+    <div className="cv-settings" ref={mainRef} data-settings={group}>
+      <nav className="cv-settings-nav" aria-label={t('settings.sections')}>
+        <div className="cv-settings-nav-group">
+          <span className="cv-settings-nav-title">{t(`settings.group.${group}`)}</span>
+          {sections.map((id) => (
+            <button key={id} type="button" className={`cv-settings-nav-item${current === id ? ' is-current' : ''}`} aria-current={current === id ? 'true' : undefined}
+              onClick={() => goTo(id)}>
+              {t(`settings.section.${id}`)}
+            </button>
+          ))}
+        </div>
+      </nav>
+      <div className="cv-settings-main">
+        {!isDesktop && <p className="cv-settings-banner">{t('settings.browserBanner')}</p>}
+        <div className="cv-settings-group" data-region={region}>
+          <h2 className="cv-settings-group-title">{t(`settings.group.${group}`)}</h2>
+          {lead}
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The application's settings, on the start screen: what is this
+ * computer's whatever project is open — the display, the terminal,
+ * updates, the shared folder, and the vault's lock.
+ */
+export function AppSettingsView({ at }: { at?: string } = {}) {
+  const uiScale = useStore((s) => s.settings.uiScale);
   const settings = useStore((s) => s.settings);
-  const projectDefaults = useStore((s) => s.doc.credentialDefaults);
-  const vaultRevision = useStore((s) => s.vaultRevision);
   const terminal = useStore((s) => s.settings.terminal);
   const setTerminal = useStore((s) => s.setTerminalSettings);
   const update = useStore((s) => s.update);
-  const [saved, setSaved] = useState<CredentialSummary[]>([]);
-  const [pruned, setPruned] = useState(0);
-
-  useEffect(() => {
-    void ipc
-      .listCredentials()
-      .then((all) => {
-        setSaved(all);
-        // A project that refers to a credential the vault no longer
-        // holds used to fail a whole crawl with "That saved credential no
-        // longer exists", from wherever the run happened to touch it. The
-        // reference is dropped here, once, where it can be explained.
-        const gone = useStore.getState().pruneStaleCredentials(all);
-        if (gone) setPruned(gone);
-      })
-      .catch(() => setSaved([]));
-  }, [vaultRevision]);
-
-  // Every login the project keeps, in the order a crawl tries them.
-  const sshIds = [projectDefaults?.ssh, ...(projectDefaults?.sshMore ?? [])].filter((id): id is string => !!id);
-  const snmpIds = projectDefaults?.snmp ?? [];
-  const named = (id: string | undefined) => (id ? saved.find((c) => c.id === id)?.label : undefined);
-
-  /** One of the SFTP server's settings: kept in the store for the screen,
-   *  and written to the project's settings as the folders are. */
-  const keepSftp = (key: 'sftpHost' | 'sftpPort' | 'sftpFolder' | 'sftpCredentialId', value: string) => {
-    useStore.getState().setSettings({ [key]: value });
-    void ipc.setSetting(key, value.trim() || null).catch(() => {});
-  };
-
 
   /** Where the check for a newer release has got to, in one line. */
   const updateStatus = (() => {
@@ -123,27 +128,8 @@ export function SettingsView() {
   const updateBusy = update.state === 'checking' || update.state === 'installing';
 
   return (
-    <div className="cv-settings" ref={mainRef}>
-      {/* Two panes: the sections down the left, the content capped at a
-          reading width on the right. The machine's own preferences first,
-          then this project's. */}
-      <nav className="cv-settings-nav" aria-label={t('settings.sections')}>
-        {NAV.map((g) => (
-          <div key={g.key} className="cv-settings-nav-group">
-            <span className="cv-settings-nav-title">{t(`settings.group.${g.key}`)}</span>
-            {g.sections.map((id) => (
-              <button key={id} type="button" className={`cv-settings-nav-item${current === id ? ' is-current' : ''}`} aria-current={current === id ? 'true' : undefined}
-                onClick={() => goTo(id)}>
-                {t(`settings.section.${id}`)}
-              </button>
-            ))}
-          </div>
-        ))}
-      </nav>
-      <div className="cv-settings-main">
-        {!isDesktop && <p className="cv-settings-banner">{t('settings.browserBanner')}</p>}
-        <div className="cv-settings-group" data-region="settings-application">
-          <h2 className="cv-settings-group-title">{t('settings.group.application')}</h2>
+    <SettingsFrame group="application" sections={APP_SECTIONS} region="settings-application" at={at}
+      lead={<p className="cv-help" data-hint="settings-where">{t('settings.appLead')}</p>}>
       <section id="settings-display" data-settings-section="display" className="cv-settings-block" data-region="display">
         <h2>{t('settings.display')}</h2>
         <p className="cv-help">{t('settings.displayHint')}</p>
@@ -250,9 +236,62 @@ export function SettingsView() {
         <p className="cv-help">{t('settings.updateReleases')}</p>
       </section>
       <SharedSettings />
-        </div>
-        <div className="cv-settings-group" data-region="settings-project">
-          <h2 className="cv-settings-group-title">{t('settings.group.project')}</h2>
+      <section id="settings-vault" data-settings-section="vault" className="cv-settings-block" data-region="machine-vault">
+        {/* The vault's own lock and passphrase. No login is listed: each
+            belongs to a project. */}
+        <VaultSettings scope="machine" />
+      </section>
+    </SettingsFrame>
+  );
+}
+
+/**
+ * A project's settings, inside the project: its logins, folders, SFTP
+ * server, Meraki, saved logins and host keys. The
+ * application's own are on the start screen.
+ *
+ * "Global" logins here are global to this project, and to nothing else:
+ * `credentialDefaults` lives on the document, and only what this project
+ * refers to is shown. The rest of the vault is one disclosure away and
+ * says plainly that it is the whole machine.
+ */
+export function SettingsView() {
+  const settings = useStore((s) => s.settings);
+  const projectDefaults = useStore((s) => s.doc.credentialDefaults);
+  const vaultRevision = useStore((s) => s.vaultRevision);
+  const [saved, setSaved] = useState<CredentialSummary[]>([]);
+  const [pruned, setPruned] = useState(0);
+
+  useEffect(() => {
+    void ipc
+      .listCredentials()
+      .then((all) => {
+        setSaved(all);
+        // A project that refers to a credential the vault no longer
+        // holds used to fail a whole crawl with "That saved credential no
+        // longer exists", from wherever the run happened to touch it. The
+        // reference is dropped here, once, where it can be explained.
+        const gone = useStore.getState().pruneStaleCredentials(all);
+        if (gone) setPruned(gone);
+      })
+      .catch(() => setSaved([]));
+  }, [vaultRevision]);
+
+  // Every login the project keeps, in the order a crawl tries them.
+  const sshIds = [projectDefaults?.ssh, ...(projectDefaults?.sshMore ?? [])].filter((id): id is string => !!id);
+  const snmpIds = projectDefaults?.snmp ?? [];
+  const named = (id: string | undefined) => (id ? saved.find((c) => c.id === id)?.label : undefined);
+
+  /** One of the SFTP server's settings: kept in the store for the screen,
+   *  and written to the project's settings as the folders are. */
+  const keepSftp = (key: 'sftpHost' | 'sftpPort' | 'sftpFolder' | 'sftpCredentialId', value: string) => {
+    useStore.getState().setSettings({ [key]: value });
+    void ipc.setSetting(key, value.trim() || null).catch(() => {});
+  };
+
+  return (
+    <SettingsFrame group="project" sections={PROJECT_SECTIONS} region="settings-project"
+      lead={<p className="cv-help" data-hint="settings-where">{t('settings.projectLead')}</p>}>
       <section id="settings-logins" data-settings-section="logins" className="cv-settings-block">
         <h2>{t('settings.globalLogins')}</h2>
         <p className="cv-help">{t('settings.globalHint')}</p>
@@ -374,8 +413,6 @@ export function SettingsView() {
       <section id="settings-hostkeys" data-settings-section="hostkeys" className="cv-settings-block" data-region="project-hostkeys">
         <HostKeySettings />
       </section>
-        </div>
-      </div>
-    </div>
+    </SettingsFrame>
   );
 }

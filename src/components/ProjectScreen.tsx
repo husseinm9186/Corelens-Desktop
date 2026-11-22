@@ -6,9 +6,8 @@ import { readSummary } from '../lib/projectSummary';
 import { STATUS_COLOR } from './edges/LiveEdge';
 import { TEMPLATES, templateById } from '../lib/templates';
 import { ipc, isDesktop } from '../lib/ipc';
-import { FolderSettings } from './FolderSettings';
 import { SharedProjectsSection } from './SharedProjects';
-import { VaultSettings } from './VaultSettings';
+import { AppSettingsView } from './SettingsView';
 import type { ProjectMeta } from '../types/domain';
 import { t } from '../i18n';
 import {
@@ -28,6 +27,9 @@ import { FAMILY_TINT_DARK } from '../theme';
 export function ProjectScreen() {
   const projects = useStore((s) => s.projects);
   const [showArchived, setShowArchived] = useState(false);
+  // The application's settings, shown in place of the projects.
+  const appSettings = useStore((s) => s.appSettings);
+  const settingsOpen = appSettings !== null;
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<ProjectMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -211,7 +213,15 @@ export function ProjectScreen() {
     <div className="cv-welcome">
       <div className="cv-welcome-inner">
         <header className="cv-welcome-head">
-          <h1>{t('projectScreen.corelens')}</h1>
+          <div className="cv-welcome-title">
+            <h1>{t('projectScreen.corelens')}</h1>
+            {/* The application's settings live here, outside any project:
+                what is this computer's is changed where no project is open. */}
+            <button type="button" className="cv-btn" data-action="app-settings" aria-pressed={settingsOpen}
+              onClick={() => useStore.getState().setAppSettings(settingsOpen ? null : '')}>
+              {settingsOpen ? <>{t('projectScreen.backToProjects')}</> : <><ChromeIcon name="settings" /> {t('projectScreen.settings')}</>}
+            </button>
+          </div>
           <p>
             {t('projectScreen.drawTheTopologyYou')}
           </p>
@@ -231,6 +241,9 @@ export function ProjectScreen() {
           />
         )}
 
+        {settingsOpen && <AppSettingsView at={appSettings || undefined} />}
+        {!settingsOpen && (
+        <>
         {/* Before the first project: three ways in, and the samples drawn
             from their own devices. */}
         {firstRun && (
@@ -589,11 +602,8 @@ export function ProjectScreen() {
 
         {/* What the company keeps in its shared folder, when one is chosen. */}
         <SharedProjectsSection />
-        <FolderSettings />
-
-        {/* The vault's own lock and passphrase. No login and no host key is
-            listed with no project open: each belongs to a project. */}
-        <VaultSettings scope="machine" />
+        </>
+        )}
 
         <footer className="cv-welcome-foot">
           {t('projectScreen.corelensRunsEveryCheck')}

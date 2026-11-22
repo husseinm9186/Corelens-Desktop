@@ -3247,17 +3247,16 @@ await dismissRecovery();
   const t12 = (await timeCell()).trim();
   check("a 12-hour clock says AM or PM", /(AM|PM)$/.test(t12), t12);
 
-  // The picker lives in Settings ▸ Display now, with the other machine preferences.
-  await page.evaluate(() => window.__cvStore.getState().setToolsOpen(true, "settings"));
+  // The choice survives a reload — it is a machine preference, and its
+  // picker is in the start screen's Settings ▸ Display.
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator('[data-action="app-settings"]').click();
   await page.waitForTimeout(300);
-  check("the picker is in Settings and follows the setting",
+  check("the picker is in the start screen's Settings and follows the setting",
     (await page.locator("[data-region=display] select").filter({ hasText: "12-hour clock" }).count()) === 1
       && (await page.locator("[data-region=display] select").filter({ hasText: "12-hour clock" }).inputValue()) === "local-12");
-  await page.evaluate(() => window.__cvStore.getState().setToolsOpen(false));
+  await page.locator('[data-action="app-settings"]').click();
   await page.waitForTimeout(300);
-
-  // The choice survives a reload — it is a machine preference.
-  await page.reload({ waitUntil: "networkidle" });
   await page.locator(".cv-project-open").first().click();
   await page.waitForSelector(".react-flow__node");
   await page.waitForTimeout(500);

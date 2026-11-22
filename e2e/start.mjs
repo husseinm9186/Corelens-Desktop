@@ -101,6 +101,32 @@ await page.waitForTimeout(500);
   await fresh.close();
 }
 
+// The application's settings are on the start screen; a project's are not.
+{
+  const fresh = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+  const errors = [];
+  fresh.on("pageerror", (e) => errors.push(String(e).slice(0, 160)));
+  await fresh.goto(URL, { waitUntil: "networkidle" });
+  const button = fresh.locator('[data-action="app-settings"]');
+  check("the start screen has a Settings button", (await button.count()) === 1 && /Settings/.test(await button.innerText()));
+  await button.click();
+  await fresh.waitForTimeout(400);
+  const nav = await fresh.locator(".cv-settings-nav-item").allInnerTexts();
+  check("it opens the application's settings, and only those", JSON.stringify(nav) === JSON.stringify(["Display", "Terminal", "Updates", "Shared projects", "Saved credentials"]), JSON.stringify(nav));
+  check("in place of the projects", (await fresh.locator('[data-region="projects"]').count()) === 0 && (await fresh.locator('[data-region="settings-application"]').count()) === 1);
+  check("saying where a project's own are", /inside that project/.test(await fresh.locator('[data-hint="settings-where"]').innerText()));
+  await fresh.locator(".cv-settings-nav-item", { hasText: "Saved credentials" }).click();
+  await fresh.waitForTimeout(500);
+  const now = await fresh.locator(".cv-settings-nav-item.is-current").innerText();
+  check("its nav moves to a section", now === "Saved credentials", now);
+  check("the button now leads back", /Back to projects/.test(await button.innerText()));
+  await button.click();
+  await fresh.waitForTimeout(300);
+  check("and back to the projects", (await fresh.locator('[data-region="settings-application"]').count()) === 0);
+  check("with no error on the way", errors.length === 0, JSON.stringify(errors.slice(0, 2)));
+  await fresh.close();
+}
+
 await browser.close();
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);

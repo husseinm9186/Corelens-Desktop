@@ -248,8 +248,8 @@ whenever a push to `main` carries a version that has none yet. The same
 installers are also kept as build artifacts on every push: the **Actions**
 tab → a green run → **Artifacts**.
 
-An installed copy can fetch the next version itself — Settings →
-**Check for updates** — and it verifies the download's signature against the
+An installed copy can fetch the next version itself — Settings on the start
+screen → **Check for updates** — and it verifies the download's signature against the
 key built into the app before running the installer. Nothing is checked
 unless you press the button or switch on the automatic check, which is off
 by default; the privacy section above says exactly what the request carries.

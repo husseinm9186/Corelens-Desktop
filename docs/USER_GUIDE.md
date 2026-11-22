@@ -627,8 +627,8 @@ Port names that would land on each other slide apart along their own links.
 A link carries an arrow only where someone said which way it runs — its
 **Direction**, or a route the crawl read — and along a path traced with
 **Path-Trace**, pointing the way the packet goes.
-Turn on **Reduce motion** under **Settings ▸ Display** (the cog at the foot of
-the rail) to stop all animation.
+Turn on **Reduce motion** under **Settings ▸ Display** (the **Settings**
+button on the start screen) to stop all animation.
 
 Hover a link for the detail:
 
@@ -1705,9 +1705,8 @@ A team keeps its projects in one folder every engineer's machine can see —
 a SharePoint library synced through OneDrive, a mapped drive, a Git
 checkout — and each machine opens the same projects from it.
 
-- **Choose the folder once**, under **Settings → Application → Shared
-  projects**, or from the **Shared with the team** section on the start
-  screen. It is this computer's setting; nothing is written there until a
+- **Choose the folder once**, under **Settings → Shared projects** on the
+  start screen, or from its **Shared with the team** section. It is this computer's setting; nothing is written there until a
   project is kept in it.
 - **Keep a project there**: open it and press **Keep in the shared folder**
   under **Settings → Folders**, or tick it when you create one. The project
@@ -1734,10 +1733,31 @@ Saved logins never go to the shared folder — they stay in each machine's
 own vault, and the project refers to them by id. Event history and probe
 samples stay on the machine that recorded them.
 
+## Settings: the application's and each project's
+
+Settings are kept in two places, by whose they are.
+
+- **The application's** are on the start screen, behind the **Settings**
+  button at the top right: **Display** (interface size, the wheel, reduce
+  motion, high contrast, times), **Terminal**, **Updates**, **Shared
+  projects** and **Saved credentials** (the vault's passphrase and lock, and
+  whether this computer opens it by itself).
+  They are this computer's, whichever project is open. **Back to projects**
+  returns to the list.
+- **A project's** are under **Settings** on the rail once it is open:
+  its **Logins**, **Folders**, **SFTP server**, **Meraki**, **Saved logins**
+  and **SSH host keys**.
+  Another project never sees them.
+
+When a newer release is found while a project is open, the top bar's
+**Update to …** saves and closes the project and opens the start screen's
+Settings at **Updates**, where it is installed.
+
 ## Keep Corelens up to date
 
 Corelens never looks for a new version on its own. When you want to know,
-open **Settings → Updates** and press **Check for updates**. That
+press **Settings** on the start screen, then **Check for updates** under
+**Updates**. That
 sends one request to this project's GitHub Releases page for the newest
 release's manifest — it carries this computer's address and the updater's
 name, and nothing about you, your projects or your network — and the line

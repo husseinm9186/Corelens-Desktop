@@ -477,11 +477,21 @@ const after = await page.locator(".cv-panel .cv-tabs [role=tab][aria-selected=tr
 check("arrow keys move along the panel's tabs", tabBefore !== after && (await page.evaluate(() => document.activeElement?.getAttribute("aria-selected"))) === "true", `${tabBefore} → ${after}`);
 
 // ----------------------------------------------------- high contrast
-// The tick lives in Settings ▸ Display, reached from the rail.
+// The tick lives in the application's Settings ▸ Display, on the start
+// screen; a project's Settings does not have it.
 await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
+await page.waitForTimeout(400);
+check("a project's Settings has no display settings", (await page.locator("label", { hasText: /^High contrast$/ }).count()) === 0);
+await page.evaluate(() => window.__cvStore.getState().closeProject());
+await page.waitForTimeout(600);
+await page.locator('[data-action="app-settings"]').click();
 await page.waitForTimeout(400);
 await page.locator("label", { hasText: /^High contrast$/ }).locator("input").check();
 await page.waitForTimeout(200);
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(300);
+await page.locator(".cv-project-open").first().click();
+await page.waitForTimeout(800);
 const contrast = await page.evaluate(() => {
   const app = document.querySelector(".cv-workspace");
   const css = getComputedStyle(app);
@@ -490,7 +500,7 @@ const contrast = await page.evaluate(() => {
 check("high contrast can be turned on, for the chrome and the canvas, and is remembered",
   contrast.on && contrast.text === "#ffffff" && contrast.ink === "#ffffff" && contrast.kept === "1", JSON.stringify(contrast));
 if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
-await page.locator("label", { hasText: /^High contrast$/ }).locator("input").uncheck();
+await page.evaluate(() => window.__cvStore.getState().setSettings({ highContrast: false }));
 await page.locator(".cv-nav-item", { hasText: /^Diagram$/ }).click();
 await page.waitForTimeout(400);
 

@@ -139,8 +139,7 @@ check("no banner: nobody else has it open", (await banner.count()) === 0);
 await page.locator(".cv-nav-item", { hasText: /^Settings$/ }).click();
 await page.waitForTimeout(500);
 const appShared = page.locator('[data-region="shared-settings"]');
-check("Settings → Application has the shared projects folder", (await appShared.count()) === 1 && (await appShared.locator("code").textContent()) === ROOT);
-check("and says what never goes there", /Saved logins never go there/.test(await appShared.innerText()));
+check("a project's Settings leaves the shared projects folder to the application's", (await appShared.count()) === 0);
 const copy = page.locator('[data-region="shared-copy"]');
 check("this project's Folders show its shared copy", (await copy.locator("code").textContent()) === `${ROOT}/kept-project` && (await copy.locator("button", { hasText: "Stop keeping" }).count()) === 1);
 await copy.locator("button", { hasText: "Stop keeping" }).click();
@@ -152,9 +151,17 @@ await page.waitForTimeout(600);
 check("Keep in the shared folder makes a folder named after the project and writes it", (await lastCall("link_project_folder"))?.name === "kept-project" && (await calls("keep_project")).length === before + 1 && (await lastCall("keep_project"))?.projectId === "p-kept", JSON.stringify(await lastCall("link_project_folder")));
 check("and shows where", (await copy.locator("code").textContent()) === `${ROOT}/kept-project`);
 
-// ------------------------------------------------------------ creating one, kept from the start
+// ------------------------------------------------------------ the application's Settings, on the start screen
 await st(() => window.__cvStore.getState().closeProject());
 await page.waitForTimeout(500);
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(400);
+check("the start screen's Settings has the shared projects folder", (await appShared.count()) === 1 && (await appShared.locator("code").textContent()) === ROOT);
+check("and says what never goes there", /Saved logins never go there/.test(await appShared.innerText()));
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(300);
+
+// ------------------------------------------------------------ creating one, kept from the start
 await page.locator("button", { hasText: /^Create project$/ }).first().click();
 await page.waitForTimeout(300);
 const tick = page.locator('[data-region="create-keep-shared"] input');

@@ -134,7 +134,7 @@ collector sidecar — a private copy of Python with its own libraries — in
 its own folder inside the installation directory. It is used only by
 Corelens, is not put on `PATH`, and is removed with Corelens.
 
-**Updating from inside the app** (Settings → **Check for updates**)
+**Updating from inside the app** (Settings on the start screen → **Check for updates**)
 downloads the next version's installer — the same signed `-setup.exe` that
 is on the Releases page — checks its updater signature against the key
 built into the app, and runs it. It asks for elevation exactly as a manual

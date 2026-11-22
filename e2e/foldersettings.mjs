@@ -61,12 +61,17 @@ await page.goto(URL, { waitUntil: "networkidle" });
 await page.waitForTimeout(500);
 
 // ------------------------------------------------------------ start screen
-const start = page.locator(".cv-folders");
-check("the start screen offers no folder button whose save would be refused",
-  (await start.locator("button", { hasText: /Choose folder|Change/ }).count()) === 0,
-  String(await start.locator("button").count()));
-check("and says where the folders are chosen instead",
-  /chosen for each project/.test(await start.innerText()), (await start.innerText()).slice(0, 200));
+// A project's folders are its own: neither the start screen nor the
+// application's settings offers one whose save would be refused.
+check("the start screen offers no project folder", (await page.locator(".cv-folders").count()) === 0);
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(400);
+const start = page.locator('[data-region="settings-application"]');
+check("nor do the application's settings", (await start.locator(".cv-folders").count()) === 0 && !/Configuration backups|Exports/.test(await start.innerText()));
+check("which say where a project's folders are chosen instead",
+  /folders/.test(await start.locator('[data-hint="settings-where"]').innerText()) && /inside that project/.test(await start.locator('[data-hint="settings-where"]').innerText()));
+await page.locator('[data-action="app-settings"]').click();
+await page.waitForTimeout(300);
 
 // ------------------------------------------------------ inside a project
 await page.locator(".cv-project-open").first().click();

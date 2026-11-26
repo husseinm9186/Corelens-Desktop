@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useStore, type ProjectDocument } from '../state/store';
+import { parseProjectPackage, useStore, type ProjectDocument, type ProjectPackageFile } from '../state/store';
 import { SAMPLES } from '../lib/samples';
 import { readSummary } from '../lib/projectSummary';
 import { STATUS_COLOR } from './edges/LiveEdge';
@@ -115,7 +115,7 @@ export function ProjectScreen() {
   });
   const isDropTarget = (target: string | null) => dropTarget === (target ?? '');
 
-  type Package = { meta: ProjectMeta; document: ProjectDocument; vault?: unknown };
+  type Package = ProjectPackageFile;
 
   // Nothing yet, not even archived: the screen is a way in, not a list.
   const firstRun = projects.length === 0;
@@ -133,8 +133,10 @@ export function ProjectScreen() {
     );
 
   const readPackage = async (text: string) => {
-    const pkg = JSON.parse(text) as Package;
-    if (!pkg?.meta?.name || !pkg.document) throw new Error('missing project metadata');
+    await takePackage(parseProjectPackage(text));
+  };
+
+  const takePackage = async (pkg: Package) => {
     // A package carrying credentials asks about them here, before the project
     // opens — creating it first would navigate away from this screen and the
     // question would never be seen. Either answer still opens the project, so
@@ -147,6 +149,20 @@ export function ProjectScreen() {
     }
     await openImported(pkg);
   };
+
+  // A file chosen inside a project, under Import… → From a project → Open
+  // as a separate project: that project was saved and closed, and the file
+  // goes through the same import as one chosen here, credentials included.
+  // Watched rather than read once: the screen appears as the project
+  // closes, a moment before the file is handed over.
+  const pendingImport = useStore((s) => s.pendingImport);
+  useEffect(() => {
+    if (!pendingImport) return;
+    const pkg = useStore.getState().takePendingImport();
+    if (pkg) void takePackage(pkg).catch((err: unknown) => failedImport(err));
+    // takePackage and failedImport are this render's; only the hand-over matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingImport]);
 
   const failedImport = (err: unknown) =>
     setError(

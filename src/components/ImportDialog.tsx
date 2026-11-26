@@ -1,8 +1,8 @@
 /**
- * Import…, from the top bar: the two ways a diagram comes in from
- * elsewhere, side by side — a file of devices and links (CSV and the
- * formats beside it), or a drawing someone made in another tool — and then
- * the one chosen. Both used to be tabs on a Tools screen, which is not
+ * Import…, from the top bar: the ways a diagram comes in from elsewhere,
+ * side by side — a file of devices and links (CSV and the formats beside
+ * it), a drawing someone made in another tool, or another Corelens project
+ * — and then the one chosen. Both used to be tabs on a Tools screen, which is not
  * where anyone looks for an import.
  */
 import { useEffect } from 'react';
@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import { t } from '../i18n';
 import { useStore } from '../state/store';
 import { CsvImportPanel } from './CsvImportPanel';
+import { ProjectImportPanel } from './ProjectImportPanel';
 import { VisioImportPanel } from './VisioImportPanel';
 
 export function ImportDialog() {
@@ -41,7 +42,7 @@ export function ImportDialog() {
               ‹ {t('import.bothSources')}
             </button>
           )}
-          <h2>{open === 'csv' ? t('tools.csv') : open === 'visio' ? t('tools.visio') : t('import.title')}</h2>
+          <h2>{open === 'csv' ? t('tools.csv') : open === 'visio' ? t('tools.visio') : open === 'project' ? t('tools.project') : t('import.title')}</h2>
           <button type="button" className="cv-btn cv-btn-small cv-import-close" onClick={() => setOpen(null)}>
             {t('import.close')}
           </button>
@@ -56,10 +57,14 @@ export function ImportDialog() {
               <span className="cv-start-title">{t('tools.visio')}</span>
               <span className="cv-start-blurb">{t('import.visioBlurb')}</span>
             </button>
+            <button type="button" className="cv-start-card" data-source="project" onClick={() => setOpen('project')}>
+              <span className="cv-start-title">{t('tools.project')}</span>
+              <span className="cv-start-blurb">{t('import.projectBlurb')}</span>
+            </button>
           </div>
         ) : (
           <div className="cv-import-body cv-tools-body">
-            {open === 'csv' ? <CsvImportPanel /> : <VisioImportPanel onImported={() => setOpen(null)} />}
+            {open === 'csv' ? <CsvImportPanel /> : open === 'project' ? <ProjectImportPanel onDone={() => setOpen(null)} /> : <VisioImportPanel onImported={() => setOpen(null)} />}
           </div>
         )}
       </div>

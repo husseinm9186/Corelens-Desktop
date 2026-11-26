@@ -1706,6 +1706,22 @@ files, every page, with addresses, ports, line colours, routed bends and label
 formatting. Lines that join nothing — a bus drawn as a line — are listed, not
 guessed at.
 
+**Another project.** **Import… ▸ From a project** reads a `.corelens` file
+someone exported and lists its pages, with how many devices and links each
+holds. Untick any you don't want, then:
+
+- **Add … to this project** puts the pages after this project's own. A page
+  whose name is taken gets a number (`Core 2`). Every device, link and check
+  gets a new ID of its own, so nothing already here is touched, and the
+  file's checks come with its devices. Stacks come when all their members
+  do, and racks this project has no rack of that name for are added. One
+  **Undo** takes the whole import back. Saved credentials don't come this
+  way.
+- **Open as a separate project** saves and closes this project, then opens
+  the file as a project of its own, the same as **Import project** on the
+  start screen. If the file carries saved credentials, it asks for their
+  passphrase there.
+
 **A saved walk.** **Discover devices → Open SNMP walks…** reads `snmpwalk`
 output saved on another machine, one file per device, as if a crawl had reached
 it over SNMP: identity, serials, addresses, LLDP and CDP neighbours and what is
@@ -1717,7 +1733,8 @@ plugged in. Walk with `-On` for the most complete result.
 ## Move a project to another machine
 
 Export the `.corelens` package, copy it over, and use **Import project** on the
-welcome screen. Diagram, metadata, probes and health rules come across. Event
+start screen, or **Import… ▸ From a project** inside a project to add its pages
+to that one. Diagram, metadata, probes and health rules come across. Event
 history does not — it stays with the machine that recorded it.
 
 ## Share projects through a company folder

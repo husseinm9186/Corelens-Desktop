@@ -1662,7 +1662,14 @@ button.cv-start-card:hover { border-color: var(--accent); }
 .cv-import-dialog.is-open { max-width: 86.15384615rem; max-height: calc(100vh - 4rem); display: flex; flex-direction: column; }
 .cv-import-head { display: flex; align-items: center; gap: 0.92307692rem; }
 .cv-import-head h2 { margin: 0; flex: 1; }
-.cv-import-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 0.92307692rem; margin-top: 1.23076923rem; }
+.cv-import-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.92307692rem; margin-top: 1.23076923rem; }
+.cv-project-import { display: flex; flex-direction: column; gap: 0.76923077rem; }
+.cv-project-import p { margin: 0; line-height: 1.5; }
+.cv-project-import-name { margin: 0.30769231rem 0 0; font-size: var(--text-md); }
+.cv-project-import-pages { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.30769231rem; max-height: 18rem; overflow: auto; }
+.cv-project-import-pages label { display: flex; align-items: center; gap: 0.61538462rem; cursor: pointer; }
+.cv-project-import-page { font-weight: 600; }
+.cv-project-import-actions { display: flex; flex-wrap: wrap; gap: 0.61538462rem; }
 .cv-import-body { overflow: auto; margin-top: 0.92307692rem; min-height: 0; }
 
 /* The workbench: the subnet tree down the left, the chosen subnet's

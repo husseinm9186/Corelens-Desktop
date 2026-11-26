@@ -17,6 +17,7 @@ import { staleCredentials, withoutStaleCredentials } from '../lib/credentialScop
 import { uid } from '../lib/id';
 import { newProbe } from '../lib/probes';
 import { migrateDocument } from '../lib/migrate';
+import { withImportedPages } from '../lib/importPages';
 import type { TimeFormat } from '../lib/timeFormat';
 import { linkStyleDefaults, type LinkStyleDefaults } from '../lib/linkDefaults';
 import { groupBySubnet as bucketBySubnet } from '../lib/subnetGroups';
@@ -188,6 +189,17 @@ export interface SshTab {
   /** A serial console rather than an SSH session: the port and the speed
    *  it was opened at, so an ended one can be opened again the same way. */
   console?: { port: string; baud: number };
+}
+
+/** A `.corelens` file as exported: the project's details, its document,
+ *  and its sealed credentials when it was exported with them. */
+export type ProjectPackageFile = { meta: ProjectMeta; document: ProjectDocument; vault?: unknown };
+
+/** Reads a `.corelens` file's text, refusing what is not a project. */
+export function parseProjectPackage(text: string): ProjectPackageFile {
+  const pkg = JSON.parse(text) as ProjectPackageFile;
+  if (!pkg?.meta?.name || !pkg.document) throw new Error('missing project metadata');
+  return pkg;
 }
 
 export interface ProjectDocument {
@@ -700,7 +712,16 @@ interface Store {
    *  imports to the Import dialog. */
   setToolsOpen: (on: boolean, view?: 'compare' | 'racks' | 'csv' | 'visio' | 'lifecycle' | 'settings') => void;
   /** The Import dialog: choosing a source, or one of the two open. */
-  importOpen: 'choose' | 'csv' | 'visio' | null;
+  importOpen: 'choose' | 'csv' | 'visio' | 'project' | null;
+  /** Another project's pages added to this one: fresh ids throughout,
+   *  its probes, stacks, missing racks and shapes with them. One undo step. */
+  importPagesFrom: (source: ProjectDocument, pageIds: string[], from: string) => { pages: number; devices: number; links: number; probes: number; racks: number };
+  /** A project file to import as its own project once the start screen is
+   *  showing: set after this project is saved and closed, read and cleared
+   *  by the start screen, which asks about any credentials it carries. */
+  pendingImport: ProjectPackageFile | null;
+  importAsSeparateProject: (pkg: ProjectPackageFile) => Promise<void>;
+  takePendingImport: () => ProjectPackageFile | null;
   /** The application's settings on the start screen: closed, or open at a
    *  section (`''` for the top). Only ever shown with no project open. */
   appSettings: string | null;
@@ -708,7 +729,7 @@ interface Store {
   /** A newer release, from inside a project: the project is saved and
    *  closed, and the start screen's Settings opens at Updates. */
   openUpdateFromProject: () => Promise<void>;
-  setImportOpen: (open: 'choose' | 'csv' | 'visio' | null) => void;
+  setImportOpen: (open: 'choose' | 'csv' | 'visio' | 'project' | null) => void;
   setToolsView: (view: 'compare' | 'racks' | 'csv' | 'visio' | 'lifecycle' | 'settings') => void;
   /** True while the canvas is being printed, so views set not to
    *  print are left off the page. Not part of the document. */
@@ -1502,6 +1523,7 @@ export const useStore = create<Store>((set, get) => ({
   toolsOpen: false,
   toolsView: 'settings',
   importOpen: null,
+  pendingImport: null,
   appSettings: null,
   sshSessions: [],
   sshActive: null,
@@ -2255,6 +2277,32 @@ export const useStore = create<Store>((set, get) => ({
   },
   setImportOpen(open) {
     set({ importOpen: open });
+  },
+
+  importPagesFrom(source, pageIds, from) {
+    const meta = get().meta;
+    const none = { pages: 0, devices: 0, links: 0, probes: 0, racks: 0 };
+    if (!meta) return none;
+    // The other project may be in an older shape than this build draws.
+    const migrated = migrateDocument(source).doc;
+    const got = withImportedPages(get().doc, migrated, { newId: uid, projectId: meta.id, pageIds });
+    if (got.pages === 0) return none;
+    get().commit(`Import pages from ${from}`);
+    set({ doc: got.doc, dirty: true });
+    return got;
+  },
+
+  async importAsSeparateProject(pkg) {
+    await get().closeProject();
+    // A save that failed keeps the project open, and says why.
+    if (get().meta) return;
+    set({ pendingImport: pkg, importOpen: null });
+  },
+
+  takePendingImport() {
+    const pkg = get().pendingImport;
+    if (pkg) set({ pendingImport: null });
+    return pkg;
   },
 
   setToolsView(view) {

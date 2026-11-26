@@ -44,6 +44,21 @@ struct FakeSwitch {
     /// super_admin or `host $ ` for a read-only profile, with FortiOS's
     /// refusal for anything it does not have.
     fortios: Option<char>,
+    /// An FTD managed by an FMC, as its own CLI greets a login: a banner,
+    /// then a bare `> ` with no hostname in front, no `enable`, and its
+    /// configuration as `show running-config`. From Cisco's documentation
+    /// of the FTD command line, not a capture.
+    ftd: bool,
+}
+
+/// An FTD's `show running-config`, as the FTD CLI prints it. Invented values.
+fn ftd_config() -> String {
+    let mut c = String::from(": Saved\r\n\r\n: \r\n: Serial Number: EXAMPLE0001\r\n: Hardware:   FPR-1120, 7765 MB RAM, CPU Atom C3000 series 2200 MHz, 1 CPU (8 cores)\r\n:\r\nNGFW Version 7.4.1 \r\n!\r\nhostname FTD-EXAMPLE\r\n");
+    for i in 1..=4 {
+        c.push_str(&format!("!\r\ninterface Ethernet1/{i}\r\n nameif inside{i}\r\n security-level 0\r\n ip address 192.0.2.{i} 255.255.255.0\r\n"));
+    }
+    c.push_str("!\r\nsnmp-server community not-a-real-community\r\n: end\r\n");
+    c
 }
 
 /// A FortiOS configuration as `show` prints it: the version header, then
@@ -103,6 +118,13 @@ impl server::Handler for FakeSwitch {
             session.data(channel, format!("\r\n{} {mark} ", self.hostname).into_bytes())?;
             return Ok(());
         }
+        if self.ftd {
+            session.data(
+                channel,
+                b"\r\nCopyright 2004-2026, Cisco and/or its affiliates. All rights reserved.\r\nCisco Firepower Extensible Operating System (FX-OS) v2.14.1 (build 131)\r\nCisco Firepower 1120 Threat Defense v7.4.1 (build 172)\r\n\r\n> ".to_vec(),
+            )?;
+            return Ok(());
+        }
         let mark = if self.stuck_in_user_mode { '>' } else { '#' };
         session.data(channel, format!("\r\n{}{mark}", self.hostname).into_bytes())?;
         Ok(())
@@ -129,6 +151,16 @@ impl server::Handler for FakeSwitch {
                 other => format!("command parse error before '{}'\r\nCommand fail. Return code -61\r\n", other.split_whitespace().last().unwrap_or(other)),
             };
             session.data(channel, format!("{command}\r\n{body}{} {mark} ", self.hostname).into_bytes())?;
+            return Ok(());
+        }
+        if self.ftd {
+            let body = match command {
+                "" => String::new(),
+                "show running-config" => ftd_config(),
+                "show version" => "-------------------[ FTD-EXAMPLE ]--------------------\r\nModel                     : Cisco Firepower 1120 Threat Defense (77) Version 7.4.1 (Build 172)\r\n".into(),
+                _ => "Syntax error: Illegal parameter\r\n".into(),
+            };
+            session.data(channel, format!("{command}\r\n{body}> ").into_bytes())?;
             return Ok(());
         }
         let is_enabled = *self.enabled.lock().unwrap() || !self.stuck_in_user_mode;
@@ -178,6 +210,15 @@ async fn start_device(
     stuck_in_user_mode: bool,
     fortios: Option<char>,
 ) -> (u16, Arc<std::sync::Mutex<Vec<String>>>) {
+    start_any(hostname, stuck_in_user_mode, fortios, false).await
+}
+
+async fn start_any(
+    hostname: &str,
+    stuck_in_user_mode: bool,
+    fortios: Option<char>,
+    ftd: bool,
+) -> (u16, Arc<std::sync::Mutex<Vec<String>>>) {
     let received = Arc::new(std::sync::Mutex::new(Vec::new()));
     let key = russh::keys::PrivateKey::random(&mut rand::rng(), russh::keys::Algorithm::Ed25519).unwrap();
     let config = Arc::new(server::Config {
@@ -194,6 +235,7 @@ async fn start_device(
         enabled: Arc::new(std::sync::Mutex::new(false)),
         received: Arc::clone(&received),
         fortios,
+        ftd,
     };
     tokio::spawn(async move {
         while let Ok((stream, _)) = listener.accept().await {
@@ -283,6 +325,46 @@ async fn a_configuration_read_off_a_terminal_reaches_the_file_intact() {
     assert!(!text.contains("CORE-SW-01#"), "a prompt reached the file:\n{text}");
     assert!(!text.contains("show running-config"), "the echo reached the file:\n{text}");
 
+    std::fs::remove_dir_all(&root).ok();
+}
+
+#[tokio::test]
+async fn an_ftd_at_its_bare_prompt_is_backed_up_from_show_running_config() {
+    // An FTD managed by an FMC: the login lands at `> `, there is no enable,
+    // and `show running-config` is what an engineer copies by hand.
+    let (port, received) = start_any("", false, None, true).await;
+    let root = temp_root("ftd");
+    let store = Arc::new(std::sync::Mutex::new(HostKeyStore::new()));
+    let (tx, _rx) = mpsc::channel(128);
+
+    let run = tokio::time::timeout(
+        Duration::from_secs(60),
+        run_backups(
+            vec![BackupTarget { address: "127.0.0.1".into(), name: "FTD-1".into(), commands: Vec::new(), site: String::new() }],
+            creds("correct-horse"),
+            options(root.clone(), port, vec![BackupKind::Running, BackupKind::Startup]),
+            store,
+            "20260828-120000".into(),
+            tx,
+            CancellationToken::new(),
+        ),
+    )
+    .await
+    .expect("the backup finished");
+
+    assert!(run.failed.is_empty(), "unexpected failures: {:?}", run.failed);
+    assert_eq!(run.saved.len(), 1, "the running configuration, and only it: {:?}", run.saved);
+    let saved = &run.saved[0];
+    assert_eq!(saved.kind, BackupKind::Running);
+    // No hostname in the prompt: filed under the name it was drawn with.
+    assert_eq!(saved.name, "FTD-1");
+    let text = std::fs::read_to_string(&saved.path).unwrap();
+    assert!(text.contains("NGFW Version 7.4.1") && text.contains("hostname FTD-EXAMPLE"), "{text}");
+    assert!(text.contains("interface Ethernet1/4") && text.trim_end().ends_with(": end"), "capture stopped early:\n{text}");
+    assert!(!text.trim_end().ends_with('>'), "the prompt reached the file:\n{text}");
+    let sent = received.lock().unwrap().clone();
+    assert!(!sent.iter().any(|c| c == "enable"), "an FTD has no enable: {sent:?}");
+    assert!(!sent.iter().any(|c| c == "show startup-config"), "an FTD has no startup configuration to ask for: {sent:?}");
     std::fs::remove_dir_all(&root).ok();
 }
 

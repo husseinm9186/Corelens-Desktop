@@ -1458,6 +1458,14 @@ first: ASA/FTD, Palo Alto, Aruba/HP, Juniper, Huawei/H3C. FortiOS has no
 session-only pager command — its only one is a saved configuration change —
 so Corelens answers its `--More--` prompts instead of changing the device.
 
+**An FTD** (Firepower Threat Defense, managed by an FMC or by its own
+device manager) is backed up from its own command line, the `>` prompt an
+SSH login lands at: `show running-config`, the same thing you would copy by
+hand. No `enable` is sent — the FTD's command line has none and needs none —
+and it has no startup configuration of its own, so a startup backup of it is
+skipped and says why. The rules and objects an FMC pushes are in the FMC;
+**Collect** can read those from the FMC itself.
+
 **A FortiGate or FortiSwitch** is backed up with `show full-configuration` —
 every setting, defaults included; `show` alone gives only what differs from
 them. No `enable` is sent: FortiOS has none, and a read-only profile at the `$`

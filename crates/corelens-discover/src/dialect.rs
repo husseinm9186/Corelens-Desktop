@@ -621,7 +621,9 @@ pub fn family_of(version: &str) -> Family {
         Family::Dell
     // Families, each from its own version banner, before the Cisco
     // catch-all because two of them say "Cisco" too.
-    } else if v.contains("adaptive security appliance") {
+    // An FTD's own command line reads like an ASA's (`show arp`, `show
+    // interface`) and its version says "Threat Defense".
+    } else if v.contains("adaptive security appliance") || v.contains("threat defense") {
         Family::CiscoAsa
     } else if v.contains("cisco controller") || v.contains("aireos") {
         Family::AireOs
@@ -707,6 +709,8 @@ mod tests {
         assert_eq!(family_of("Arista vEOS"), Family::AristaEos);
         assert_eq!(family_of("JUNOS 21.4R3"), Family::Junos);
         assert_eq!(family_of("Something nobody has met"), Family::Generic);
+        // An FTD's `show version`, as Cisco documents it (not a capture).
+        assert_eq!(family_of("-------------------[ FTD-1 ]--------------------\nModel                     : Cisco Firepower 1120 Threat Defense (77) Version 7.4.1 (Build 172)"), Family::CiscoAsa);
         assert_eq!(dialect_for("JUNOS 21.4R3").name(), "Junos");
         assert_eq!(dialect_for("???").name(), "unrecognised (Cisco commands tried)");
     }

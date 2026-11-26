@@ -38,11 +38,18 @@ pub fn find_prompt(buffer: &str) -> Option<Prompt> {
     // by `ESC [ K` — used to end the buffer with the `K` of an erase, and no
     // prompt was ever found. `visible_text` has existed and the
     // pager matcher two lines away in the read loop already used it.
-    let last = buffer
+    let (raw, last) = buffer
         .lines()
         .rev()
-        .map(visible_text)
-        .find(|l| !l.trim().is_empty())?;
+        .map(|l| (l, visible_text(l)))
+        .find(|(_, l)| !l.trim().is_empty())?;
+    // A bare `>` is an FTD's prompt only where the device drew it, at the
+    // start of its line: Junos indents a `>` in front of each active route,
+    // and output that stops just after one must not end the read. The
+    // visible text is trimmed, so the indentation is judged on the raw line.
+    if last == ">" && raw.trim_start_matches('\r').starts_with([' ', '\t']) {
+        return None;
+    }
     prompt_from_line(&last)
 }
 
@@ -66,6 +73,12 @@ pub fn prompt_from_line(line: &str) -> Option<Prompt> {
     };
 
     let hostname = head.trim();
+    // An FTD's own command line draws `> ` and nothing in front of it. A
+    // line that is that mark alone is its prompt; with no hostname to judge
+    // it by, only the whole line being `>` will do.
+    if hostname.is_empty() && line == ">" {
+        return Some(Prompt { text: line.to_string(), hostname: String::new(), enabled: false });
+    }
     if hostname.is_empty() || hostname.len() > 64 {
         return None;
     }
@@ -92,6 +105,13 @@ pub fn prompt_from_line(line: &str) -> Option<Prompt> {
         hostname: base.to_string(),
         enabled,
     })
+}
+
+/// Whether a prompt is an FTD's command line: `>` with no hostname. It has
+/// no `enable` and needs none — it reads its configuration as it is — and
+/// no startup configuration: an FMC-managed FTD's is kept by the FMC.
+pub fn is_ftd_prompt(prompt: &Prompt) -> bool {
+    prompt.text.trim() == ">"
 }
 
 /// Whether a prompt is FortiOS's or FortiSwitchOS's: `host # `,
@@ -513,6 +533,19 @@ mod tests {
         let p = find_prompt("EDGE-RTR>").unwrap();
         assert_eq!(p.hostname, "EDGE-RTR");
         assert!(!p.enabled, "> is user mode, not enable");
+    }
+
+    /// An FTD's command line: `> ` after its banner, with no hostname.
+    #[test]
+    fn an_ftd_prompt_is_the_mark_alone() {
+        let p = find_prompt("Cisco Firepower 1120 Threat Defense v7.4.1 (build 172)\r\n\r\n> ").unwrap();
+        assert_eq!(p.hostname, "");
+        assert!(!p.enabled);
+        assert!(is_ftd_prompt(&p));
+        assert!(!is_ftd_prompt(&find_prompt("EDGE-RTR>").unwrap()), "a router in user mode is not an FTD");
+        assert!(find_prompt("route to > ").is_none(), "text ending in > is still not a prompt");
+        assert!(find_prompt("#").is_none(), "only > stands alone");
+        assert!(find_prompt("10.0.0.0/8  *[Static/5] 1w0d 00:00:01\n                    >").is_none(), "a Junos route's mark, cut off mid-line, is not a prompt");
     }
 
     #[test]

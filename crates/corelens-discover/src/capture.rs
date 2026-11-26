@@ -644,7 +644,11 @@ async fn back_up_over_ssh(
     // `enable`: its `$` is a read-only profile, which may read what it is
     // allowed to see, and what comes back is judged like any capture.
     let fortios = crate::cli::is_fortios_prompt(&device.prompt);
+    // An FTD's `>` has no `enable` either, and reads its configuration as
+    // it is.
+    let ftd = crate::cli::is_ftd_prompt(&device.prompt);
     let enabled = fortios
+        || ftd
         || device
             .enable(credentials.enable_password.as_ref())
             .await
@@ -684,6 +688,10 @@ async fn back_up_over_ssh(
             (true, BackupKind::Running) => "show full-configuration",
             (true, BackupKind::Startup) => {
                 problems.push(format!("{}: FortiOS keeps one configuration; the running one is the backup", kind.slug()));
+                continue;
+            }
+            (false, BackupKind::Startup) if ftd => {
+                problems.push(format!("{}: an FTD has no startup configuration of its own; the running one is the backup", kind.slug()));
                 continue;
             }
             _ => match kind.command() {

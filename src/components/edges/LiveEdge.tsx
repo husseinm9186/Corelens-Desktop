@@ -928,7 +928,9 @@ function LiveEdgeInner(props: EdgeProps) {
           only one of them has to be readable at a time. Only the drawn line
           fades; the labels live outside this group and are left alone, so the
           diagram never stops being legible while the pointer is near it. */}
-      <g className="cv-link-body" data-edge={id} data-dots={dotCount || undefined}>
+      {/* The drawn body is the children of React Flow's own group for this
+          link (g.react-flow__edge), which is what TraceFade fades; a group of
+          our own around them cost an element per link. */}
       {/* Halo. A wider, translucent copy of the line reads as a glow without an
           SVG filter — a per-edge drop-shadow is the expensive way to do this. */}
       {animate && (
@@ -964,6 +966,7 @@ function LiveEdgeInner(props: EdgeProps) {
         path={drawnPath}
         mask={double ? `url(#cv-double-${id})` : undefined}
         data-kind={double ? 'bundle' : undefined}
+        data-dots={dotCount || undefined}
         style={{
           stroke: lineColor,
           strokeWidth: isLeader ? 1 : double ? doubleWidths(selected ? width + 1 : width).outer : selected ? width + 1.5 : width,
@@ -991,8 +994,6 @@ function LiveEdgeInner(props: EdgeProps) {
       {status === 'down' && (
         <circle cx={labelX} cy={labelY} r={4} fill={STATUS_COLOR.down} opacity={0.9} />
       )}
-
-      </g>
 
       <EdgeLabelRenderer>
         {/* The band that makes a link clickable where it matters.

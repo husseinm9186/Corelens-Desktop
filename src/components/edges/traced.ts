@@ -61,7 +61,9 @@ export function TraceFade() {
   return createElement(
     'style',
     null,
-    `.react-flow__edge:not(.selected) .cv-link-body:not([data-edge=${quoted}]) { opacity: 0.2; }` +
+    `.react-flow__edge:not(.selected):not([data-id=${quoted}]) { opacity: 0.2; }` +
+      // A link already dimmed by a focus or filter fades further, as before.
+      `.react-flow__edge.is-dimmed:not(.selected):not([data-id=${quoted}]) { opacity: 0.02; }` +
       // A crowded device's port chips show for the link being pointed at.
       `.cv-edge-port.is-crowded[data-edge=${quoted}] { visibility: visible !important; }`,
   );

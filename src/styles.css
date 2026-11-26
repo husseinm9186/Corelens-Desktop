@@ -2595,9 +2595,6 @@ img.cv-glyph-art { object-fit: contain; }
   stroke: var(--canvas-accent); stroke-width: 1.5; stroke-dasharray: 5 4;
 }
 
-/* A link's drawn body, faded by TraceFade while another link is pointed at. */
-.cv-link-body { transition: opacity 120ms ease; }
-
 /* A logical boundary draws its own dashed outline (one dash pattern
    per kind) and a chip naming the area. */
 .cv-boundary-outline {

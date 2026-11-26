@@ -281,7 +281,7 @@ const dragNode = async (selector, dx, dy, witnessSelector) => {
 // body, and the canvas is checked for having actually painted something.
 {
   const dotsOf = (id) => page.evaluate((id) =>
-    Number(document.querySelector(`g[data-id="${id}"] .cv-link-body`)?.getAttribute("data-dots") ?? 0), id);
+    Number(document.querySelector(`g[data-id="${id}"] .react-flow__edge-path`)?.getAttribute("data-dots") ?? 0), id);
   const healthy = await dotsOf("e-healthy");
   const down = await dotsOf("e-down");
   check("a healthy link carries travelling dots", healthy > 0, `${healthy} dots`);

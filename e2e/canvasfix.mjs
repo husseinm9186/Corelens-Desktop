@@ -409,7 +409,7 @@ await page.keyboard.press("f");
 await page.waitForTimeout(600);
 // TraceFade's own rule; the app stylesheet mentions the class too.
 const fading = () => page.evaluate(() =>
-  [...document.querySelectorAll("style")].some((s) => s.textContent.includes(".cv-link-body:not([data-edge=")));
+  [...document.querySelectorAll("style")].some((s) => s.textContent.includes(".react-flow__edge:not(.selected):not([data-id=")));
 // A point really on the link, where what is under the pointer belongs to it.
 const onLine = await page.evaluate(() => {
   const path = document.querySelector('.react-flow__edge[data-id="e1"] .react-flow__edge-path');

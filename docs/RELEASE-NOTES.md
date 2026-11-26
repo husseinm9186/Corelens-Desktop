@@ -2,6 +2,21 @@
 
 Newest first.
 
+## 2.19.0 — 2026-11-26
+
+**Settings in two places, by whose they are**
+- **The application's settings are on the start screen**, behind a
+  **Settings** button beside the heading: Display, Terminal, Updates,
+  Shared projects and Saved credentials. They are this computer's, whichever
+  project is open. **Back to projects** returns to the list.
+- **A project's Settings** on the rail now shows only that project's: its
+  logins, folders, SFTP server, Meraki, saved logins and SSH host keys.
+- The top bar's **Update to …** saves and closes the project and opens the
+  start screen's Settings at Updates. If the save fails, the project stays
+  open and says why.
+- The folder and vault settings that sat at the foot of the start screen are
+  inside its Settings now.
+
 ## 2.18.3 — 2026-11-20
 
 **Fixed**

@@ -81,7 +81,10 @@ const hasClass = async (sel, cls) => (await page.locator(sel).first().getAttribu
 {
   await openTab("SSH");
   check("SSH is on the right too", await hasClass(".cv-body", "is-dock-right"));
-  check("but wider — half the window", await hasClass(".cv-body", "is-dock-wide"));
+  check("narrow while it has no session", await hasClass(".cv-body", "is-dock-narrow"));
+  await page.evaluate(() => window.__cvStore.getState().openSshTab({ id: "t-dock", address: "192.0.2.1", label: "SW1", status: "closed" }));
+  await page.waitForTimeout(300);
+  check("but wider with one — half the window", await hasClass(".cv-body", "is-dock-wide"));
   const r = { panel: await box(".cv-panel"), canvas: await box(".cv-canvas") };
   check("noticeably wider than Discover", r.panel.width > 560, String(r.panel.width));
   check("it has its own footer", (await page.locator('[data-region="ssh-foot"]').count()) === 1);

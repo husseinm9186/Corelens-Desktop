@@ -340,14 +340,16 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
 .cv-body.is-dock-right > .cv-main.palette-hidden:not(.inspector-hidden) { grid-template-columns: minmax(0, 1fr) clamp(18.46153846rem, 22vw, 26.15384615rem); }
 .cv-body.is-dock-right > .cv-main.inspector-hidden:not(.palette-hidden) { grid-template-columns: clamp(11.53846154rem, 15vw, 16.76923077rem) minmax(0, 1fr); }
 .cv-body.is-dock-right > .cv-panel, .cv-body.is-dock-right > .cv-panel.is-tall {
-  height: auto; flex: none;
+  /* It narrows, to its minimum, before the diagram is squeezed: the
+     diagram's columns carry a min-width worked out in App (fitColumns). */
+  height: auto; flex: 0 1 auto;
   border-top: 0; border-left: 1px solid var(--chrome-edge);
 }
 /* Discovering devices is a column of form steps and reads at ~480 px; the
    terminal wants half the window, since a wrapped command line is
    unreadable. The canvas keeps the rest. */
-.cv-body.is-dock-right.is-dock-narrow > .cv-panel { width: clamp(27.69230769rem, 32vw, 36.92307692rem); }
-.cv-body.is-dock-right.is-dock-wide > .cv-panel { width: clamp(33.84615385rem, 50vw, 61.53846154rem); }
+.cv-body.is-dock-right.is-dock-narrow > .cv-panel { width: clamp(27.69230769rem, 32vw, 36.92307692rem); min-width: 27.69230769rem; }
+.cv-body.is-dock-right.is-dock-wide > .cv-panel { width: clamp(33.84615385rem, 50vw, 61.53846154rem); min-width: 33.84615385rem; }
 /* The step headers stay in sight as the form scrolls under them, and the
    run bar stays at the foot with the one-line summary on it. */
 .cv-body.is-dock-right .cv-step-head { position: sticky; top: 0; z-index: 2; background: var(--chrome); padding-top: 0.30769231rem; }

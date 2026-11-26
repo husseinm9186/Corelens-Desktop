@@ -1,5 +1,5 @@
 import { cycleRegion } from './lib/regions';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 
 import { Canvas } from './components/Canvas';
@@ -23,7 +23,7 @@ let keychainTried = false;
 /** The at-start check for a newer release, likewise once per window. */
 let updateCheckTried = false;
 import { useStore } from './state/store';
-import { dockSideFor, dockWidthClass } from './lib/dockPlacement';
+import { autoUiScale, dockSideFor, dockWidthClass, fitColumns, stepUiScale } from './lib/dockPlacement';
 import { NavRail } from './components/NavRail';
 import { CanvasToolbar } from './components/CanvasToolbar';
 
@@ -42,8 +42,39 @@ export default function App() {
   const dockTab = useStore((s) => s.dockTab);
   const dockPlacements = useStore((s) => s.dockPlacements);
   const dockDetached = useStore((s) => s.dockDetached);
+  const selection = useStore((s) => s.selectedNodeId ?? s.selectedEdgeId);
+  const paletteOpen = useStore((s) => s.paletteOpen);
+  const inspectorOpen = useStore((s) => s.inspectorOpen);
+  const sshSessions = useStore((s) => s.sshSessions);
+  // An empty terminal tab is narrow until a session opens in it.
+  const dockHasSession = dockTab === 'console' ? sshSessions.some((x) => x.console) : sshSessions.some((x) => !x.console);
+  const [vw, setVw] = useState(() => window.innerWidth);
+  const [keepPalette, setKeepPalette] = useState(false);
+  const [keepInspector, setKeepInspector] = useState(false);
+  useEffect(() => {
+    const on = () => setVw(window.innerWidth);
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
+  const scale = uiScale === 'auto' ? autoUiScale(vw) : uiScale;
+  const effectiveScale = highContrast ? Math.max(CONTRAST_SCALE_FLOOR, scale) : scale;
+  // The root size the stylesheet sets, `html { font-size }`, at this scale;
+  // the body is the window less the navigation rail.
+  const rem = Math.min(16, Math.max(13, 0.0025 * vw + 9)) * effectiveScale;
+  const preferredSide = dockDetached ? 'bottom' : dockSideFor(dockTab, dockPlacements);
+  const fit = fitColumns({
+    body: vw - 4.92307692 * rem, vw, rem,
+    dock: dockWidthClass(dockTab, dockHasSession) === 'is-dock-wide' ? 'wide' : 'narrow',
+    selection: Boolean(selection), paletteOpen, inspectorOpen, keepPalette, keepInspector,
+  });
+  const roomBelow = preferredSide === 'right' && fit.dockBelow;
+  useEffect(() => {
+    if (useStore.getState().dockBelowForRoom !== roomBelow) useStore.setState({ dockBelowForRoom: roomBelow });
+  }, [roomBelow]);
   // In its own window the dock takes no room here at all.
-  const dockSide = dockDetached ? 'bottom' : dockSideFor(dockTab, dockPlacements);
+  const dockSide = roomBelow ? 'bottom' : preferredSide;
+  const paletteShown = dockSide === 'right' ? fit.palette : paletteOpen;
+  const inspectorShown = dockSide === 'right' ? fit.inspector : inspectorOpen;
   // Maximise is a bottom-dock idea: a right dock already takes a column, and
   // the canvas must not vanish when a tall tab opens beside it.
   const dockMax = useStore((s) => s.dockMax) && dockSide === 'bottom';
@@ -52,9 +83,6 @@ export default function App() {
   // Read above the early return: a hook after one is called conditionally,
   // which React rejects and which broke the move from the launcher into a
   // project entirely.
-  const selection = useStore((s) => s.selectedNodeId ?? s.selectedEdgeId);
-  const paletteOpen = useStore((s) => s.paletteOpen);
-  const inspectorOpen = useStore((s) => s.inspectorOpen);
   const setPaletteOpen = useStore((s) => s.setPaletteOpen);
   const setInspectorOpen = useStore((s) => s.setInspectorOpen);
   const presenting = useStore((s) => s.presenting);
@@ -69,8 +97,30 @@ export default function App() {
   useEffect(() => {
     // High contrast is a bigger build as well as a starker one: never under
     // 115 %, so the smallest text is still 12 px.
-    document.documentElement.style.setProperty('--ui-scale', String(highContrast ? Math.max(CONTRAST_SCALE_FLOOR, uiScale) : uiScale));
-  }, [uiScale, highContrast]);
+    document.documentElement.style.setProperty('--ui-scale', String(effectiveScale));
+  }, [effectiveScale]);
+
+  // Ctrl+Shift + and − size the whole interface, Ctrl+Shift+0 hands it back
+  // to the window. By key position, so the shifted characters do not
+  // matter; Ctrl + and − without Shift stay the diagram's zoom.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.altKey) return;
+      const st = useStore.getState();
+      const now = st.settings.uiScale === 'auto' ? autoUiScale(window.innerWidth) : st.settings.uiScale;
+      let next: number | 'auto';
+      if (e.code === 'Equal' || e.code === 'NumpadAdd') next = stepUiScale(now, 1);
+      else if (e.code === 'Minus' || e.code === 'NumpadSubtract') next = stepUiScale(now, -1);
+      else if (e.code === 'Digit0' || e.code === 'Numpad0') next = 'auto';
+      else return;
+      e.preventDefault();
+      e.stopPropagation();
+      st.setSettings({ uiScale: next });
+      st.setStatusMessage(next === 'auto' ? t('settings.uiScaleAutoSaid') : t('settings.uiScaleSaid', { percent: Math.round(next * 100) }));
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
 
   // Presentation takes the whole screen where the window can go full
   // screen, and leaving full screen by the system's own means leaves
@@ -193,17 +243,18 @@ export default function App() {
             and which one depends on whether there is something to inspect. */}
         {/* The body holds the canvas and the dock, so the dock can sit
             along the bottom or, popped out, down the right. */}
-        <div className={`cv-body${dockSide === 'right' ? ` is-dock-right ${dockWidthClass(dockTab)}` : ''}${dockMax ? ' is-dock-max' : ''}${registerOpen || helpOpen || toolsOpen ? ' is-behind' : ''}`}>
+        <div className={`cv-body${dockSide === 'right' ? ` is-dock-right ${dockWidthClass(dockTab, dockHasSession)}` : ''}${dockMax ? ' is-dock-max' : ''}${registerOpen || helpOpen || toolsOpen ? ' is-behind' : ''}`}>
         <div
           className={[
             'cv-main',
             registerOpen || helpOpen || toolsOpen ? 'is-behind' : '',
             selection ? 'has-selection' : '',
-            paletteOpen ? '' : 'palette-hidden',
-            inspectorOpen ? '' : 'inspector-hidden',
+            paletteShown ? '' : 'palette-hidden',
+            inspectorShown ? '' : 'inspector-hidden',
           ]
             .filter(Boolean)
             .join(' ')}
+          style={dockSide === 'right' && fit.mainMin ? { minWidth: `${fit.mainMin}px` } : undefined}
         >
           {/* Both stay mounted and are hidden in CSS. Unmounting one leaves
               two children in a three-track grid, and the canvas slides into
@@ -225,22 +276,24 @@ export default function App() {
           <button
             type="button"
             className="cv-rail cv-rail-left"
-            onClick={() => setPaletteOpen(!paletteOpen)}
-            title={paletteOpen ? 'Hide the shapes panel' : 'Show the shapes panel'}
-            aria-label={paletteOpen ? 'Hide the shapes panel' : 'Show the shapes panel'}
-            aria-expanded={paletteOpen}
+            // Brought back by hand after being folded for room, it stays.
+            onClick={() => { setPaletteOpen(!paletteShown); setKeepPalette(!paletteShown); }}
+            title={paletteShown ? 'Hide the shapes panel' : 'Show the shapes panel'}
+            aria-label={paletteShown ? 'Hide the shapes panel' : 'Show the shapes panel'}
+            aria-expanded={paletteShown}
           >
-            {paletteOpen ? '‹' : '›'}
+            {paletteShown ? '‹' : '›'}
           </button>
           <button
             type="button"
             className="cv-rail cv-rail-right"
-            onClick={() => setInspectorOpen(!inspectorOpen)}
-            title={inspectorOpen ? 'Hide the details panel' : 'Show the details panel'}
-            aria-label={inspectorOpen ? 'Hide the details panel' : 'Show the details panel'}
-            aria-expanded={inspectorOpen}
+            // Brought back by hand after being folded for room, it stays.
+            onClick={() => { setInspectorOpen(!inspectorShown); setKeepInspector(!inspectorShown); }}
+            title={inspectorShown ? 'Hide the details panel' : 'Show the details panel'}
+            aria-label={inspectorShown ? 'Hide the details panel' : 'Show the details panel'}
+            aria-expanded={inspectorShown}
           >
-            {inspectorOpen ? '›' : '‹'}
+            {inspectorShown ? '›' : '‹'}
           </button>
         </div>
         <DockHost

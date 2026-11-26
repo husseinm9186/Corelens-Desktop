@@ -210,6 +210,8 @@ export function StatusPanel() {
   const tab = useStore((s) => s.dockTab);
   const setTab = useStore((s) => s.setDockTab);
   const dockPlacements = useStore((s) => s.dockPlacements);
+  const dockBelowForRoom = useStore((s) => s.dockBelowForRoom);
+  const sshSessions = useStore((s) => s.sshSessions);
   useEffect(() => {
     if (!panelRequest) return;
     // The register moved to a screen of its own. Anything that still
@@ -526,7 +528,9 @@ export function StatusPanel() {
   const tall = tab === 'crawl' || tab === 'collect' || tab === 'discover' || tab === 'backup' || tab === 'ssh' || tab === 'console' || tab === 'trace' || tab === 'tracert' || tab === 'whereis';
   const listTab = tab === 'objects' || tab === 'events';
   // In a window of its own the dock is the whole window: no side, no grip.
-  const dockSide = detached ? 'window' : dockSideFor(tab, dockPlacements);
+  // Down the right unless the window has no room for it beside the diagram.
+  const dockSide = detached ? 'window' : dockBelowForRoom ? 'bottom' : dockSideFor(tab, dockPlacements);
+  const hasSession = tab === 'console' ? sshSessions.some((x) => x.console) : sshSessions.some((x) => !x.console);
   const dockMax = dockMaxRaw && dockSide === 'bottom';
   const shown = tab === 'objects' ? filtered.length : filteredEvents.length;
   const total = tab === 'objects' ? rows.length : events.length;
@@ -539,7 +543,7 @@ export function StatusPanel() {
   return (
     <div
       ref={panelRef}
-      className={`cv-panel${tall ? ' is-tall' : ''}${dockMax ? ' is-max' : ''}${dockSide === 'right' ? ` is-dock-right ${dockWidthClass(tab)}` : ''}${detached ? ' is-detached' : ''}`}
+      className={`cv-panel${tall ? ' is-tall' : ''}${dockMax ? ' is-max' : ''}${dockSide === 'right' ? ` is-dock-right ${dockWidthClass(tab, hasSession)}` : ''}${detached ? ' is-detached' : ''}`}
       style={dockSide === 'bottom' && !dockMax && dockHeight ? { height: `${dockHeight}px` } : undefined}
     >
       {/* The grip: drag to resize, double-click for a third or six tenths. */}

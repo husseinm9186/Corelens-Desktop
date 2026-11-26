@@ -365,11 +365,19 @@ height, for a wide table; the canvas gives way and the palette and
 inspector fold with their own handles. **Dock below** puts it back, and
 either choice is remembered on this machine, kept for each tab: discovering
 devices and the terminal open down the right on their own — Discover at a
-narrow column, the terminal at half the window — while the monitored
+narrow column, the terminal at half the window, or narrow while it has no
+session open — while the monitored
 objects, the paths and the backups stay along the bottom where their wide
 tables want the room. Moving one with **Dock to the right** or **Dock
 below** is remembered for that tab alone. **Hide** folds the dock to one
 row that keeps the counts and the strip.
+
+The diagram always keeps room beside a dock down the right. In a smaller
+window the dock narrows first, then the shape list folds to its handle,
+then the inspector while nothing is selected; if the diagram still has no
+room, the dock sits below until the window is wide enough again. None of
+this changes what you chose: a panel you fold by hand stays folded, and one
+you bring back with its handle stays.
 
 **Open in its own window** — the window button beside it — moves the whole
 dock into a second window, which you can put on another screen: the
@@ -1353,10 +1361,15 @@ and Left and Right move a cursor along it (Shift for bigger steps), with the
 time and status at the cursor printed underneath. With no cursor it reads
 the time and status now.
 
-**Interface size.** The interface already follows the screen: its text and
-spacing are 13 px on a laptop and grow to 16 px on a 4K monitor. On top of
-that, **Settings ▸ Display ▸ Interface size** sets it from 85 % to
-140 % for this machine. The diagram keeps its own zoom either way.
+**Interface size.** The interface follows the window by itself: with
+**Settings ▸ Display ▸ Interface size** on **Auto**, the default, it is a
+little smaller in a laptop-sized window and a little larger on a big
+monitor. **Ctrl+Shift+=** and **Ctrl+Shift+−** (⌘⇧ on a Mac) make the whole
+interface bigger or smaller from anywhere, in steps of 10 % from 50 % to
+200 %, and **Ctrl+Shift+0** goes back to Auto; the size chosen is
+remembered on this machine, and the same setting offers 85 % to 140 % as
+buttons. **Ctrl+=** and **Ctrl+−** without Shift still zoom only the
+diagram.
 
 **High contrast.** Tick **High contrast** under **Settings ▸ Display**, or
 type *high contrast* into the command palette (**Ctrl+K**, then `>`), for

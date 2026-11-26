@@ -136,10 +136,13 @@ export function AppSettingsView({ at }: { at?: string } = {}) {
         <div className="cv-field cv-field-narrow">
           <span>{t('settings.uiScale')}</span>
           <div className="cv-seg" role="group" aria-label={t('settings.uiScale')} data-field="ui-scale">
-            {[0.85, 1, 1.15, 1.3, 1.4].map((v) => (
+            {/* Auto follows the window; a size set with Ctrl+Shift + or −
+                that is not one of these shows as its own button. */}
+            {(['auto', 0.85, 1, 1.15, 1.3, 1.4] as const).concat(typeof uiScale === 'number' && ![0.85, 1, 1.15, 1.3, 1.4].includes(uiScale) ? [uiScale as 1] : []).map((v) => (
               <button key={v} type="button" className={uiScale === v ? 'is-on' : ''} aria-pressed={uiScale === v}
+                data-scale={v}
                 onClick={() => useStore.getState().setSettings({ uiScale: v })}>
-                {Math.round(v * 100)} %
+                {v === 'auto' ? t('settings.uiScaleAuto') : `${Math.round(v * 100)} %`}
               </button>
             ))}
           </div>

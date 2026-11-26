@@ -296,8 +296,9 @@ export interface AppSettings {
   registerHiddenColumns: string[];
   highContrast: boolean;
   /** The chrome's size, as a multiple of the root size the screen
-   *  sets (0.85–1.4). A machine preference. The canvas's zoom is its own. */
-  uiScale: number;
+   *  sets (0.5–2), or 'auto' to follow the window's width. A machine
+   *  preference. The canvas's zoom is its own. */
+  uiScale: number | 'auto';
   /** The overview box, bottom-right. A view preference for this machine, like
    *  which panels are open — not part of any project. */
   minimap: boolean;
@@ -523,6 +524,9 @@ interface Store {
    *  tab's side, so discovering devices and the terminal open down the
    *  right without moving the wide tables there. */
   dockPlacements: Partial<Record<DockTab, 'bottom' | 'right'>>;
+  /** Window state: a right dock that does not fit beside a usable diagram
+   *  sits below for now, without changing the remembered side. */
+  dockBelowForRoom: boolean;
   setDockPlacement: (tab: DockTab, side: 'bottom' | 'right') => void;
   setDockTab: (tab: DockTab) => void;
   setDockMax: (on: boolean) => void;
@@ -1561,10 +1565,11 @@ export const useStore = create<Store>((set, get) => ({
     })()),
     uiScale: (() => {
       try {
-        const v = Number(localStorage.getItem('corelens.view.uiScale'));
-        return v >= 0.85 && v <= 1.4 ? v : 1;
+        const raw = localStorage.getItem('corelens.view.uiScale');
+        const v = Number(raw);
+        return raw !== null && raw !== 'auto' && v >= 0.5 && v <= 2 ? v : 'auto';
       } catch {
-        return 1;
+        return 'auto' as const;
       }
     })(),
     minimap: viewPref('minimap'),
@@ -1607,6 +1612,7 @@ export const useStore = create<Store>((set, get) => ({
   dockMax: false,
   dockDetached: false,
   dockPlacements: readDockPlacements(),
+  dockBelowForRoom: false,
   inspectorTab: 'status',
   backupHandover: null,
   discoverAdvanced: false,

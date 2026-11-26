@@ -1220,11 +1220,12 @@ export function Canvas() {
         if (goToViewpoint(Number(e.code.slice(5)) - 1)) e.preventDefault();
         return;
       }
-      if (mod && !e.altKey && (e.key === '=' || e.key === '+')) {
+      // With Shift these size the interface instead (App).
+      if (mod && !e.altKey && !e.shiftKey && (e.key === '=' || e.key === '+')) {
         // Ctrl+= in, Ctrl+− out, Ctrl+0 actual size.
         e.preventDefault();
         void rf.zoomIn({ duration: 120 });
-      } else if (mod && !e.altKey && (e.key === '-' || e.key === '_')) {
+      } else if (mod && !e.altKey && !e.shiftKey && (e.key === '-' || e.key === '_')) {
         e.preventDefault();
         void rf.zoomOut({ duration: 120 });
       } else if (mod && !e.altKey && !e.shiftKey && e.key === '0') {

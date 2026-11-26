@@ -113,6 +113,19 @@ await settle();
 check("a shape list folded by hand stays folded", (await width(".cv-palette")) === 0);
 await st(() => window.__cvStore.getState().setPaletteOpen(true));
 
+// Presenting with the terminal open on the right: the diagram is the whole window.
+for (const w of [1000, 1900]) {
+  await page.setViewportSize({ width: w, height: 900 });
+  await settle();
+  await page.locator(".react-flow__pane").click({ position: { x: 150, y: 300 } });
+  await page.keyboard.press("F5");
+  await settle();
+  const shown = await width(".react-flow");
+  check(`presenting at ${w} px fills the window, terminal open or not`, shown >= w - 4, `${shown}px of ${w}`);
+  await page.keyboard.press("Escape");
+  await settle();
+}
+
 // --- the keys -----------------------------------------------------------------
 await page.setViewportSize({ width: 1500, height: 900 });
 await settle();

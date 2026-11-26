@@ -99,6 +99,19 @@ const focused = () => page.evaluate(() => {
   check("and the digits go when Ctrl is let go", (await digit()) === "none", await digit());
   check("the digit is never part of the item's name", (await rail.locator('[role="tab"]').first().textContent()) === "Diagram");
   check("the tooltip names the shortcut", (await rail.locator('[role="tab"]').nth(2).getAttribute("title")) === "Monitor  Ctrl+3");
+
+  // Diagram from the rail puts the dock away, by click and by Ctrl+1.
+  await rail.locator('[role="tab"]').first().click();
+  await page.waitForTimeout(300);
+  check("Diagram on the rail switches to the diagram", (await page.locator(".cv-nav-item.is-current").innerText()) === "Diagram", await page.locator(".cv-nav-item.is-current").innerText());
+  check("and the dock is put away", (await page.locator('.cv-panel:not(.is-collapsed)').count()) === 0);
+  await page.keyboard.press("Control+3");
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Control+1");
+  await page.waitForTimeout(300);
+  check("Ctrl+1 does the same", (await page.locator(".cv-nav-item.is-current").innerText()) === "Diagram");
+  await page.keyboard.press("Control+3");
+  await page.waitForTimeout(300);
 }
 
 // --- something to aim at ---------------------------------------------------

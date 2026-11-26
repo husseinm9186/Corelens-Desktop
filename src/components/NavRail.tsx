@@ -83,10 +83,14 @@ export function NavRail() {
   const go = (mode: Mode) => {
     const s = useStore.getState();
     switch (mode) {
+      // The diagram alone: the dock folds to its strip as well, so a tab
+      // open beside the diagram is not left marked as the one showing. A
+      // dock in a window of its own stays where it is; shells keep running.
       case 'diagram':
         s.setRegisterOpen(false);
         s.setToolsOpen(false);
         s.setHelpOpen(false);
+        if (!s.dockDetached) s.setPanelOpen(false);
         return;
       case 'addresses':
         s.setRegisterOpen(true);

@@ -123,6 +123,10 @@ check("a screen over the dock puts the job line in the top bar instead", (await 
 await page.locator(".cv-nav-item", { hasText: /^Diagram$/ }).click();
 await page.waitForTimeout(300);
 check("and back", (await page.locator(".cv-topbar .cv-jobs").count()) === 0 && (await line.count()) === 1);
+// Diagram on the rail is the diagram alone: the dock is folded to its strip.
+check("Diagram on the rail folds the dock, the job line still in its strip", (await page.locator(".cv-panel.is-collapsed .cv-dock-strip .cv-job").count()) === 1);
+await page.locator(".cv-panel.is-collapsed button", { hasText: "Show status and events" }).click();
+await page.waitForTimeout(250);
 
 await page.locator(".cv-panel button", { hasText: /^Hide$/ }).click();
 await page.waitForTimeout(250);

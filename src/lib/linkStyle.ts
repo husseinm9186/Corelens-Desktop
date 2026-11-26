@@ -79,10 +79,13 @@ export interface LinkStroke {
  * and both still take the health pattern.
  */
 export function strokeFor(
-  data: Partial<Pick<LinkData, 'linkKind' | 'overlay' | 'layer3' | 'notes' | 'cableType' | 'lineStyle' | 'width'>>,
+  data: Partial<Pick<LinkData, 'linkKind' | 'overlay' | 'layer3' | 'notes' | 'cableType' | 'lineStyle' | 'width' | 'drawnCheck'>>,
   status: HealthStatus,
 ): LinkStroke {
-  const kind = kindOf(data);
+  // A drawn link the devices do not report is kept as what it then is, a
+  // logical link, unless a kind was chosen for it.
+  const unmet = data.drawnCheck === 'unmet' && (!data.linkKind || data.linkKind === 'auto');
+  const kind = unmet ? 'logical' : kindOf(data);
   const width = data.width ?? 2;
   const chosen = data.lineStyle === 'dashed' || data.lineStyle === 'dotted' || data.lineStyle === 'dash-dot';
   const dash = chosen ? dashFor(data.lineStyle, status) : (KIND_DASH[kind] ?? dashFor(data.lineStyle, status));

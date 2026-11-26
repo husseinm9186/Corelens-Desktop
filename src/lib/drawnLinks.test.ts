@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clearDrawnMarks, drawnLegend, drawnMark, fillDrawnLinks, isManagementPort, mediaOf, type DeviceReading } from './drawnLinks';
+import { strokeFor } from './linkStyle';
 import type { Neighbor } from './ipc';
 import type { TopoEdge, TopoNode } from '../state/store';
 import type { DeviceNodeData, LinkData } from '../types/domain';
@@ -92,6 +93,22 @@ describe('a drawn link no device reports', () => {
     expect(dataOf(got.edges, 'e1').drawnCheck).toBe('met');
   });
 
+  it('is kept, never removed, and drawn as a logical link', () => {
+    const got = fillDrawnLinks([SPINE, LEAF], [link('e1', 'sp', 'lf', { label: 'for the picture' })], [reading('sp', [])], id);
+    expect(got.edges.length).toBe(1);
+    expect(dataOf(got.edges, 'e1')).toMatchObject({ label: 'for the picture', drawnCheck: 'unmet' });
+    expect(strokeFor(dataOf(got.edges, 'e1'), 'unknown').dash).toBe(strokeFor({ linkKind: 'logical' }, 'unknown').dash);
+    // A kind somebody chose for it is still theirs.
+    expect(strokeFor({ drawnCheck: 'unmet', linkKind: 'tunnel' }, 'unknown').dash).toBe(strokeFor({ linkKind: 'tunnel' }, 'unknown').dash);
+  });
+
+  it('one drawn as a logical link on purpose is not checked at all', () => {
+    const drawn = [link('e1', 'sp', 'lf', { linkKind: 'logical' })];
+    const got = fillDrawnLinks([SPINE, LEAF], drawn, [reading('sp', [])], id);
+    expect(got.edges).toBe(drawn);
+    expect(got.unmet).toBe(0);
+  });
+
   it('a note\'s leader, a tunnel and a routed hop are not checked', () => {
     const drawn = [link('l', 'sp', 'lf', { kind: 'leader' }), link('t', 'sp', 'lf', { overlay: true }), link('r', 'sp', 'lf', { layer3: true })];
     const got = fillDrawnLinks([SPINE, LEAF], drawn, [reading('sp', [])], id);
@@ -107,10 +124,20 @@ describe('nothing is discovered', () => {
     expect(got.strangers).toBe(1);
   });
 
-  it('a cable between two drawn devices that nobody drew is counted, not drawn', () => {
+  it('a cable between two drawn devices that nobody drew is drawn, its ports filled in', () => {
     const got = fillDrawnLinks([SPINE, LEAF], [link('e1', 'sp', 'lf')], [reading('sp', [says('LEAF-1', 'Eth1/1', 'Eth1/49'), says('LEAF-1', 'Eth1/2', 'Eth1/50')])], id);
-    expect(got.edges.length).toBe(1);
-    expect(got).toMatchObject({ met: 1, undrawn: 1, added: 0 });
+    expect(got.edges.length).toBe(2);
+    expect(got).toMatchObject({ met: 1, undrawn: 0, added: 1, management: 0 });
+    const added = got.edges.find((e) => e.id !== 'e1')!;
+    expect([added.source, added.target]).toEqual(['sp', 'lf']);
+    expect(added.data).toMatchObject({ sourcePortLabel: 'Eth1/2', targetPortLabel: 'Eth1/50', drawnCheck: 'met', direction: 'none' });
+    expect((added.data as LinkData).linkKind).toBeUndefined();
+  });
+
+  it('two devices that are cabled and have nothing drawn between them are joined', () => {
+    const got = fillDrawnLinks([SPINE, LEAF], [], [reading('lf', [says('SPINE-1', 'Ethernet1/49', 'Ethernet1/1')])], id);
+    expect(got).toMatchObject({ added: 1, met: 0 });
+    expect(got.edges[0]!.data).toMatchObject({ sourcePortLabel: 'Eth1/49', targetPortLabel: 'Eth1/1' });
   });
 });
 
@@ -208,5 +235,70 @@ describe('the marks', () => {
     expect('drawnCheck' in (got.edges[0]!.data as object)).toBe(false);
     expect(got.edges[1]).toBe(edges[1]);
     expect(clearDrawnMarks([edges[1]!]).edges.length).toBe(1);
+  });
+});
+
+describe('where CDP and LLDP say nothing: by MAC address', () => {
+  // A firewall speaks neither protocol. The switch's MAC table says which
+  // of its ports learned which address; the firewall's own interfaces say
+  // whose address that is.
+  const SW = node('sw', 'ACCESS-SW', { deviceType: 'access-switch', addresses: [{ id: 'a', label: 'Mgmt', address: '192.0.2.2', isPrimary: true }] });
+  const FW = node('fw', 'FTD-1', { deviceType: 'firewall', addresses: [{ id: 'a', label: 'Mgmt', address: '192.0.2.10', isPrimary: true }] });
+  const SRV = node('sv', 'SERVER-1', { deviceType: 'server', addresses: [{ id: 'a', label: 'Mgmt', address: '192.0.2.20', isPrimary: true }] });
+  const switchSays = (macs: { port: string; mac: string }[], over: Partial<DeviceReading> = {}): DeviceReading => ({ ...reading('sw', []), macs, ...over });
+  const ftdSays = (own: { port: string; mac: string }[]): DeviceReading => ({ ...reading('fw', []), own });
+
+  it('fills in a drawn link from the port that learned the firewall\'s address', () => {
+    const got = fillDrawnLinks([SW, FW], [link('e1', 'fw', 'sw')], [
+      switchSays([{ port: 'GigabitEthernet1/0/5', mac: '00a6cafe0002' }, { port: 'GigabitEthernet1/0/7', mac: '5254000000aa' }]),
+      ftdSays([{ port: 'Ethernet1/1', mac: '00a6cafe0001' }, { port: 'Ethernet1/2', mac: '00a6cafe0002' }]),
+    ], id);
+    expect(dataOf(got.edges, 'e1')).toMatchObject({ sourcePortLabel: 'Eth1/2', targetPortLabel: 'Gi1/0/5', drawnCheck: 'met', drawnVia: 'mac' });
+    expect(got).toMatchObject({ met: 1, byMac: 1 });
+  });
+
+  it('draws the cable when nobody had', () => {
+    const got = fillDrawnLinks([SW, FW], [], [switchSays([{ port: 'Gi1/0/5', mac: '00a6cafe0002' }]), ftdSays([{ port: 'Ethernet1/2', mac: '00a6cafe0002' }])], id);
+    expect(got).toMatchObject({ added: 1, byMac: 1 });
+    expect(got.edges[0]!.data).toMatchObject({ drawnVia: 'mac', drawnCheck: 'met' });
+  });
+
+  it('finds a device it could not log in to through an ARP table, its own port left blank', () => {
+    const got = fillDrawnLinks([SW, FW], [link('e1', 'sw', 'fw')], [switchSays([{ port: 'Gi1/0/5', mac: '00a6cafe0002' }], { arp: [{ ip: '192.0.2.10', mac: '00a6cafe0002' }] })], id);
+    expect(dataOf(got.edges, 'e1')).toMatchObject({ sourcePortLabel: 'Gi1/0/5', targetPortLabel: '', drawnVia: 'mac' });
+  });
+
+  it('a port that learned two drawn devices is between switches, and joins neither', () => {
+    const got = fillDrawnLinks([SW, FW, SRV], [], [
+      switchSays([{ port: 'Te1/1/1', mac: '00a6cafe0002' }, { port: 'Te1/1/1', mac: '5254000000bb' }]),
+      ftdSays([{ port: 'Ethernet1/2', mac: '00a6cafe0002' }]),
+      { ...reading('sv', []), own: [{ port: 'eth0', mac: '5254000000bb' }] },
+    ], id);
+    expect(got).toMatchObject({ added: 0, byMac: 0 });
+  });
+
+  it('a port that learned many addresses is an uplink, and joins nothing', () => {
+    const many = Array.from({ length: 9 }, (_, i) => ({ port: 'Te1/1/1', mac: `5254000001${String(i).padStart(2, '0')}` }));
+    const got = fillDrawnLinks([SW, FW], [], [switchSays([...many, { port: 'Te1/1/1', mac: '00a6cafe0002' }]), ftdSays([{ port: 'Ethernet1/2', mac: '00a6cafe0002' }])], id);
+    expect(got.added).toBe(0);
+  });
+
+  it('a port a neighbour protocol already named is left to it', () => {
+    const got = fillDrawnLinks([SW, FW], [], [
+      switchSays([{ port: 'GigabitEthernet1/0/5', mac: '00a6cafe0002' }], { neighbors: [says('FTD-1', 'GigabitEthernet1/0/5', 'Ethernet1/2')] }),
+      ftdSays([{ port: 'Ethernet1/2', mac: '00a6cafe0002' }]),
+    ], id);
+    expect(got).toMatchObject({ added: 1, byMac: 0 });
+    expect((got.edges[0]!.data as LinkData).drawnVia).toBeUndefined();
+  });
+
+  it('where every interface shares one address, the firewall\'s port is not guessed', () => {
+    const got = fillDrawnLinks([SW, FW], [], [switchSays([{ port: 'Gi1/0/5', mac: '00a6cafe0001' }]), ftdSays([{ port: 'Ethernet1/1', mac: '00a6cafe0001' }, { port: 'Ethernet1/2', mac: '00a6cafe0001' }])], id);
+    expect(got.edges[0]!.data).toMatchObject({ sourcePortLabel: 'Gi1/0/5', targetPortLabel: '' });
+  });
+
+  it('the mark comes off with the others', () => {
+    const got = clearDrawnMarks([link('a', 'x', 'y', { drawnCheck: 'met', drawnVia: 'mac', sourcePortLabel: 'Gi1/0/5' })]);
+    expect('drawnVia' in (got.edges[0]!.data as object)).toBe(false);
   });
 });

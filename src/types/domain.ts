@@ -444,6 +444,9 @@ export interface LinkData extends Record<string, unknown> {
    *  time they were asked: 'met' where one of them reports it, 'unmet'
    *  where at least one was asked and neither does. Unset is never asked. */
   drawnCheck?: 'met' | 'unmet';
+  /** How Fill in drawn links found the cable, where it was not a neighbour
+   *  protocol: a switch's MAC table holding the other device's address. */
+  drawnVia?: 'mac';
   /** What its ports are made of, as the devices reported it. */
   media?: LinkMedia;
   /** What the link is physically made of, shown as a tag in its

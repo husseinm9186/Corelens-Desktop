@@ -51,6 +51,8 @@ const project = {
         node("mg", "MGMT-SW", 800, 0, "192.0.2.100", { deviceType: "access-switch" }),
         // Drawn, with nothing to ask it by.
         node("fw", "FIREWALL", 800, 300, "", { deviceType: "firewall" }),
+        // An FTD: neither CDP nor LLDP, found by its address in LEAF-2's MAC table.
+        node("ftd", "FTD-1", 1100, 300, "192.0.2.30", { deviceType: "firewall" }),
       ],
       edges: [
         link("s1", "sp", "l1"),            // confirmed, a QSFP
@@ -69,7 +71,9 @@ const ANSWERS = {
   "192.0.2.5": { neighbors: [said("LEAF-1", "Ethernet1/1", "Ethernet1/49"), said("LEAF-2", "Ethernet1/2", "Ethernet1/49"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/5"), said("NOT-ON-THE-PAGE", "Ethernet1/9", "Ethernet1/1", { addresses: [{ ip: "192.0.2.77", interface: null, isManagement: true }] })],
     ports: [{ port: "Eth1/1", media: "QSFP-100G-SR4", speed: "100G" }, { port: "Eth1/2", media: "10Gbase-SR", speed: "10G" }] },
   "192.0.2.1": { neighbors: [said("SPINE-1", "Ethernet1/49", "Ethernet1/1"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/1")], ports: [] },
-  "192.0.2.2": { neighbors: [said("SPINE-1", "Ethernet1/49", "Ethernet1/2"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/2")], ports: [] },
+  "192.0.2.2": { neighbors: [said("SPINE-1", "Ethernet1/49", "Ethernet1/2"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/2")], ports: [],
+    macs: [{ mac: "00a6cafe0002", port: "Ethernet1/10", vlan: "10" }, { mac: "5254000000aa", port: "Ethernet1/49", vlan: "10" }] },
+  "192.0.2.30": { neighbors: [], ports: [], own: [{ port: "Ethernet1/1", mac: "00a6cafe0001" }, { port: "Ethernet1/2", mac: "00a6cafe0002" }] },
 };
 
 const browser = await chromium.launch();
@@ -135,7 +139,7 @@ await (await paneMenu("Fill in drawn links from the devices")).click();
 await page.waitForTimeout(1200);
 const asked = (await st(() => window.__asked)).map((a) => a.device).sort();
 check("every drawn device with an address is asked, once, with its login",
-  JSON.stringify(asked) === JSON.stringify(["192.0.2.1", "192.0.2.100", "192.0.2.2", "192.0.2.5"]) &&
+  JSON.stringify(asked) === JSON.stringify(["192.0.2.1", "192.0.2.100", "192.0.2.2", "192.0.2.30", "192.0.2.5"]) &&
   (await st(() => window.__asked)).every((a) => a.credentialId === "cred-1"), JSON.stringify(asked));
 check("an address a device reported is never asked: nothing is discovered", !asked.includes("192.0.2.77"));
 check("no crawl, sweep, shell or anything else that reaches a device was started", (await st(() => window.__other)).length === 0, JSON.stringify(await st(() => window.__other)));
@@ -145,17 +149,32 @@ const by = (id) => after.find((e) => e.id === id);
 check("a confirmed link takes its port at each end, the way round it was drawn",
   by("s1").sourcePortLabel === "Eth1/1" && by("s1").targetPortLabel === "Eth1/49" && by("s1").drawnCheck === "met", JSON.stringify(by("s1")));
 check("and what its port is made of: a QSFP and an SFP", by("s1").media === "qsfp" && by("s2").media === "sfp", `${by("s1").media} ${by("s2").media}`);
-check("a drawn link no device reports is marked not found", by("x").drawnCheck === "unmet" && by("f").drawnCheck === "unmet");
-check("no device was added to the page", (await st(() => window.__cvStore.getState().doc.pages[0].nodes.length)) === 5);
+check("a drawn link no device reports is kept, as a logical link", by("x").drawnCheck === "unmet" && by("f").drawnCheck === "unmet");
+check("no device was added to the page", (await st(() => window.__cvStore.getState().doc.pages[0].nodes.length)) === 6);
 const mgmt = after.filter((e) => e.linkKind === "management");
-check("the three management links are drawn, though nobody drew them", mgmt.length === 3 && after.length === 7, `${mgmt.length} of ${after.length}`);
+check("the three management links are drawn, though nobody drew them", mgmt.length === 3 && after.length === 8, `${mgmt.length} of ${after.length}`);
+const ftdLink = after.find((e) => [e.source, e.target].includes("ftd"));
+check("the FTD, which speaks no neighbour protocol, is joined to the leaf port that learned its address",
+  ftdLink && ftdLink.drawnVia === "mac" && ftdLink.source === "l2" && ftdLink.sourcePortLabel === "Eth1/10" && ftdLink.targetPortLabel === "Eth1/2", JSON.stringify(ftdLink));
 check("each from a device's mgmt0 to the management switch's port",
   mgmt.every((e) => [e.sourcePortLabel, e.targetPortLabel].includes("mgmt0") && [e.source, e.target].includes("mg")), JSON.stringify(mgmt.map((e) => [e.sourcePortLabel, e.targetPortLabel])));
 
 const said1 = await message();
 check("the status line says what was asked, and that nothing else was contacted",
-  /Asked 3 of 4 drawn devices; nothing else was contacted/.test(said1), said1);
-check("what was confirmed, not found and added", /2 drawn links confirmed.*2 not found.*3 management \(3 added\)/.test(said1), said1);
+  /Asked 4 of 5 drawn devices; nothing else was contacted/.test(said1), said1);
+check("what was confirmed, kept as logical and drawn", /2 drawn links confirmed.*2 kept as logical links.*4 cables drawn that were missing \(3 management\)/.test(said1), said1);
+check("and how many were told by MAC address", /1 cable told by MAC address/.test(said1), said1);
+// The hover text is made while the pointer is on the link's band.
+const tipOf = async (edgeId) => {
+  const band = page.locator(`path.nodrag[data-id="${edgeId}"]`).first();
+  await band.dispatchEvent("pointerover", { buttons: 0, bubbles: true });
+  await page.waitForTimeout(200);
+  const text = await band.locator("title").first().textContent({ timeout: 2000 }).catch(() => "");
+  await band.dispatchEvent("pointerout", { bubbles: true });
+  return text;
+};
+check("a link found from the MAC table says so when pointed at", /Cable found from a switch’s MAC table/.test(await tipOf(ftdLink.id)), await tipOf(ftdLink.id));
+check("and a logical one says why it is", /Logical link: no device reports a cable here/.test(await tipOf("x")), await tipOf("x"));
 check("the neighbour that is not on the page, left off it", /1 neighbour (is|are) not on this page/.test(said1), said1);
 check("and the device that could not be asked, by name", /Could not ask: MGMT-SW/.test(said1), said1);
 
@@ -165,7 +184,9 @@ const rgb = (hex) => { const n = parseInt(hex.slice(1), 16); return `rgb(${n >> 
 const s1 = await strokeOf("s1"), s2 = await strokeOf("s2"), x = await strokeOf("x");
 const m = await strokeOf(mgmt[0].id);
 check("a QSFP link and an SFP link are two colours, neither the one it had", s1.stroke !== s2.stroke && s1.stroke !== before.stroke, `${before.stroke} → ${s1.stroke} / ${s2.stroke}`);
-check("the link not found is purple", x.stroke === rgb("#a45cf0"), x.stroke);
+check("the link no cable was found for is purple", x.stroke === rgb("#a45cf0"), x.stroke);
+const dash = (id) => page.locator(`.react-flow__edge[data-id="${id}"] path.react-flow__edge-path`).first().evaluate((el) => getComputedStyle(el).strokeDasharray);
+check("and dotted, the way a logical link is drawn", (await dash("x")) !== "none" && (await dash("s1")) === "none", `${await dash("x")} / ${await dash("s1")}`);
 check("a management link is sky blue", m.stroke === rgb("#5cc8f5"), m.stroke);
 check("and thinner than a cable", m.width < s1.width, `${m.width} vs ${s1.width}`);
 
@@ -174,7 +195,7 @@ check("and thinner than a cable", m.width < s1.width, `${m.width} vs ${s1.width}
 const legend = page.locator('[data-region="link-legend"]');
 const rows = await legend.locator(".cv-legend-item").evaluateAll((els) => els.map((e) => e.textContent.replace(/\s+/g, " ").trim()));
 check("a legend says what the link colours mean, for the ones on the page",
-  JSON.stringify(rows) === JSON.stringify(["SFP1", "QSFP1", "Management3", "Drawn, not found2"]), JSON.stringify(rows));
+  JSON.stringify(rows) === JSON.stringify(["SFP1", "QSFP1", "Management3", "Logical: no cable found2"]), JSON.stringify(rows));
 const swatch = await legend.locator(".cv-legend-item i").evaluateAll((els) => els.map((e) => getComputedStyle(e).backgroundColor));
 check("in the colours the links are drawn in", swatch[1] === s1.stroke && swatch[2] === m.stroke && swatch[3] === x.stroke, JSON.stringify(swatch));
 
@@ -182,18 +203,18 @@ check("in the colours the links are drawn in", swatch[1] === s1.stroke && swatch
 
 await (await paneMenu("Hide management links")).click();
 await page.waitForTimeout(500);
-check("hidden, the management links are not drawn", (await page.locator(".react-flow__edge").count()) === 4, String(await page.locator(".react-flow__edge").count()));
-check("but are still in the document", (await edges()).length === 7);
+check("hidden, the management links are not drawn", (await page.locator(".react-flow__edge").count()) === 5, String(await page.locator(".react-flow__edge").count()));
+check("but are still in the document", (await edges()).length === 8);
 check("and the legend says they are hidden", /Management3 · hidden/.test((await legend.textContent()).replace(/\s+/g, " ")));
 await (await paneMenu("Show management links")).click();
 await page.waitForTimeout(500);
-check("shown again, they are back", (await page.locator(".react-flow__edge").count()) === 7);
+check("shown again, they are back", (await page.locator(".react-flow__edge").count()) === 8);
 
 // ----------------------------------------------------------- asked again
 
 await (await paneMenu("Fill in drawn links from the devices")).click();
 await page.waitForTimeout(1200);
-check("asked again, nothing is drawn twice", (await edges()).length === 7 && /3 management \(0 added\)/.test(await message()), await message());
+check("asked again, nothing is drawn twice", (await edges()).length === 8 && /0 cables drawn that were missing/.test(await message()), await message());
 
 // One undo takes one asking back.
 await page.keyboard.press("Control+z");
@@ -212,7 +233,7 @@ const cleared = await edges();
 check("the marks come off and the ports stay", cleared.every((e) => e.drawnCheck === undefined) && cleared.find((e) => e.id === "s1").sourcePortLabel === "Eth1/1", JSON.stringify(cleared.map((e) => [e.id, e.drawnCheck, e.sourcePortLabel])));
 check("the link that was purple is no longer", (await strokeOf("x")).stroke !== rgb("#a45cf0"));
 check("through all of it, only the drawn devices were ever asked",
-  (await st(() => window.__asked)).every((a) => ["192.0.2.1", "192.0.2.2", "192.0.2.5", "192.0.2.100"].includes(a.device)) && (await st(() => window.__other)).length === 0);
+  (await st(() => window.__asked)).every((a) => ["192.0.2.1", "192.0.2.2", "192.0.2.5", "192.0.2.100", "192.0.2.30"].includes(a.device)) && (await st(() => window.__other)).length === 0);
 
 // --------------------------------------- a menu taller than the window
 

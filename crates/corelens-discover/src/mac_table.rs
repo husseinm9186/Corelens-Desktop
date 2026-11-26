@@ -15,7 +15,7 @@
 use crate::arp::normalise_mac;
 
 /// One learned address.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct MacEntry {
     /// Twelve lowercase hex digits.
     pub mac: String,

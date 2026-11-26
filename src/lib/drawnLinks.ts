@@ -6,14 +6,20 @@
  *
  * - a drawn link the devices confirm takes its port at each end, and what
  *   the port is made of (copper, an SFP, a QSFP);
- * - a drawn link no device reports is marked as not found, where at least
- *   one of its ends was asked — a link neither end could be asked about is
- *   left exactly as it was, because nothing is known about it;
- * - a link the devices report through a management port is drawn as a
- *   management link, whether or not it was drawn before;
+ * - a drawn link no device reports is never removed: it is kept as a
+ *   logical link (purple, dotted), where at least one of its ends was
+ *   asked — a link neither end could be asked about is left exactly as it
+ *   was, because nothing is known about it; one drawn as a logical link on
+ *   purpose is not checked;
+ * - a cable the devices report between two drawn devices that nobody drew
+ *   is drawn, its ports filled in; through a management port, as a
+ *   management link;
+ * - where CDP and LLDP say nothing — a firewall speaks neither — a cable is
+ *   told by MAC address: a switch port that learned the address of one of
+ *   another drawn device's interfaces, and of no other drawn device, and
+ *   few addresses at all, is that device's cable (see `macCables`);
  * - nothing else is added. A neighbour that is not on the page is not put
- *   on it, and a cable between two drawn devices that nobody drew is
- *   counted and left undrawn.
+ *   on it.
  *
  * Pure, so every rule here is tested without a device.
  */
@@ -30,6 +36,12 @@ export interface DeviceReading {
   neighbors: Neighbor[];
   /** What each of its ports is made of, as the device words it. */
   ports: { port: string; media: string; speed: string }[];
+  /** Its MAC address table, where it keeps one. */
+  macs?: { mac: string; port: string }[];
+  /** Its ARP table. */
+  arp?: { ip: string; mac: string }[];
+  /** Its own interfaces' MAC addresses. */
+  own?: { port: string; mac: string }[];
 }
 
 export interface DrawnLinksResult {
@@ -47,7 +59,15 @@ export interface DrawnLinksResult {
   undrawn: number;
   /** Neighbours the devices report that are not on the page. */
   strangers: number;
+  /** Cables told by MAC address, drawn or filled in. */
+  byMac: number;
 }
+
+/** More addresses than this learned on one port, and the port is taken to
+ *  lead to another switch rather than to one device: a firewall's or a
+ *  router's port shows its own address and perhaps a peer's or a virtual
+ *  one, not a crowd. */
+export const MAC_PORT_LIMIT = 8;
 
 /**
  * Whether a port is a device's management port rather than one of its
@@ -89,6 +109,8 @@ interface Found {
   aPort: string;
   b: string;
   bPort: string;
+  /** Told by MAC address rather than by a neighbour protocol. */
+  via?: 'mac';
 }
 
 export function fillDrawnLinks(
@@ -162,6 +184,9 @@ export function fillDrawnLinks(
     }
   }
 
+  const byMac = macCables(readings, found, byAddress, dataOf);
+  found.push(...byMac);
+
   const portMedia = new Map<string, string>();
   for (const r of readings) for (const p of r.ports) portMedia.set(`${r.nodeId}/${shortInterface(p.port)}`, p.media);
   const rank: Record<LinkMedia, number> = { ethernet: 1, sfp: 2, qsfp: 3 };
@@ -182,6 +207,8 @@ export function fillDrawnLinks(
   // not things a neighbour table reports.
   const checkable = (e: TopoEdge) => {
     const d = (e.data ?? {}) as LinkData;
+    // One drawn as a logical link or a tunnel on purpose is not a cable.
+    if (d.linkKind === 'logical' || d.linkKind === 'tunnel') return false;
     return dataOf.has(e.source) && dataOf.has(e.target) && e.source !== e.target && d.kind !== 'leader' && !d.overlay && !d.layer3;
   };
   const drawnByPair = new Map<string, TopoEdge[]>();
@@ -189,7 +216,7 @@ export function fillDrawnLinks(
 
   const patches = new Map<string, Partial<LinkData>>();
   const addedEdges: TopoEdge[] = [];
-  const result = { met: 0, unmet: 0, unasked: 0, management: 0, added: 0, undrawn: 0, strangers };
+  const result = { met: 0, unmet: 0, unasked: 0, management: 0, added: 0, undrawn: 0, strangers, byMac: byMac.length };
 
   /** The found cable's ports, the way round this drawn link runs. */
   const portsAlong = (e: TopoEdge, f: Found) => (e.source === f.a ? [f.aPort, f.bPort] : [f.bPort, f.aPort]) as [string, string];
@@ -203,6 +230,7 @@ export function fillDrawnLinks(
       sourcePortLabel: sourcePort || had.sourcePortLabel || '',
       targetPortLabel: targetPort || had.targetPortLabel || '',
       drawnCheck: 'met',
+      drawnVia: f.via,
       ...(media ? { media } : {}),
       ...(mgmt ? { linkKind: 'management' as const } : {}),
     });
@@ -254,12 +282,10 @@ export function fillDrawnLinks(
         result.unasked += 1;
       }
     }
-    // Reported, and not drawn: a management link is drawn; a cable is not.
+    // Reported, and not drawn: drawn now, as a management link where it
+    // is on a management port.
     for (const f of reported) {
-      if (!management(f)) {
-        result.undrawn += 1;
-        continue;
-      }
+      const mgmt = management(f);
       const media = mediaFor(f);
       addedEdges.push({
         id: newId(),
@@ -277,12 +303,13 @@ export function fillDrawnLinks(
           enabled: true,
           maintenance: false,
           healthRule: { type: 'both-endpoints' },
-          linkKind: 'management',
+          ...(mgmt ? { linkKind: 'management' as const } : {}),
           drawnCheck: 'met',
+          ...(f.via ? { drawnVia: f.via } : {}),
           ...(media ? { media } : {}),
         } as LinkData,
       } as TopoEdge);
-      result.management += 1;
+      if (mgmt) result.management += 1;
       result.added += 1;
     }
   }
@@ -294,17 +321,111 @@ export function fillDrawnLinks(
   return { edges: patches.size || addedEdges.length ? [...next, ...addedEdges] : (edges as TopoEdge[]), ...result };
 }
 
+/**
+ * Cables told by MAC address, for the ports no neighbour protocol named.
+ *
+ * Whose an address is: a drawn device's own interface listing, or, for a
+ * device that could not be asked, the ARP entry of the address it is drawn
+ * with. An address two drawn devices claim is nobody's. Then, for each
+ * switch that gave its MAC table, each port that learned the addresses of
+ * exactly one other drawn device, and few addresses at all, is a cable to
+ * it — on that device's interface whose address it is, where exactly one
+ * of its interfaces has it, and blank otherwise. A port a neighbour
+ * protocol already reported is left to it, and so is a pair of devices it
+ * already found a cable between.
+ */
+function macCables(
+  readings: readonly DeviceReading[],
+  known: readonly Found[],
+  byAddress: ReadonlyMap<string, string>,
+  dataOf: ReadonlyMap<string, DeviceNodeData>,
+): Found[] {
+  // address → its device, and the interfaces of it that have it.
+  const owner = new Map<string, { nodeId: string; ports: Set<string> } | null>();
+  const claim = (mac: string, nodeId: string, port: string | null) => {
+    const m = mac.toLowerCase();
+    const had = owner.get(m);
+    if (had === null) return;
+    if (had && had.nodeId !== nodeId) {
+      owner.set(m, null);
+      return;
+    }
+    const entry = had ?? { nodeId, ports: new Set<string>() };
+    if (port) entry.ports.add(shortInterface(port));
+    owner.set(m, entry);
+  };
+  const ownRead = new Set<string>();
+  for (const r of readings) {
+    for (const o of r.own ?? []) {
+      claim(o.mac, r.nodeId, o.port);
+      ownRead.add(r.nodeId);
+    }
+  }
+  for (const r of readings) {
+    for (const a of r.arp ?? []) {
+      const nodeId = byAddress.get(bare(a.ip));
+      // Only for a device whose own listing was not read: its own word wins.
+      if (nodeId && nodeId !== r.nodeId && !ownRead.has(nodeId)) claim(a.mac, nodeId, null);
+    }
+  }
+
+  const pairKey = (x: string, y: string) => [x, y].sort().join('::');
+  const pairs = new Set(known.map((f) => pairKey(f.a, f.b)));
+  const out: Found[] = [];
+  for (const r of readings) {
+    if (!r.macs?.length || !dataOf.has(r.nodeId)) continue;
+    const named = new Set(r.neighbors.map((n) => shortInterface(n.localInterface ?? '')).filter(Boolean));
+    for (const f of known) {
+      if (f.a === r.nodeId && f.aPort) named.add(f.aPort);
+      if (f.b === r.nodeId && f.bPort) named.add(f.bPort);
+    }
+    const onPort = new Map<string, Set<string>>();
+    for (const e of r.macs) {
+      const port = shortInterface(e.port);
+      if (!port) continue;
+      onPort.set(port, (onPort.get(port) ?? new Set()).add(e.mac.toLowerCase()));
+    }
+    for (const [port, macs] of onPort) {
+      if (named.has(port) || macs.size > MAC_PORT_LIMIT) continue;
+      const devices = new Map<string, Set<string>>();
+      for (const mac of macs) {
+        const o = owner.get(mac);
+        if (!o || o.nodeId === r.nodeId) continue;
+        const ports = devices.get(o.nodeId) ?? new Set<string>();
+        for (const p of o.ports) ports.add(p);
+        // One address on two of its interfaces says nothing about which.
+        if (o.ports.size > 1) ports.add('\u0000ambiguous');
+        devices.set(o.nodeId, ports);
+      }
+      if (devices.size !== 1) continue;
+      const [other, ports] = [...devices][0]!;
+      if (pairs.has(pairKey(r.nodeId, other))) continue;
+      const theirs = [...ports];
+      const bPort = theirs.length === 1 && !theirs[0]!.startsWith('\u0000') ? theirs[0]! : '';
+      // The same cable seen from the other switch's table fills its blank.
+      const same = out.find((x) => x.a === other && x.b === r.nodeId);
+      if (same) {
+        same.bPort ||= port;
+        continue;
+      }
+      out.push({ a: r.nodeId, aPort: port, b: other, bPort, via: 'mac' });
+    }
+  }
+  return out;
+}
+
 /** The marks this leaves on a link, taken off again. The ports it filled in
  *  stay: they are what the devices said. */
 export function clearDrawnMarks(edges: readonly TopoEdge[]): { edges: TopoEdge[]; cleared: number } {
   let cleared = 0;
   const next = edges.map((e) => {
     const d = (e.data ?? {}) as LinkData;
-    if (d.drawnCheck === undefined && d.media === undefined) return e;
+    if (d.drawnCheck === undefined && d.media === undefined && d.drawnVia === undefined) return e;
     cleared += 1;
     const rest = { ...d };
     delete rest.drawnCheck;
     delete rest.media;
+    delete rest.drawnVia;
     return { ...e, data: rest } as TopoEdge;
   });
   return { edges: cleared ? next : (edges as TopoEdge[]), cleared };

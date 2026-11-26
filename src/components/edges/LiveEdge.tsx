@@ -845,6 +845,8 @@ function LiveEdgeInner(props: EdgeProps) {
 
   const tooltip = [
     portLine,
+    // What Fill in drawn links made of it, where it found or did not find it.
+    data.drawnCheck === 'unmet' ? t('drawn.tip.logical') : data.drawnVia === 'mac' ? t('drawn.tip.mac') : null,
     `Health: ${STATUS_LABEL[status]}`,
     `Rule: ${ruleText}`,
     liveProbe ? `Target: ${liveProbe.target}` : null,

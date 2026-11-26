@@ -1019,30 +1019,44 @@ Only the vault's reference is sent; the password never leaves the vault.
 **A diagram you drew, checked against its own devices.** Right-click an
 empty part of the canvas and choose **Fill in drawn links from the
 devices**. Every device drawn on the page that has an address and a login
-is asked who is on its ports — its CDP and LLDP tables, and its own port
-table — and nothing else is contacted: a neighbour a device reports is never
-dialled, and one that is not on the page is not put on it. What the devices
-say is matched to what you drew, as one undo step:
+is asked who is on its ports — its CDP and LLDP tables, its own port
+table, and, for what speaks no neighbour protocol, its MAC address table,
+its ARP table and its interfaces' MAC addresses — and nothing else is
+contacted: a neighbour a device reports is never dialled, and one that is
+not on the page is not put on it. What the devices say is matched to what
+you drew, as one undo step:
 
 - **A drawn link the devices confirm** takes its port at each end and is
   coloured by what the port is made of: Ethernet (copper), SFP or QSFP. That
   comes from the type the device prints for the port; where it prints none,
   from the port's name (`Te…` is an SFP, `Hu…` a QSFP). A Nexus names every
   port `Ethernet`, so a port it gives no type for is left uncoloured.
-- **A drawn link no device reports** turns **purple**, where at least one of
-  its ends was asked. A link whose ends could not be asked is left exactly
-  as it was; the status line says how many.
+- **A cable the devices report between two drawn devices that you did not
+  draw** is drawn, with its ports filled in.
+- **A drawn link no device reports is never removed.** Where at least one of
+  its ends was asked, it is kept as a **logical link**: purple and dotted,
+  "Logical: no cable found" in the legend — a link drawn to illustrate
+  something stays exactly where you put it. A link whose ends could not be
+  asked is left as it was; the status line says how many. A link you set to
+  **Logical** or **Tunnel** yourself is not checked at all.
+- **Devices that speak neither CDP nor LLDP** — an FTD, most firewalls —
+  are found by MAC address: a switch port that learned the address of one
+  of the device's interfaces, and of no other drawn device, is its cable,
+  on that interface. A device Corelens cannot log in to is found the same
+  way through another device's ARP table, its own port left blank. A port
+  that learned more than eight addresses leads to another switch and is
+  left alone. Such a link says it was found from the MAC table, and the
+  status line counts them. These readers are built from the vendors'
+  documentation and say so until a device's own output has confirmed them.
 - **Management links** — a cable on a device's `mgmt0`, `Management1`,
   `fxp0`, or a switch's `Gi0/0` — are drawn in **sky blue**, thinner than a
-  cable, including ones you had not drawn. **Hide management links** on the
-  same menu takes them off the page and out of exports without deleting
-  them.
-- **Nothing else is added.** A cable the devices report between two drawn
-  devices that you did not draw is counted in the status line, not drawn.
+  cable. **Hide management links** on the same menu takes them off the page
+  and out of exports without deleting them.
 
 A legend at the top left of the canvas says what each colour means, for the
 colours on the page; exported drawings carry the same key. A colour you gave
-a link yourself is kept, except that a link not found is always purple.
+a link yourself is kept, except that a logical link with no cable found is
+always purple.
 **Clear the marks the devices left on links** takes the colours off again
 and leaves the ports. A device is recognised by its serial number, then its
 name or hostname, then the address it is managed on.

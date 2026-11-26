@@ -2,9 +2,10 @@
  * Fill in drawn links from the devices: the button's own work.
  *
  * Every device drawn on the page in front that has an address and a login
- * is asked who is on its ports, a few at a time. Only those devices: what
- * one of them reports is never dialled, and a neighbour that is not on the
- * page is not put on it. What they said is then matched to what is drawn by
+ * is asked who is on its ports — its neighbour tables, and its MAC, ARP and
+ * interface tables for what speaks no neighbour protocol — a few at a
+ * time. Only those devices: what one of them reports is never dialled, and
+ * a neighbour that is not on the page is not put on it. What they said is then matched to what is drawn by
  * `fillDrawnLinks`, as one undo step.
  */
 import { ipc } from '../lib/ipc';
@@ -55,7 +56,7 @@ export async function fillDrawnFromDevices() {
         const [address, target] = targets[next++]!;
         try {
           const said = await ipc.getDeviceLinks(address, target.credentialId);
-          for (const nodeId of target.nodeIds) readings.push({ nodeId, neighbors: said.neighbors, ports: said.ports });
+          for (const nodeId of target.nodeIds) readings.push({ nodeId, neighbors: said.neighbors, ports: said.ports, macs: said.macs, arp: said.arp, own: said.own });
         } catch {
           failed.push(target.label);
         }
@@ -76,7 +77,7 @@ export async function fillDrawnFromDevices() {
     const links = (count: number) => t('drawn.plural.links', { count });
     useStore.getState().setStatusMessage(
       t('drawn.done', { asked: targets.length - failed.length, count: targets.length, met: links(got.met), unmet: got.unmet, management: got.management, added: got.added }) +
-        (got.undrawn ? t('drawn.doneUndrawn', { undrawn: t('drawn.plural.cables', { count: got.undrawn }) }) : '') +
+        (got.byMac ? t('drawn.doneByMac', { cables: t('drawn.plural.cables', { count: got.byMac }) }) : '') +
         (got.strangers ? t('drawn.doneStrangers', { strangers: t('drawn.plural.neighbours', { count: got.strangers }) }) : '') +
         (got.unasked ? t('drawn.doneUnasked', { unasked: links(got.unasked) }) : '') +
         (failed.length ? t('drawn.doneFailed', { names: failed.slice(0, 6).join(', ') + (failed.length > 6 ? '…' : '') }) : ''),

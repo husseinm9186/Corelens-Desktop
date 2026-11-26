@@ -2,6 +2,71 @@
 
 Newest first.
 
+## 2.22.2 — 2026-11-26
+
+The number jumps from 2.19.0 so that this and Corelens Desktop AI carry the
+same number for the same work; there is no 2.20 or 2.21 of this product.
+
+**Fixed**
+- **The terminal is no longer logged out by the device's idle timeout.**
+  The keepalive kept the connection up, but a switch's `exec-timeout`
+  counts only what is typed, and logged the session out anyway. A new
+  **Keep the command line awake** tick, on by default, makes each
+  keepalive also send a space and a backspace. They cancel out, and they go
+  only at a bare prompt with nothing typed since the last one: never into
+  a half-typed command, a `--More--` or a question, and never a newline.
+- **Diagram on the rail goes back to the diagram.** With Discover, the
+  terminal or another dock tab open, pressing **Diagram** (or Ctrl+1) did
+  nothing. It now puts the dock away; open sessions keep running, and a
+  dock in a window of its own stays open.
+- **Present (F5) fills the screen** again. With a dock open down the right,
+  the diagram was drawn in a narrow strip.
+- **The diagram keeps its room beside the terminal.** In a laptop-sized
+  window the terminal narrows first, then the shape list folds, then the
+  inspector while nothing is selected; if there is still no room the
+  terminal sits below until the window is wide enough again. An empty
+  terminal tab opens narrow.
+- **Importing a project with its saved logins** on the start screen said
+  "Open a project first". The passphrase is now tried first, then the
+  project is made and the logins go into it.
+- **Imported logins stay attached.** They were saved under new ids while
+  the project still named the old ones, so they were "forgotten" the next
+  time Settings was opened.
+- **Types and Filter** on the canvas strip no longer look pressed while
+  they are off.
+- **An FTD can be backed up.** Its command line greets a login with a bare
+  `>` and no hostname, which was never recognised as a prompt; and a backup
+  insisted on `enable`, which an FTD does not have. It is now backed up with
+  `show running-config`. Built from Cisco's documentation; not yet confirmed
+  on a real FTD.
+
+**New**
+- **Availability report.** **Export ▸ Availability report (HTML)** turns
+  every check's recorded history into a report for a customer: summary
+  tiles, wide events (many checks down at the same moment), the checks that
+  were down throughout, availability by group, and each check's timeline in
+  your time zone. It prints to PDF from the browser.
+- **Import a project into another one.** **Import… ▸ From a project** reads
+  a `.corelens` file and lists its pages. **Add to this project** brings the
+  ticked pages in with new ids, in one Undo step, and can bring the file's
+  saved logins with their passphrase. **Open as a separate project** saves
+  and closes this project and imports the file as its own.
+- **Fill in drawn links from the devices** now draws the cables it finds
+  between devices on the page that nobody drew, with their ports. A link
+  you drew that no device reports is never removed: it is kept as a logical
+  link, purple and dotted. Links set to Logical or Tunnel are left alone.
+- **Fill in finds what speaks no CDP or LLDP** — most firewalls — by MAC
+  address: the switch port that learned one of its interfaces' addresses is
+  its cable. Such a link says it came from the MAC table. It still asks only
+  the devices on the page, and only reads.
+- **The interface scales.** **Settings ▸ Display ▸ Interface size** has
+  **Auto**, the default. **Ctrl+Shift+=** and **Ctrl+Shift+−** size the
+  whole interface from 50 % to 200 %, and **Ctrl+Shift+0** goes back to
+  Auto.
+
+**Faster**
+- One element fewer for each link on the diagram.
+
 ## 2.19.0 — 2026-11-26
 
 **Settings in two places, by whose they are**

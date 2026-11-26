@@ -74,11 +74,11 @@ export function CanvasTypeFilter() {
   return (
     <details className="cv-dropdown cv-type-filter">
       <summary
-        className={`cv-btn cv-btn-small${chosen.length > 0 ? ' is-on' : ''}`}
+        className={`cv-icon-btn${chosen.length > 0 ? ' is-on' : ''}`}
         aria-label={chosen.length > 0 ? `Filter by type (${hidden} hidden)` : 'Filter by type'}
         title={t('canvasTypeFilter.showOnlyTheKinds')}
       >
-        <ChromeIcon name="types" />{chosen.length > 0 ? ` ${hidden} hidden` : ' Types'}
+        <ChromeIcon name="types" /><span className="cv-icon-word">{chosen.length > 0 ? `${hidden} hidden` : 'Types'}</span>
       </summary>
       <div className="cv-dropdown-menu cv-type-filter-menu">
         {counts.map(([t, count]) => (

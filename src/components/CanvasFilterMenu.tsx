@@ -53,8 +53,8 @@ export function CanvasFilterMenu() {
 
   return (
     <details className="cv-dropdown cv-filter-menu">
-      <summary className={`cv-btn${active ? ' is-on' : ''}`} aria-label={active ? 'Filter the canvas (on)' : 'Filter the canvas'}>
-        <ChromeIcon name="filter" />{hidden > 0 ? ` Filter — ${hidden} hidden` : active ? ' Filter · on' : ' Filter'}
+      <summary className={`cv-icon-btn${active ? ' is-on' : ''}`} aria-label={active ? 'Filter the canvas (on)' : 'Filter the canvas'}>
+        <ChromeIcon name="filter" /><span className="cv-icon-word">{hidden > 0 ? `Filter — ${hidden} hidden` : active ? 'Filter · on' : 'Filter'}</span>
       </summary>
       <div className="cv-dropdown-menu cv-filter-fields">
         <p className="cv-help">{t('canvasFilterMenu.whatDoesNotMatch')}</p>

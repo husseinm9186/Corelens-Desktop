@@ -236,6 +236,22 @@ await page.waitForTimeout(300);
   }
 }
 
+// The strip's menus look alike: Types and Filter read like Arrange, with no
+// frame of their own until one of them is on.
+{
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await page.waitForTimeout(300);
+  const look = (sel) => page.locator(sel).evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { border: cs.borderTopColor, bg: cs.backgroundColor };
+  });
+  const arrange = await look(".cv-arrange-menu > summary");
+  for (const [name, sel] of [["Types", ".cv-type-filter > summary"], ["Filter", ".cv-filter-menu > summary"]]) {
+    const it = await look(sel);
+    check(`${name}, while off, looks like Arrange beside it: no frame`, it.border === arrange.border && it.bg === arrange.bg, JSON.stringify({ it, arrange }));
+  }
+}
+
 await browser.close();
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);

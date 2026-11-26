@@ -37,8 +37,8 @@ export async function openSsh(nodeId: string, data: DeviceNodeData, via?: { addr
   try {
     // A size the device can use straight away; the terminal tells it the real
     // one as soon as it has been laid out.
-    const { keepaliveSeconds, logByDefault } = store.settings.terminal;
-    const id = await ipc.sshOpen(plan.address, plan.credentialId, { cols: 120, rows: 30 }, undefined, keepaliveSeconds, via?.address);
+    const { keepaliveSeconds, keepAwake, logByDefault } = store.settings.terminal;
+    const id = await ipc.sshOpen(plan.address, plan.credentialId, { cols: 120, rows: 30 }, undefined, keepaliveSeconds, via?.address, keepAwake);
     useStore.getState().openSshTab({ id, address: plan.address, label: plan.label, nodeId, status: 'open', credentialId: plan.credentialId, ...(via ? { via } : {}) });
     useStore.getState().setStatusMessage(null);
     // Logging every session without being asked each time.

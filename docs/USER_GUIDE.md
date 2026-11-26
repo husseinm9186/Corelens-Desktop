@@ -1150,12 +1150,19 @@ client to hop from and says so.
   configuration folder has been chosen; **Settings ▸ Start every session
   logging** turns that off.
 - **Copy on select** — highlighting text copies it. On to begin with.
-- **Keepalive** — how often, in seconds, to tell the device the session is
-  still there, so its idle timer does not close it. **Nothing is typed into the
-  session**; this is an SSH-level message. **Last confirmed** says when the
-  connection last took one. Set it to 0 to turn it off. A device with its own
-  `exec-timeout` will still close the session on its own schedule — this stops
-  the idle timers and the NAT translations in between, not the device itself.
+- **Keepalive** — how often, in seconds, to tell the connection the session
+  is still there, so a firewall or NAT in between does not drop it. This is an
+  SSH-level message. **Last confirmed** says when the connection last took
+  one. Set it to 0 to turn it off.
+- **Keep the command line awake** — on by default. A device's own idle
+  timeout (`exec-timeout` and its kin) counts only what is typed, so an
+  SSH keepalive alone does not stop "Inactive timeout reached, logging out".
+  With this on, each keepalive also sends a space and a backspace, which
+  cancel out. They go only when the line is a bare prompt (`LEAF-05#`,
+  `router>`, `$`) and you typed nothing since the last one. Nothing is sent
+  into a half-typed command, at a `--More--` or at a question, and never a
+  newline. The keepalive interval has to be shorter than the device's
+  timeout.
 
 **The project's own login.** **Settings** holds one SSH and one SNMP
 login for the whole project: **Save** puts it in the encrypted vault, **Replace**
@@ -1613,6 +1620,20 @@ The **Export** menu gives you:
 - **Print / save as PDF** — opens the print dialog with the canvas only
 - **Events as CSV** — every state transition with timestamp, object, target,
   probe type, RTT and the failure text
+- **Availability report (HTML)** — what every check did over the whole
+  recorded history, written to hand to a customer. Open it in a browser and
+  print it to PDF from there. It holds:
+  - tiles: checks reported, up and down at the end, how many had an
+    outage, and wide events;
+  - **wide events**: three or more checks that went down within 90 seconds
+    of one another, with when they were all back. That pattern usually
+    means a shared network path, not the services;
+  - the checks that were down for the whole period;
+  - availability by check, grouped by the first part of a check's name
+    (`PROD · Portal · app:443` is in PROD) with devices last;
+  - each check's timeline, newest first, with how long each state lasted,
+    in your time zone and time format;
+  - checks whose target never resolved, set apart and not counted.
 - **Devices and links**, **Cable schedule**, **Ports**, **VLANs** and **Probe
   results as CSV** — the pages chosen under **Pages** at the top of the
   menu: this page, or all of them

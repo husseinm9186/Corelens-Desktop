@@ -1107,11 +1107,12 @@ impl Shell {
     /// Tells the device we are still here, without typing anything into the
     /// session.
     ///
-    /// This is an SSH-level global request. **Nothing is ever written to the
-    /// shell to keep it alive** — a newline sent into somebody's half-typed
-    /// command line is how a keepalive turns into a configuration change.
-    /// What it stops is the idle timer on the device, and the NAT or firewall
-    /// in between quietly dropping a connection nobody is using.
+    /// This is an SSH-level global request, and writes nothing to the shell:
+    /// a newline sent into somebody's half-typed command line is how a
+    /// keepalive turns into a configuration change. What it stops is the NAT
+    /// or firewall in between quietly dropping a connection nobody is using.
+    /// A device's own CLI idle timer counts only what arrives in the session,
+    /// which is what [`Shell::stay_awake`] adds, carefully.
     ///
     /// It cannot promise the device answered: SSH keepalives are fire and
     /// forget unless the peer chooses to reply. What it does prove is that
@@ -1125,6 +1126,21 @@ impl Shell {
                 host: self.host.clone(),
                 source: e,
             })
+    }
+
+    /// A keepalive tick: the SSH keepalive, and, when `awake` says the line
+    /// is a bare prompt nobody is typing at, a space and a backspace so the
+    /// device's own idle timer is reset too (see [`crate::awake`]). Returns
+    /// whether the command line was nudged.
+    pub async fn stay_awake(&mut self, awake: &mut crate::awake::KeepAwake) -> Result<bool, SshError> {
+        self.keepalive().await?;
+        match awake.nudge() {
+            Some(bytes) => {
+                self.send(bytes).await?;
+                Ok(true)
+            }
+            None => Ok(false),
+        }
     }
 
     /// The window changed size, so the device should rewrap.

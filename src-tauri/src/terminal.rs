@@ -43,8 +43,9 @@ enum Instruction {
     LogTo(PathBuf),
     /// Stop writing the transcript. The file is left where it is.
     LogStop,
-    /// How often to tell the device we are still here, or never.
-    Keepalive(Option<Duration>),
+    /// How often to tell the device we are still here, or never, and
+    /// whether to keep its command line awake on each tick.
+    Keepalive(Option<Duration>, Option<bool>),
     /// A break on a serial console. An SSH session has no such thing.
     Break,
     Close,
@@ -170,6 +171,7 @@ pub async fn ssh_open(
     rows: Option<u32>,
     keepalive_seconds: Option<u64>,
     via: Option<String>,
+    keep_awake: Option<bool>,
 ) -> CmdResult<String> {
     state.limiter.allow(crate::ratelimit::Job::SshSession)?;
     let address = address.trim().to_string();
@@ -270,6 +272,9 @@ pub async fn ssh_open(
     // the next send to it waits forever on a channel nobody is reading.
     let registry = Arc::clone(&state.sessions);
     let mut every = keepalive_seconds.filter(|s| *s > 0).map(Duration::from_secs);
+    // On unless switched off: the device's own idle timer counts only what
+    // arrives in the session, which the SSH keepalive is not.
+    let mut awake = corelens_discover::awake::KeepAwake::new(keep_awake.unwrap_or(true));
     tauri::async_runtime::spawn(async move {
         // The transcript, when one is asked for: the file it is appended to
         // and the state machine that makes it readable.
@@ -288,6 +293,7 @@ pub async fn ssh_open(
                 // Bytes from the device go straight to the window.
                 chunk = shell.read() => match chunk {
                     Some(bytes) => {
+                        awake.saw(&bytes);
                         if let Some((path, file)) = log.as_mut() {
                             let readable = shaper.feed(&bytes);
                             if !readable.is_empty() {
@@ -315,7 +321,7 @@ pub async fn ssh_open(
                 },
                 // Still here.
                 _ = ticker.tick(), if every.is_some() => {
-                    if let Err(e) = shell.keepalive().await {
+                    if let Err(e) = shell.stay_awake(&mut awake).await {
                         break describe(e);
                     }
                     let _ = emitter.emit("corelens://ssh", SessionEvent::Alive {
@@ -327,6 +333,7 @@ pub async fn ssh_open(
                 instruction = instructions.recv() => match instruction {
                     None | Some(Instruction::Close) => break "Closed.".to_string(),
                     Some(Instruction::Send(bytes)) => {
+                        awake.typed();
                         if let Err(e) = shell.send(&bytes).await {
                             break describe(e);
                         }
@@ -364,7 +371,10 @@ pub async fn ssh_open(
                     }
                     // A serial line's signal; there is none to send here.
                     Some(Instruction::Break) => {}
-                    Some(Instruction::Keepalive(next)) => {
+                    Some(Instruction::Keepalive(next, keep)) => {
+                        if let Some(keep) = keep {
+                            awake.set_enabled(keep);
+                        }
                         every = next.filter(|d| !d.is_zero());
                         ticker = tokio::time::interval(every.unwrap_or(Duration::from_secs(3600)));
                         ticker.tick().await;
@@ -501,7 +511,7 @@ pub async fn console_open(
                     }
                     // A serial line has no window size to be told and no
                     // connection to keep alive.
-                    Some(Instruction::Resize(..) | Instruction::Keepalive(_)) => {}
+                    Some(Instruction::Resize(..) | Instruction::Keepalive(..)) => {}
                     Some(Instruction::LogTo(path)) => {
                         match open_session_log(&path) {
                             Ok(file) => {
@@ -674,11 +684,13 @@ pub async fn ssh_keepalive(
     state: State<'_, AppState>,
     id: String,
     seconds: Option<u64>,
+    keep_awake: Option<bool>,
 ) -> CmdResult<()> {
     let to_device = state.sessions.sender(&id)?;
     to_device
         .send(Instruction::Keepalive(
             seconds.filter(|s| *s > 0).map(Duration::from_secs),
+            keep_awake,
         ))
         .await
         .map_err(|_| "That session is no longer open.".to_string())

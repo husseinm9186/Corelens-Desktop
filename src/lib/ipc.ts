@@ -1114,6 +1114,8 @@ export type StoredSettings = Partial<{
   sshFontSize: string;
   sshColourise: string;
   sshKeepaliveSeconds: string;
+  /** "false" when the command line is not to be kept awake. */
+  sshKeepAwake: string;
   consoleBaud: string;
   sshLogByDefault: string;
   /** Where a plain **SSH to this device** goes: `panel` or `external`. */
@@ -1702,10 +1704,13 @@ export const ipc = {
     /** A neighbour's address to go through, for a device this machine
      *  cannot reach itself. */
     via?: string,
+    /** On each keepalive, a space and a backspace at a bare prompt, so the
+     *  device's own idle timer does not log the session out. */
+    keepAwake?: boolean,
   ) {
     if (!isDesktop) throw new BackendUnavailable('An SSH session');
     return invoke<string>('ssh_open', {
-      address, credentialId, port, cols: size.cols, rows: size.rows, keepaliveSeconds,
+      address, credentialId, port, cols: size.cols, rows: size.rows, keepaliveSeconds, keepAwake,
       // Left out, not null, when the session is direct.
       ...(via ? { via } : {}),
     });
@@ -1722,8 +1727,8 @@ export const ipc = {
   },
   /** How often this session says it is still there. 0 or undefined
    *  turns it off. */
-  sshKeepalive(id: string, seconds: number | undefined) {
-    return invoke<void>('ssh_keepalive', { id, seconds });
+  sshKeepalive(id: string, seconds: number | undefined, keepAwake?: boolean) {
+    return invoke<void>('ssh_keepalive', { id, seconds, keepAwake });
   },
   /** Try a saved credential against one device and say what happened.
    *  Opens a shell and closes it — nothing is typed and no command is run. */

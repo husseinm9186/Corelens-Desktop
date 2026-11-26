@@ -19,6 +19,7 @@
 
 pub mod arista;
 pub mod arp;
+pub mod awake;
 pub mod asa;
 pub mod bindings;
 pub mod backup;

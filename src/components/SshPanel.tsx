@@ -62,12 +62,12 @@ async function reconnect(held: Held) {
   held.reconnecting = true;
   held.term.write(`\r\n\x1b[2m${t('ssh.reconnecting', { name: tab.label })}\x1b[0m\r\n`);
   try {
-    const { keepaliveSeconds, logByDefault } = useStore.getState().settings.terminal;
+    const { keepaliveSeconds, keepAwake, logByDefault } = useStore.getState().settings.terminal;
     // A console goes back to the same port at the same speed; an SSH
     // session the way it went the first time.
     const id = tab.console
       ? await ipc.consoleOpen(tab.console.port, tab.console.baud)
-      : await ipc.sshOpen(tab.address, tab.credentialId!, { cols: held.term.cols, rows: held.term.rows }, undefined, keepaliveSeconds, tab.via?.address);
+      : await ipc.sshOpen(tab.address, tab.credentialId!, { cols: held.term.cols, rows: held.term.rows }, undefined, keepaliveSeconds, tab.via?.address, keepAwake);
     terminals.set(id, held);
     terminals.delete(held.id);
     held.id = id;
@@ -433,9 +433,20 @@ export function SshPanel({ kind = 'ssh' }: { kind?: 'ssh' | 'console' }) {
             setTerminal({ keepaliveSeconds: seconds });
             // Every open session follows, not just the next one opened.
             for (const tab of useStore.getState().sshSessions) {
-              if (tab.status === 'open') void ipc.sshKeepalive(tab.id, seconds).catch(() => undefined);
+              if (tab.status === 'open' && !tab.console) void ipc.sshKeepalive(tab.id, seconds, terminal.keepAwake).catch(() => undefined);
             }
           }} />
+      </label>}
+      {kind === 'ssh' && <label className="cv-check cv-check-inline" title={t('ssh.keepAwakeHint')}>
+        <input type="checkbox" data-setting="keep-awake" checked={terminal.keepAwake}
+          onChange={(e) => {
+            const keepAwake = e.target.checked;
+            setTerminal({ keepAwake });
+            for (const tab of useStore.getState().sshSessions) {
+              if (tab.status === 'open' && !tab.console) void ipc.sshKeepalive(tab.id, terminal.keepaliveSeconds, keepAwake).catch(() => undefined);
+            }
+          }} />
+        {t('ssh.keepAwake')}
       </label>}
       {/* Only where there is a line to hold: a console session, still open. */}
       {current?.console && (

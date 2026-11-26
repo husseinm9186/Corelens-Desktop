@@ -376,6 +376,7 @@ export function terminalFromStored(stored: StoredSettings, current: TerminalSett
     colourise: flag(stored.sshColourise, current.colourise),
     // Zero is off, and is a real choice; anything above an hour is not.
     keepaliveSeconds: number(stored.sshKeepaliveSeconds, current.keepaliveSeconds, 0, 3600),
+    keepAwake: flag(stored.sshKeepAwake, current.keepAwake),
     logByDefault: flag(stored.sshLogByDefault, current.logByDefault),
     openWith: stored.sshOpenWith === 'external' ? 'external' : 'panel',
     externalCommand: stored.sshExternalCommand ?? current.externalCommand,
@@ -393,6 +394,10 @@ export interface TerminalSettings {
   colourise: boolean;
   /** Seconds between keepalives; 0 turns them off. */
   keepaliveSeconds: number;
+  /** On each keepalive, a space and a backspace at a bare prompt, so the
+   *  device's own idle timer (exec-timeout) does not log the session out.
+   *  Nothing is sent into a half-typed line, a pager or a question. */
+  keepAwake: boolean;
   /** Start every session logging, without being asked each time. */
   logByDefault: boolean;
   /** Where a plain **SSH to this device** goes. */
@@ -418,6 +423,8 @@ export const TERMINAL_DEFAULTS: TerminalSettings = {
   // Long enough not to be chatter, short enough to beat a five-minute idle
   // timer and to hold a NAT translation open.
   keepaliveSeconds: 30,
+  // An SSH keepalive does not reset a device's CLI idle timer; this does.
+  keepAwake: true,
   // A transcript of every session, kept beside the device's backups: what
   // an engineer wants after the fact and cannot go back for. Written only
   // where a configuration folder has been chosen.
@@ -4388,6 +4395,7 @@ export const useStore = create<Store>((set, get) => ({
       fontSize: 'sshFontSize',
       colourise: 'sshColourise',
       keepaliveSeconds: 'sshKeepaliveSeconds',
+      keepAwake: 'sshKeepAwake',
       logByDefault: 'sshLogByDefault',
       openWith: 'sshOpenWith',
       externalCommand: 'sshExternalCommand',

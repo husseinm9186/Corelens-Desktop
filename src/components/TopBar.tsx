@@ -5,7 +5,9 @@ import { useRuntimeSlowly, useStore, type ProjectDocument } from '../state/store
 import { migrateDocument } from '../lib/migrate';
 import { ipc } from '../lib/ipc';
 import { ChromeIcon, IconButton } from './chromeIcons';
-import { formatTime } from '../lib/timeFormat';
+import { formatTime, isLocalFormat, zoneLabel } from '../lib/timeFormat';
+import { availabilityHtml, availabilityModel } from '../lib/availabilityReport';
+import { isDesktop } from '../lib/ipc';
 import { buildMarkdownReport, saveExport, slug, svgToPng } from '../lib/exports';
 import { cableSchedule, cableScheduleCsv } from '../lib/cableSchedule';
 import { renderDiagramSvg } from '../lib/diagram';
@@ -498,6 +500,31 @@ export function TopBar({ onExit }: { onExit: () => void }) {
     void runExport(`${slug(meta.name)}-events.csv`, () => eventsToCsv(events), 'text/csv');
   };
 
+  /** What every check did, organised for a customer: the whole recorded
+   *  history, not only what the dock has loaded. */
+  const exportAvailability = async () => {
+    const history = isDesktop ? await ipc.listEvents(meta.id, 200_000).catch(() => events) : events;
+    const model = availabilityModel(history, Date.now());
+    if (model.checks.length === 0) {
+      useStore.getState().setStatusMessage(t('export.availabilityNone'));
+      return;
+    }
+    const format = settings.timeFormat;
+    const local = isLocalFormat(format);
+    // The report reads as a document: twelve- or 24-hour as the operator
+    // chose, in their zone, but never the military date-time group.
+    const shown = format === 'dtg-local' ? 'local-24' : format === 'dtg-zulu' ? 'local-24' : format;
+    const when = (ms: number) => (local ? formatTime(ms, shown) : new Date(ms).toISOString().replace('T', ' ').slice(0, 19));
+    void runExport(`${slug(meta.name)}-availability.html`, () =>
+      availabilityHtml(model, {
+        title: t('export.availabilityTitle'),
+        subtitle: [meta.customer, meta.name, meta.site].filter(Boolean).join(' · '),
+        zone: local ? zoneLabel() : 'Zulu (UTC)',
+        when,
+        clock: (ms) => when(ms).slice(11),
+      }), 'text/html');
+  };
+
   /** The diagram as the two files the importer reads back. Every page:
    *  this is an inventory, not a drawing, and a device missing
    *  from it because the wrong tab was open would be a real surprise. */
@@ -943,6 +970,9 @@ export function TopBar({ onExit }: { onExit: () => void }) {
             </button>
             <button type="button" onClick={exportCsv}>
               Events as CSV
+            </button>
+            <button type="button" data-export="availability" onClick={() => void exportAvailability()} title={t('export.availabilityHint')}>
+              {t('export.availability')}
             </button>
             <button
               type="button"

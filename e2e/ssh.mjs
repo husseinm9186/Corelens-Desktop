@@ -438,6 +438,19 @@ check("changing it reaches every open session, not just the next one opened",
   alives.length === 2 && alives.every((a) => a.seconds === 45) &&
   new Set(alives.map((a) => a.id)).size === 2, JSON.stringify(alives));
 
+check("and with the command line kept awake, as the device's own idle timer needs",
+  (await st(() => window.__opened))[0]?.keepAwake === true && alives.every((a) => a.keepAwake === true), JSON.stringify(alives));
+const awake = page.locator('input[data-setting="keep-awake"]');
+check("Keep the command line awake sits beside the keepalive, ticked", (await awake.count()) === 1 && (await awake.isChecked()));
+await st(() => { window.__keepalives = []; });
+await awake.uncheck();
+await page.waitForTimeout(500);
+const off = await st(() => window.__keepalives);
+check("unticking it reaches every open session too, the interval unchanged",
+  off.length === 2 && off.every((a) => a.keepAwake === false && a.seconds === 45) && (await st(() => window.__cvStore.getState().settings.terminal.keepAwake)) === false, JSON.stringify(off));
+await awake.check();
+await page.waitForTimeout(300);
+
 await st(() => window.__deviceIsAlive("ssh-1", 1758240000000));
 await page.waitForTimeout(400);
 check("and the footer says when the device last took one",

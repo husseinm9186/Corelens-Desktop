@@ -1028,7 +1028,7 @@ pub fn set_setting(
     // This table is plain text in the same database as the projects, and
     // nothing typed into Corelens is ever written where it could leave the
     // machine.
-    const ALLOWED: [&str; 37] = [
+    const ALLOWED: [&str; 38] = [
         // The shadow-mode feature flag, per project.
         "collectorShadow",
         "backupFolder",
@@ -1085,6 +1085,7 @@ pub fn set_setting(
         "sshFontSize",
         "sshColourise",
         "sshKeepaliveSeconds",
+        "sshKeepAwake",
         "sshLogByDefault",
         "sshOpenWith",
         "sshExternalCommand",

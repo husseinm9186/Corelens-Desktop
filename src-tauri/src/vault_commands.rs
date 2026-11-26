@@ -692,6 +692,40 @@ mod import_tests {
     use super::{import_into, NO_PROJECT_OPEN};
     use crate::db;
 
+    /// An unlocked vault holding one login, `cred-1`, of the project `p1`,
+    /// which is the one open.
+    fn fixture() -> crate::commands::AppState {
+        use std::sync::{Arc, Mutex};
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        db::migrate_for_tests(&conn);
+        let (header, key) = corelens_discover::vault::create("fixture vault passphrase").unwrap();
+        db::create_vault(&conn, &header.salt, &header.verifier, 1).unwrap();
+        let sealed = corelens_discover::vault::seal(&key, "not-a-real-secret").unwrap();
+        let login = db::StoredCredential {
+            id: "cred-1".into(),
+            label: "reader".into(),
+            kind: "ssh".into(),
+            username: "reader".into(),
+            secret: (sealed.nonce, sealed.ciphertext),
+            extra: None,
+            detail: String::new(),
+        };
+        db::save_credential(&conn, "p1", &login, 1).unwrap();
+        let (engine, _rx) = corelens_probe::Engine::new(4);
+        crate::commands::AppState {
+            engine,
+            db: Mutex::new(conn),
+            session_id: Mutex::new(None),
+            project_id: Mutex::new(None),
+            jobs: Arc::new(crate::jobs::Jobs::default()),
+            vault_key: Mutex::new(Some(key)),
+            limiter: crate::ratelimit::RateLimiter::default(),
+            sessions: Arc::new(crate::terminal::Sessions::default()),
+            export_targets: crate::commands::ExportTargets::default(),
+            open_project: Mutex::new(Some("p1".into())),
+        }
+    }
+
     /// A package as `export_vault` writes it, from the fixture's vault.
     fn package(state: &crate::commands::AppState) -> serde_json::Value {
         let conn = state.db.lock().unwrap();
@@ -712,7 +746,7 @@ mod import_tests {
     /// open, then imports into the project it has just made.
     #[test]
     fn a_check_needs_no_project_and_writes_nothing_then_the_import_goes_into_the_open_one() {
-        let state = crate::mcp::roundtrip::app_state_as("SW1", true);
+        let state = fixture();
         let pkg = package(&state);
 
         let wrong = import_into(&state, None, &pkg, "not the exporting passphrase", true);

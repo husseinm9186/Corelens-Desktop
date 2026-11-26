@@ -1907,9 +1907,12 @@ export const ipc = {
   },
   /** Takes the credentials out of an exported package. Needs the passphrase
    *  of the vault they were exported from, and this vault unlocked.
-   *  Returns how many were imported. */
-  importVault(vault: unknown, passphrase: string) {
-    return invoke<number>('import_vault', { vault, passphrase });
+   *  Returns how many were imported and, for each, the id it was exported
+   *  under → the id it has here. With `checkOnly`, only tries the
+   *  passphrase and the package: nothing is written and no project is
+   *  needed. */
+  importVault(vault: unknown, passphrase: string, checkOnly = false) {
+    return invoke<{ count: number; ids: Record<string, string> }>('import_vault', checkOnly ? { vault, passphrase, checkOnly } : { vault, passphrase });
   },
   deleteCredential(id: string) {
     return invoke<void>('delete_credential', { id });

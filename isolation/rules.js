@@ -46,7 +46,7 @@
     forget_vault_key: [],
     get_settings: ["projectId"],
     import_drawio: ["path"],
-    import_vault: ["vault", "passphrase"],
+    import_vault: ["vault", "passphrase", "checkOnly"],
     import_visio: ["path"],
     ipc_refused: ["command", "reason"],
     list_backup_devices: ["projectId"],

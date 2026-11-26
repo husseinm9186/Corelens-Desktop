@@ -45,7 +45,7 @@ const other = (withVault) => ({
     activePageId: "q1",
     probes: [probe("pr1", "there", "a", "198.51.100.10"), probe("pr2", "there", "c", "198.51.100.30")],
     pages: [
-      { id: "q1", name: "Core", canvas, nodes: [dev("a", "DC2-CORE", 0, "198.51.100.10"), dev("b", "DC2-EDGE", 300, "198.51.100.1")], edges: [link("ab", "a", "b")] },
+      { id: "q1", name: "Core", canvas, nodes: [{ ...dev("a", "DC2-CORE", 0, "198.51.100.10"), data: { ...dev("a", "DC2-CORE", 0, "198.51.100.10").data, sshCredentialId: "cred-old-1" } }, dev("b", "DC2-EDGE", 300, "198.51.100.1")], edges: [link("ab", "a", "b")] },
       { id: "q2", name: "Branch", canvas, nodes: [dev("c", "BR2-SW1", 0, "198.51.100.30")], edges: [] },
     ],
   },
@@ -73,6 +73,18 @@ await page.addInitScript(({ p, file }) => {
       if (cmd === "plugin:dialog|open") return Promise.resolve("/home/user/second-site.corelens");
       if (cmd === "read_import") return Promise.resolve(JSON.stringify(window.__file));
       if (cmd === "save_project") return Promise.resolve(null);
+      if (cmd === "set_open_project") { window.__open = args.projectId ?? null; return Promise.resolve(null); }
+      // As Rust answers: the passphrase is tried before anything else; a
+      // check writes nothing; a login is written into the open project only.
+      if (cmd === "import_vault") {
+        if (args.passphrase !== "exporting-vault-passphrase") return Promise.reject("The passphrase is wrong.");
+        if (args.checkOnly) return Promise.resolve({ count: 2, ids: {} });
+        if (!window.__open) return Promise.reject("Open a project first: a saved login belongs to one project.");
+        window.__imported = [...(window.__imported ?? []), window.__open, window.__open];
+        // Re-sealed under fresh ids, as Rust does, and said which.
+        const n = window.__imported.length;
+        return Promise.resolve({ count: 2, ids: { "cred-old-1": `cred-new-${n - 1}`, "cred-old-2": `cred-new-${n}` } });
+      }
       return Promise.resolve([]);
     },
   };
@@ -135,10 +147,28 @@ await page.waitForTimeout(250);
 d = await doc();
 check("one Undo takes the import back", d.pages.length === 1 && d.probes.length === 1);
 
-// --- As a separate project ------------------------------------------------
+// --- As pages, with the file's saved logins --------------------------------
 await st(() => { window.__file = { ...window.__file, vault: { sealed: "not a real vault" } }; });
 await openFromProject();
-check("a file that carries credentials says they come only with a separate project", (await dialog.locator('[data-note="credentials"]').count()) === 1);
+check("a file that carries saved logins asks for their passphrase beside the pages", (await dialog.locator('[data-note="credentials"] [data-field="import-passphrase"]').count()) === 1);
+await dialog.locator('[data-field="import-passphrase"]').fill("not-the-right-one");
+await dialog.locator('[data-action="import-as-pages"]').click();
+await page.waitForTimeout(400);
+check("a wrong passphrase is said, and no page is added", /passphrase is wrong/.test(await dialog.innerText()) && (await doc()).pages.length === 1 && !(await st(() => window.__imported?.length)));
+await dialog.locator('[data-field="import-passphrase"]').fill("exporting-vault-passphrase");
+await dialog.locator('[data-action="import-as-pages"]').click();
+await page.waitForTimeout(600);
+d = await doc();
+const core2 = d.pages.find((pg) => pg.name !== "Core" && pg.nodes.some((n) => n.data.label === "DC2-CORE"))?.nodes.find((n) => n.data.label === "DC2-CORE");
+check("the right one brings the logins into this project with the pages", d.pages.length === 3 && JSON.stringify(await st(() => window.__imported)) === '["here","here"]', JSON.stringify(await st(() => window.__imported)));
+check("and the device that used one points at the id it has here", core2?.data.sshCredentialId === "cred-new-1", JSON.stringify(core2?.data));
+check("the status line counts the logins too", /and 2 credentials re-sealed/.test(await st(() => window.__cvStore.getState().statusMessage ?? "")), await st(() => window.__cvStore.getState().statusMessage ?? ""));
+await st(() => window.__cvStore.getState().undo());
+await page.waitForTimeout(250);
+await st(() => { window.__imported = []; });
+
+// --- As a separate project ------------------------------------------------
+await openFromProject();
 await st(() => { window.__calls = []; });
 await dialog.locator('[data-action="import-as-project"]').click();
 await page.waitForTimeout(900);
@@ -152,6 +182,30 @@ const madeName = JSON.stringify(made ?? {}).match(/"name":"(Second site \(import
 check("and the file opens as a project of its own", madeName === "Second site (imported)" && (await st(() => window.__cvStore.getState().meta?.name)) === "Second site (imported)",
   JSON.stringify(made ?? {}).slice(0, 200));
 check("with both its pages", (await doc()).pages.map((pg) => pg.name).join("|") === "Core|Branch");
+
+// --- Its credentials, taken ------------------------------------------------
+await st(() => { window.__file = { ...window.__file, document: { ...window.__file.document, credentialDefaults: { ssh: "cred-old-2" } } }; });
+await openFromProject();
+await dialog.locator('[data-action="import-as-project"]').click();
+await page.waitForTimeout(900);
+const box = page.locator(".cv-import-vault");
+await box.locator('input[type="password"]').fill("not-the-right-one");
+await box.locator("button", { hasText: "Import credentials" }).click();
+await page.waitForTimeout(500);
+check("a wrong passphrase is said where it was typed, and nothing is made",
+  /passphrase is wrong/.test(await box.innerText()) && (await st(() => window.__cvStore.getState().meta)) === null && !(await st(() => window.__imported?.length)));
+await box.locator('input[type="password"]').fill("exporting-vault-passphrase");
+await box.locator("button", { hasText: "Import credentials" }).click();
+await page.waitForTimeout(900);
+const newId = await st(() => window.__cvStore.getState().meta?.id);
+check("the right one opens the project and its credentials come into it",
+  Boolean(newId) && newId !== "here" && JSON.stringify(await st(() => window.__imported)) === JSON.stringify([newId, newId]),
+  JSON.stringify({ newId, imported: await st(() => window.__imported), note: await box.innerText().catch(() => "") }));
+check("and the status line says how many", /Imported 2 credentials/.test(await st(() => window.__cvStore.getState().statusMessage ?? "")));
+const opened = await doc();
+check("the project's own login and its device's point at the ids they have here, so none is forgotten",
+  opened.credentialDefaults?.ssh === "cred-new-2" && opened.pages[0].nodes.find((n) => n.data.label === "DC2-CORE")?.data.sshCredentialId === "cred-new-1",
+  JSON.stringify({ defaults: opened.credentialDefaults, dev: opened.pages[0].nodes.find((n) => n.data.label === "DC2-CORE")?.data.sshCredentialId }));
 
 await browser.close();
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");

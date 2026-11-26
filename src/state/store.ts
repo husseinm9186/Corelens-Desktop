@@ -13,7 +13,7 @@ import { projectFolderFiles } from '../lib/projectFolder';
 import { copyToOpen, folderName, heldBy, overwroteNotice } from '../lib/sharedProjects';
 import { applyJob } from '../lib/jobs';
 import { forgetSummary, rememberSummary, summarise } from '../lib/projectSummary';
-import { staleCredentials, withoutStaleCredentials } from '../lib/credentialScope';
+import { staleCredentials, withCredentialIds, withoutStaleCredentials } from '../lib/credentialScope';
 import { uid } from '../lib/id';
 import { newProbe } from '../lib/probes';
 import { migrateDocument } from '../lib/migrate';
@@ -701,6 +701,9 @@ interface Store {
   /** Drops references to credentials the vault no longer holds.
    *  Returns how many went, so the caller can say so. */
   pruneStaleCredentials: (inVault: { id: string }[]) => number;
+  /** Logins just imported into the open project under new ids: every
+   *  reference the document holds follows them (exported id → id here). */
+  adoptImportedCredentialIds: (ids: Record<string, string>) => void;
   /** The transcript started, moved or stopped. */
   setSshLog: (id: string, path: string | null) => void;
   /** A keepalive went out and the connection took it. */
@@ -2249,6 +2252,13 @@ export const useStore = create<Store>((set, get) => ({
     // that is gone from the vault cannot be brought back by undoing a diagram.
     set({ doc: cleaned, dirty: true });
     return stale.length;
+  },
+
+  adoptImportedCredentialIds(ids) {
+    const { doc } = get();
+    const next = withCredentialIds(doc, ids);
+    // Part of opening what was imported, not an edit to take back.
+    if (next !== doc) set({ doc: next, dirty: true });
   },
 
   setSshLog(id, path) {

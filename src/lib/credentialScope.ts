@@ -70,6 +70,7 @@ export function withoutStaleCredentials(
     ? {
         ...defaults,
         ssh: defaults.ssh && stale.has(defaults.ssh) ? undefined : defaults.ssh,
+        ...(defaults.sshMore ? { sshMore: defaults.sshMore.filter((id) => !stale.has(id)) } : {}),
         snmp: (defaults.snmp ?? []).filter((id) => !stale.has(id)),
       }
     : undefined;
@@ -92,6 +93,45 @@ export function withoutStaleCredentials(
             snmpCredentialId: stale.has(d.snmpCredentialId ?? '') ? undefined : d.snmpCredentialId,
           },
         };
+      }),
+    })),
+  };
+}
+
+/**
+ * The document with its references to imported logins pointed at the ids
+ * they were given here. An import re-seals each login under a fresh id (one
+ * from another machine's vault may share an id with one of this vault's),
+ * and answers with exported id → new id; without this the project's own
+ * logins, its devices' and its rules would name ids this vault never had,
+ * and be forgotten as stale the next time they were looked at.
+ *
+ * Returns `doc` itself when nothing it refers to was moved.
+ */
+export function withCredentialIds(doc: ProjectDocument, ids: Record<string, string>): ProjectDocument {
+  const moved = (id: string | undefined) => (id !== undefined && Object.hasOwn(ids, id) ? ids[id] : id);
+  if (![...credentialsUsedBy(doc)].some((id) => Object.hasOwn(ids, id))) return doc;
+  const defaults = doc.credentialDefaults;
+  return {
+    ...doc,
+    credentialDefaults: defaults
+      ? {
+          ...defaults,
+          ssh: moved(defaults.ssh),
+          ...(defaults.sshMore ? { sshMore: defaults.sshMore.map((id) => moved(id) ?? id) } : {}),
+          ...(defaults.snmp ? { snmp: defaults.snmp.map((id) => moved(id) ?? id) } : {}),
+        }
+      : defaults,
+    ...(doc.credentialRules ? { credentialRules: doc.credentialRules.map((r) => ({ ...r, credentialId: moved(r.credentialId) ?? r.credentialId })) } : {}),
+    pages: doc.pages.map((page) => ({
+      ...page,
+      nodes: page.nodes.map((node) => {
+        if (node.type !== 'device') return node;
+        const d = node.data as DeviceNodeData;
+        const ssh = moved(d.sshCredentialId);
+        const snmp = moved(d.snmpCredentialId);
+        if (ssh === d.sshCredentialId && snmp === d.snmpCredentialId) return node;
+        return { ...node, data: { ...d, sshCredentialId: ssh, snmpCredentialId: snmp } };
       }),
     })),
   };

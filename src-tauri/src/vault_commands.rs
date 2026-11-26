@@ -399,12 +399,35 @@ pub fn export_vault(state: State<'_, AppState>, ids: Option<Vec<String>>) -> Cmd
 /// passphrase.
 ///
 /// Requires the local vault to be unlocked: this writes into it.
+///
+/// With `check_only`, everything is opened and re-sealed but nothing is
+/// written and no project is needed: the start screen asks this before it
+/// makes the imported project, so a wrong passphrase is said where it was
+/// typed, and then imports into the project it has just opened.
 #[tauri::command(async)]
 pub fn import_vault(
     state: State<'_, AppState>,
     vault: serde_json::Value,
     passphrase: String,
-) -> CmdResult<usize> {
+    check_only: Option<bool>,
+) -> CmdResult<ImportedVault> {
+    // Into the open project: an imported login is that project's. Asked
+    // here and needed only for the writing, so a check works with none.
+    let project = crate::commands::open_project(&state);
+    import_into(&state, project, &vault, &passphrase, check_only == Some(true))
+}
+
+/// What an import brought: how many logins, and the id each was exported
+/// under mapped to the id it has here, so the project's references to
+/// them — its own logins, its devices', its rules — can follow.
+#[derive(Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportedVault {
+    pub count: usize,
+    pub ids: std::collections::BTreeMap<String, String>,
+}
+
+fn import_into(state: &AppState, project: Option<String>, vault: &serde_json::Value, passphrase: &str, check_only: bool) -> CmdResult<ImportedVault> {
     let guard = state.vault_key.lock().map_err(db_err)?;
     let local = guard.as_ref().ok_or_else(|| vault::VaultError::Locked.to_string())?;
 
@@ -420,16 +443,15 @@ pub fn import_vault(
         verifier: bytes(&vault["verifier"]).ok_or("That package's credentials are damaged.")?,
     };
     // Fails here, before anything is written, if the passphrase is wrong.
-    let source = vault::unlock(&passphrase, &header).map_err(|e| e.to_string())?;
+    let source = vault::unlock(passphrase, &header).map_err(|e| e.to_string())?;
 
     let items = vault["credentials"]
         .as_array()
         .ok_or("That package has no credentials to import.")?;
 
-    // Into the open project: an imported login is that project's.
-    let project = crate::commands::open_project(&state).ok_or(NO_PROJECT_OPEN)?;
-    let conn = state.db.lock().map_err(db_err)?;
-    let mut imported = 0usize;
+    // Every one opened and re-sealed before anything is written.
+    let mut resealed = Vec::with_capacity(items.len());
+    let mut ids = std::collections::BTreeMap::new();
     for item in items {
         let reseal = |nonce: &serde_json::Value, cipher: &serde_json::Value| -> CmdResult<Option<(Vec<u8>, Vec<u8>)>> {
             let (Some(nonce), Some(ciphertext)) = (bytes(nonce), bytes(cipher)) else {
@@ -459,11 +481,21 @@ pub fn import_vault(
             extra,
             detail: text("detail"),
         };
-        db::save_credential(&conn, &project, &stored, now_ms()).map_err(db_err)?;
-        imported += 1;
+        if let Some(was) = item["id"].as_str().filter(|x| !x.is_empty()) {
+            ids.insert(was.to_string(), stored.id.clone());
+        }
+        resealed.push(stored);
+    }
+    if check_only {
+        return Ok(ImportedVault { count: resealed.len(), ids: Default::default() });
     }
 
-    Ok(imported)
+    let project = project.ok_or(NO_PROJECT_OPEN)?;
+    let conn = state.db.lock().map_err(db_err)?;
+    for stored in &resealed {
+        db::save_credential(&conn, &project, stored, now_ms()).map_err(db_err)?;
+    }
+    Ok(ImportedVault { count: resealed.len(), ids })
 }
 
 /// Rebuilds SSH credentials from the vault, for use inside this process.
@@ -652,6 +684,52 @@ pub fn chosen(all: &[String], wanted: Option<&[String]>) -> Vec<String> {
     match wanted {
         None => all.to_vec(),
         Some(ids) => all.iter().filter(|id| ids.iter().any(|w| w == *id)).cloned().collect(),
+    }
+}
+
+#[cfg(test)]
+mod import_tests {
+    use super::{import_into, NO_PROJECT_OPEN};
+    use crate::db;
+
+    /// A package as `export_vault` writes it, from the fixture's vault.
+    fn package(state: &crate::commands::AppState) -> serde_json::Value {
+        let conn = state.db.lock().unwrap();
+        let (salt, verifier) = db::vault_header(&conn).unwrap().unwrap();
+        let c = db::credential(&conn, "p1", "cred-1").unwrap().unwrap();
+        serde_json::json!({
+            "salt": salt, "verifier": verifier,
+            "credentials": [{ "id": c.id, "label": c.label, "kind": c.kind, "username": c.username, "detail": c.detail,
+                "secretNonce": c.secret.0, "secretCipher": c.secret.1 }],
+        })
+    }
+    fn count(state: &crate::commands::AppState, project: &str) -> usize {
+        db::list_credentials(&state.db.lock().unwrap(), project).unwrap().len()
+    }
+
+    /// The start screen imports a package's logins before the project they
+    /// belong to exists, so it first checks the passphrase with nothing
+    /// open, then imports into the project it has just made.
+    #[test]
+    fn a_check_needs_no_project_and_writes_nothing_then_the_import_goes_into_the_open_one() {
+        let state = crate::mcp::roundtrip::app_state_as("SW1", true);
+        let pkg = package(&state);
+
+        let wrong = import_into(&state, None, &pkg, "not the exporting passphrase", true);
+        assert!(wrong.is_err(), "a wrong passphrase is refused by the check");
+        assert_eq!(import_into(&state, None, &pkg, "fixture vault passphrase", true).map(|x| x.count), Ok(1));
+        assert_eq!(count(&state, "p1") + count(&state, "fresh"), 1, "a check writes nothing");
+        assert_eq!(import_into(&state, None, &pkg, "fixture vault passphrase", false), Err(NO_PROJECT_OPEN.to_string()));
+
+        let got = import_into(&state, Some("fresh".into()), &pkg, "fixture vault passphrase", false).unwrap();
+        assert_eq!(got.count, 1);
+        assert_eq!(count(&state, "fresh"), 1, "the login is the newly opened project's");
+        // Under a fresh id, and the answer says which: the project's
+        // references to `cred-1` are pointed at it.
+        let now = got.ids.get("cred-1").expect("the exported id is mapped");
+        assert_ne!(now, "cred-1");
+        assert!(db::credential(&state.db.lock().unwrap(), "fresh", now).unwrap().is_some());
+        assert_eq!(count(&state, "p1"), 1, "and no other project's");
     }
 }
 

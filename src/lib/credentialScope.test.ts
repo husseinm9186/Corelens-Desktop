@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { credentialsUsedBy, staleCredentials, withoutStaleCredentials } from './credentialScope';
+import { credentialsUsedBy, staleCredentials, withCredentialIds, withoutStaleCredentials } from './credentialScope';
 import type { ProjectDocument } from '../state/store';
 
 const device = (id: string, over: Record<string, unknown> = {}) => ({
@@ -90,5 +90,35 @@ describe('references the vault no longer has', () => {
     expect(cleaned!.credentialDefaults?.ssh).toBeUndefined();
     expect(cleaned!.credentialDefaults?.snmp).toEqual([]);
     expect(credentialsUsedBy(cleaned!).size).toBe(0);
+  });
+});
+
+describe('logins brought in under new ids', () => {
+  const before = doc({
+    credentialDefaults: { ssh: 'a', sshMore: ['b', 'keep'], snmp: ['c'] },
+    credentialRules: [{ id: 'r1', scope: 'subnet', value: '192.0.2.0/24', credentialId: 'a' }],
+    pages: [{ id: 'p1', name: 'Core', canvas: {}, edges: [], nodes: [device('sw', { sshCredentialId: 'b', snmpCredentialId: 'c' }), device('bare')] }],
+  } as unknown as Partial<ProjectDocument>);
+  const ids = { a: 'A2', b: 'B2', c: 'C2' };
+
+  it('points every reference at the id the login has here', () => {
+    const after = withCredentialIds(before, ids);
+    expect(after.credentialDefaults).toEqual({ ssh: 'A2', sshMore: ['B2', 'keep'], snmp: ['C2'] });
+    expect(after.credentialRules?.[0]?.credentialId).toBe('A2');
+    const sw = after.pages[0]!.nodes[0]!.data as { sshCredentialId?: string; snmpCredentialId?: string };
+    expect([sw.sshCredentialId, sw.snmpCredentialId]).toEqual(['B2', 'C2']);
+    expect(after.pages[0]!.nodes[1]).toBe(before.pages[0]!.nodes[1]);
+  });
+
+  it('leaves a document with nothing to move as it was', () => {
+    expect(withCredentialIds(before, {})).toBe(before);
+  });
+});
+
+describe('a further SSH login gone from the vault', () => {
+  it('is dropped with the rest, not left showing as a question mark', () => {
+    const d = doc({ credentialDefaults: { ssh: 'a', sshMore: ['gone', 'b'] } } as unknown as Partial<ProjectDocument>);
+    expect(staleCredentials(d, [{ id: 'a' }, { id: 'b' }])).toEqual(['gone']);
+    expect(withoutStaleCredentials(d, [{ id: 'a' }, { id: 'b' }])?.credentialDefaults?.sshMore).toEqual(['b']);
   });
 });

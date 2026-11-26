@@ -198,21 +198,34 @@ export function ProjectScreen() {
     }
   };
 
+  // A saved login belongs to one project, so the credentials can only be
+  // written once the imported project exists and is open. The passphrase is
+  // tried first, writing nothing, so a wrong one is said here and the
+  // question stays; then the project is made, then they go into it.
   const importCredentials = () => {
     if (!pending) return;
     const pkg = pending;
+    const passphrase = vaultPassphrase;
+    const said = (e: unknown) => (e instanceof Error ? e.message : String(e));
     setVaultNote(null);
     void ipc
-      .importVault(pkg.vault, vaultPassphrase)
-      .then(async (n) => {
+      .importVault(pkg.vault, passphrase, true)
+      .then(async () => {
         setPending(null);
         setVaultPassphrase('');
         await openImported(pkg);
-        useStore.getState().setStatusMessage(
-          `Imported ${t('plural.credential', { count: n })}, re-sealed with this machine's passphrase.`,
-        );
+        try {
+          const got = await ipc.importVault(pkg.vault, passphrase);
+          useStore.getState().adoptImportedCredentialIds(got.ids);
+          await useStore.getState().saveProject();
+          useStore.getState().setStatusMessage(
+            `Imported ${t('plural.credential', { count: got.count })}, re-sealed with this machine's passphrase.`,
+          );
+        } catch (e) {
+          useStore.getState().setStatusMessage(`The project was imported, but not its credentials: ${said(e)}`);
+        }
       })
-      .catch((e: unknown) => setVaultNote(e instanceof Error ? e.message : String(e)));
+      .catch((e: unknown) => setVaultNote(said(e)));
   };
 
   const skipCredentials = () => {
@@ -375,10 +388,9 @@ export function ProjectScreen() {
                 {t('projectScreen.skipThem')}
               </button>
             </div>
+            {vaultNote && <p className="cv-help cv-hostkey-message" role="alert">{vaultNote}</p>}
           </section>
         )}
-
-        {vaultNote && <p className="cv-help cv-hostkey-message">{vaultNote}</p>}
 
         {/* Folders down the left, the projects as cards, the samples
             on the right. The crumbs, drag-and-drop, rename and delete of

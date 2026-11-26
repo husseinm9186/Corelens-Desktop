@@ -3,15 +3,17 @@
  * added to the open project as pages or opened as a project of its own.
  *
  * As pages, the ticked pages are merged in with fresh ids throughout (see
- * lib/importPages.ts), as one undo step. Saved credentials never come this
- * way: they are sealed with the other machine's passphrase, and the start
- * screen's import is where that is asked about, so a file that carries them
- * says so and points at the other button.
+ * lib/importPages.ts), as one undo step. A file that carries saved logins
+ * asks for the passphrase they were exported with: given, the logins are
+ * re-sealed into this project first and the pages' devices pointed at the
+ * ids they have here; left empty, the pages come without them. Undo takes
+ * the pages back, not the logins, which stay in Saved logins.
  */
 import { useRef, useState } from 'react';
 
 import { t } from '../i18n';
 import { ipc, isDesktop } from '../lib/ipc';
+import { withCredentialIds } from '../lib/credentialScope';
 import { parseProjectPackage, useStore, type ProjectPackageFile } from '../state/store';
 
 export function ProjectImportPanel({ onDone }: { onDone: () => void }) {
@@ -19,6 +21,7 @@ export function ProjectImportPanel({ onDone }: { onDone: () => void }) {
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [passphrase, setPassphrase] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const take = (text: string) => {
@@ -26,6 +29,7 @@ export function ProjectImportPanel({ onDone }: { onDone: () => void }) {
     const pages = Array.isArray(got.document.pages) ? got.document.pages : [];
     if (pages.length === 0) throw new Error(t('importProject.noPages'));
     setPkg(got);
+    setPassphrase('');
     setChosen(new Set(pages.map((p) => p.id)));
   };
   const failed = (err: unknown) =>
@@ -66,18 +70,39 @@ export function ProjectImportPanel({ onDone }: { onDone: () => void }) {
       return next;
     });
 
-  const addPages = () => {
+  const addPages = async () => {
     if (!pkg) return;
-    const got = useStore.getState().importPagesFrom(pkg.document, [...chosen], pkg.meta.name);
+    setError(null);
+    let document = pkg.document;
+    let logins: number | null = null;
+    if (carriesLogins && passphrase) {
+      // The passphrase tried first, writing nothing; then the logins
+      // into this project, and the pages pointed at their ids here.
+      try {
+        setBusy(true);
+        await ipc.importVault(pkg.vault, passphrase, true);
+        const got = await ipc.importVault(pkg.vault, passphrase);
+        document = withCredentialIds(document, got.ids);
+        logins = got.count;
+        useStore.getState().bumpVault();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
+    const got = useStore.getState().importPagesFrom(document, [...chosen], pkg.meta.name);
     if (got.pages === 0) return;
+    const said = {
+      pages: t('plural.page', { count: got.pages }),
+      devices: t('plural.device', { count: got.devices }),
+      links: t('plural.link', { count: got.links }),
+      checks: t('plural.check', { count: got.probes }),
+      name: pkg.meta.name,
+    };
     useStore.getState().setStatusMessage(
-      t('importProject.added', {
-        pages: t('plural.page', { count: got.pages }),
-        devices: t('plural.device', { count: got.devices }),
-        links: t('plural.link', { count: got.links }),
-        checks: t('plural.check', { count: got.probes }),
-        name: pkg.meta.name,
-      }),
+      logins === null ? t('importProject.added', said) : t('importProject.addedLogins', { ...said, logins: t('plural.credential', { count: logins }) }),
     );
     onDone();
   };
@@ -88,6 +113,7 @@ export function ProjectImportPanel({ onDone }: { onDone: () => void }) {
   };
 
   const pages = pkg?.document.pages ?? [];
+  const carriesLogins = pkg?.vault !== undefined && pkg?.vault !== null;
   return (
     <div className="cv-project-import" data-region="project-import">
       <p className="cv-muted">{t('importProject.lead')}</p>
@@ -131,9 +157,24 @@ export function ProjectImportPanel({ onDone }: { onDone: () => void }) {
               );
             })}
           </ul>
-          {pkg.vault !== undefined && pkg.vault !== null && <p className="cv-muted" data-note="credentials">{t('importProject.credentialsNote')}</p>}
+          {carriesLogins && (
+            <div className="cv-project-import-logins" data-note="credentials">
+              <p className="cv-muted">{t('importProject.credentialsNote')}</p>
+              <label className="cv-field">
+                <span>{t('importProject.passphrase')}</span>
+                <input
+                  className="cv-input"
+                  type="password"
+                  autoComplete="off"
+                  data-field="import-passphrase"
+                  value={passphrase}
+                  onChange={(e) => setPassphrase(e.target.value)}
+                />
+              </label>
+            </div>
+          )}
           <div className="cv-project-import-actions">
-            <button type="button" className="cv-btn cv-btn-primary" data-action="import-as-pages" disabled={chosen.size === 0} onClick={addPages}>
+            <button type="button" className="cv-btn cv-btn-primary" data-action="import-as-pages" disabled={chosen.size === 0 || busy} onClick={() => void addPages()}>
               {t('importProject.addPages', { pages: t('plural.page', { count: chosen.size }) })}
             </button>
             <button type="button" className="cv-btn" data-action="import-as-project" onClick={separate}>

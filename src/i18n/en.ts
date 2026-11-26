@@ -1685,7 +1685,9 @@ export const en = {
   'importProject.addPages': 'Add {pages} to this project',
   'importProject.separate': 'Open as a separate project',
   'importProject.separateNote': 'Opening it as a separate project saves and closes this one first. Adding pages is one step that Undo takes back.',
-  'importProject.credentialsNote': 'This file also carries saved credentials. They come only with Open as a separate project, which asks for the passphrase they were exported with.',
+  'importProject.credentialsNote': 'This file also carries saved logins, sealed with the passphrase of the vault they were exported from. Type that passphrase to bring them with the pages, or leave it empty to add the pages without them.',
+  'importProject.passphrase': 'Passphrase of the exporting vault',
+  'importProject.addedLogins': 'Added {pages} from {name}: {devices}, {links}, {checks}, and {logins} re-sealed with this machine’s passphrase.',
   'importProject.added': 'Added {pages} from {name}: {devices}, {links}, {checks}.',
   'tools.visio': 'From a drawing',
 

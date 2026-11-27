@@ -208,24 +208,35 @@ export function ProjectScreen() {
     const passphrase = vaultPassphrase;
     const said = (e: unknown) => (e instanceof Error ? e.message : String(e));
     setVaultNote(null);
-    void ipc
-      .importVault(pkg.vault, passphrase, true)
-      .then(async () => {
-        setPending(null);
-        setVaultPassphrase('');
+    setError(null);
+    void (async () => {
+      try {
+        await ipc.importVault(pkg.vault, passphrase, true);
+      } catch (e) {
+        // Said beside the passphrase, where it can be typed again.
+        setVaultNote(said(e));
+        return;
+      }
+      setPending(null);
+      setVaultPassphrase('');
+      try {
         await openImported(pkg);
-        try {
-          const got = await ipc.importVault(pkg.vault, passphrase);
-          useStore.getState().adoptImportedCredentialIds(got.ids);
-          await useStore.getState().saveProject();
-          useStore.getState().setStatusMessage(
-            `Imported ${t('plural.credential', { count: got.count })}, re-sealed with this machine's passphrase.`,
-          );
-        } catch (e) {
-          useStore.getState().setStatusMessage(`The project was imported, but not its credentials: ${said(e)}`);
-        }
-      })
-      .catch((e: unknown) => setVaultNote(said(e)));
+      } catch (e) {
+        // The question is gone by now, so this is said on the screen itself.
+        setError(`The project could not be made here, so nothing was imported: ${said(e)}`);
+        return;
+      }
+      try {
+        const got = await ipc.importVault(pkg.vault, passphrase);
+        useStore.getState().adoptImportedCredentialIds(got.ids);
+        await useStore.getState().saveProject();
+        useStore.getState().setStatusMessage(
+          `Imported ${t('plural.credential', { count: got.count })}, re-sealed with this machine's passphrase.`,
+        );
+      } catch (e) {
+        useStore.getState().setStatusMessage(`The project was imported, but not its credentials: ${said(e)}`);
+      }
+    })();
   };
 
   const skipCredentials = () => {
@@ -233,9 +244,9 @@ export function ProjectScreen() {
     const pkg = pending;
     setPending(null);
     setVaultPassphrase('');
-    void openImported(pkg).then(() =>
-      useStore.getState().setStatusMessage('Credentials left in the file. The project was imported without them.'),
-    );
+    void openImported(pkg)
+      .then(() => useStore.getState().setStatusMessage('Credentials left in the file. The project was imported without them.'))
+      .catch((e: unknown) => setError(`The project could not be made here, so nothing was imported: ${e instanceof Error ? e.message : String(e)}`));
   };
 
   return (

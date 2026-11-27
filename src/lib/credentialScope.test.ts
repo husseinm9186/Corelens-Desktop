@@ -122,3 +122,32 @@ describe('a further SSH login gone from the vault', () => {
     expect(withoutStaleCredentials(d, [{ id: 'a' }, { id: 'b' }])?.credentialDefaults?.sshMore).toEqual(['b']);
   });
 });
+
+describe('every holder of a login id, not only devices', () => {
+  // A check over SNMP names its login, and so does a saved discovery
+  // profile; both are part of the project and travel with it.
+  const before = doc({
+    probes: [{ id: 'pr1', kind: 'snmp', snmpCredentialId: 'c' }, { id: 'pr2', kind: 'icmp' }],
+    crawlProfiles: [{ id: 'cp1', name: 'Site', credentialId: 'a' }],
+    pages: [{ id: 'p1', name: 'Core', canvas: {}, edges: [], nodes: [] }],
+  } as unknown as Partial<ProjectDocument>);
+
+  it('counts as used, so it is exported with the project', () => {
+    expect([...credentialsUsedBy(before)].sort()).toEqual(['a', 'c']);
+  });
+
+  it('follows an imported login to its new id', () => {
+    const after = withCredentialIds(before, { a: 'A2', c: 'C2' });
+    expect((after.probes[0] as { snmpCredentialId?: string }).snmpCredentialId).toBe('C2');
+    expect(after.probes[1]).toBe(before.probes[1]);
+    expect((after.crawlProfiles![0] as { credentialId?: string | null }).credentialId).toBe('A2');
+  });
+
+  it('and is forgotten with the rest when the vault no longer has it', () => {
+    expect(staleCredentials(before, [{ id: 'a' }])).toEqual(['c']);
+    const after = withoutStaleCredentials(before, [{ id: 'a' }])!;
+    expect((after.probes[0] as { snmpCredentialId?: string | null }).snmpCredentialId ?? null).toBeNull();
+    expect((after.crawlProfiles![0] as { credentialId?: string | null }).credentialId).toBe('a');
+    expect(withoutStaleCredentials(after, [{ id: 'a' }])).toBeNull();
+  });
+});

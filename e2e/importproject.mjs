@@ -72,7 +72,7 @@ await page.addInitScript(({ p, file }) => {
       if (cmd === "vault_status") return Promise.resolve({ exists: true, unlocked: true, credentials: 0, minimumPassphrase: 12 });
       if (cmd === "plugin:dialog|open") return Promise.resolve("/home/user/second-site.corelens");
       if (cmd === "read_import") return Promise.resolve(JSON.stringify(window.__file));
-      if (cmd === "save_project") return Promise.resolve(null);
+      if (cmd === "save_project") return window.__failSave ? Promise.reject("The disk is full.") : Promise.resolve(null);
       if (cmd === "set_open_project") { window.__open = args.projectId ?? null; return Promise.resolve(null); }
       // As Rust answers: the passphrase is tried before anything else; a
       // check writes nothing; a login is written into the open project only.
@@ -206,6 +206,19 @@ const opened = await doc();
 check("the project's own login and its device's point at the ids they have here, so none is forgotten",
   opened.credentialDefaults?.ssh === "cred-new-2" && opened.pages[0].nodes.find((n) => n.data.label === "DC2-CORE")?.data.sshCredentialId === "cred-new-1",
   JSON.stringify({ defaults: opened.credentialDefaults, dev: opened.pages[0].nodes.find((n) => n.data.label === "DC2-CORE")?.data.sshCredentialId }));
+
+// --- The passphrase is right and the project cannot be made ----------------
+await openFromProject();
+await dialog.locator('[data-action="import-as-project"]').click();
+await page.waitForTimeout(900);
+await st(() => { window.__failSave = true; });
+await box.locator('input[type="password"]').fill("exporting-vault-passphrase");
+await box.locator("button", { hasText: "Import credentials" }).click();
+await page.waitForTimeout(900);
+check("a project that cannot be made is said, not left to silence",
+  /The disk is full/.test(await page.locator(".cv-welcome").innerText()) && (await st(() => window.__cvStore.getState().meta)) === null,
+  (await page.locator(".cv-welcome [role=alert]").allInnerTexts()).join(" | "));
+await st(() => { window.__failSave = false; });
 
 await browser.close();
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");

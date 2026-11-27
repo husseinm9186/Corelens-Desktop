@@ -19,7 +19,7 @@ import type { ProjectDocument } from '../state/store';
 import type { DeviceNodeData } from '../types/domain';
 
 /** Every credential id this project refers to, anywhere. */
-export function credentialsUsedBy(doc: Pick<ProjectDocument, 'pages' | 'credentialDefaults' | 'credentialRules'>): Set<string> {
+export function credentialsUsedBy(doc: Pick<ProjectDocument, 'pages' | 'credentialDefaults' | 'credentialRules'> & Partial<Pick<ProjectDocument, 'probes' | 'crawlProfiles'>>): Set<string> {
   const used = new Set<string>();
   const add = (id: string | undefined | null) => {
     const t = id?.trim();
@@ -29,6 +29,9 @@ export function credentialsUsedBy(doc: Pick<ProjectDocument, 'pages' | 'credenti
   for (const id of doc.credentialDefaults?.sshMore ?? []) add(id);
   for (const id of doc.credentialDefaults?.snmp ?? []) add(id);
   for (const rule of doc.credentialRules ?? []) add(rule.credentialId);
+  // A check over SNMP and a saved discovery profile each name a login too.
+  for (const probe of doc.probes ?? []) add(probe.snmpCredentialId);
+  for (const profile of doc.crawlProfiles ?? []) add(profile.credentialId);
   for (const node of allNodes(doc)) {
     if (node.type !== 'device') continue;
     const d = node.data as DeviceNodeData;
@@ -79,6 +82,10 @@ export function withoutStaleCredentials(
     ...doc,
     credentialDefaults: nextDefaults,
     credentialRules: (doc.credentialRules ?? []).filter((r) => !stale.has(r.credentialId)),
+    probes: doc.probes.some((p) => stale.has(p.snmpCredentialId ?? '')) ? doc.probes.map((p) => (stale.has(p.snmpCredentialId ?? '') ? { ...p, snmpCredentialId: null } : p)) : doc.probes,
+    ...(doc.crawlProfiles?.some((p) => stale.has(p.credentialId ?? ''))
+      ? { crawlProfiles: doc.crawlProfiles.map((p) => (stale.has(p.credentialId ?? '') ? { ...p, credentialId: null } : p)) }
+      : {}),
     pages: doc.pages.map((page) => ({
       ...page,
       nodes: page.nodes.map((node) => {
@@ -123,6 +130,10 @@ export function withCredentialIds(doc: ProjectDocument, ids: Record<string, stri
         }
       : defaults,
     ...(doc.credentialRules ? { credentialRules: doc.credentialRules.map((r) => ({ ...r, credentialId: moved(r.credentialId) ?? r.credentialId })) } : {}),
+    probes: doc.probes.map((p) => (p.snmpCredentialId && moved(p.snmpCredentialId) !== p.snmpCredentialId ? { ...p, snmpCredentialId: moved(p.snmpCredentialId) } : p)),
+    ...(doc.crawlProfiles
+      ? { crawlProfiles: doc.crawlProfiles.map((p) => (p.credentialId && moved(p.credentialId) !== p.credentialId ? { ...p, credentialId: moved(p.credentialId) ?? null } : p)) }
+      : {}),
     pages: doc.pages.map((page) => ({
       ...page,
       nodes: page.nodes.map((node) => {

@@ -1184,14 +1184,14 @@ mod tests {
         assert_eq!(files_for(&files, "show ip route").len(), 1);
         let vrf: Vec<String> = files_for(&files, "show ip route vrf {vrf}").into_iter().filter_map(|(n, _)| n).collect();
         assert_eq!(vrf, vec!["cust-a", "cust-b"]);
-        let dir = std::env::temp_dir().join(format!("cv-captures-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
+        // A folder that removes itself, whichever assertion below fails.
+        let kept = tempfile::tempdir().unwrap();
+        let dir = kept.path().to_path_buf();
         std::fs::write(dir.join("002-show-ip-arp.txt"), "x").unwrap();
         std::fs::write(dir.join("show version.txt"), "x").unwrap();
         std::fs::write(dir.join("notes.md"), "x").unwrap();
         let got: Vec<String> = capture_files(&dir).into_iter().map(|(s, _)| s).collect();
         assert_eq!(got, vec!["show-ip-arp", "show-version"]);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 }
 

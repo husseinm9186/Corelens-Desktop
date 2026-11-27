@@ -1045,9 +1045,21 @@ you drew, as one undo step:
   on that interface. A device Corelens cannot log in to is found the same
   way through another device's ARP table, its own port left blank. A port
   that learned more than eight addresses leads to another switch and is
-  left alone. Such a link says it was found from the MAC table, and the
+  left alone. One address is one cable: where two switches both learned
+  it, the port that learned fewest addresses is where the device is
+  plugged in, and the other is the way there. Where they learned as few
+  as each other, neither is drawn — unless the device has that many
+  interfaces sharing the address, which is a bundle to a pair of
+  switches, and each gets its cable. A VLAN interface or a loopback never
+  names the port, and a port you typed on a link is kept over one found
+  this way. Such a link says it was found from the MAC table, and the
   status line counts them. These readers are built from the vendors'
   documentation and say so until a device's own output has confirmed them.
+- **Where LLDP sends a port's description** instead of its name, each end
+  names its own port and the description is kept only where nothing else
+  names that end. One cable reported by both its ends is one cable.
+- **A device drawn twice on the page** is one device: its cables are
+  counted once, on whichever drawing you linked.
 - **Management links** — a cable on a device's `mgmt0`, `Management1`,
   `fxp0`, or a switch's `Gi0/0` — are drawn in **sky blue**, thinner than a
   cable. **Hide management links** on the same menu takes them off the page

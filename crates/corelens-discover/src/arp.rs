@@ -68,7 +68,43 @@ pub fn parse_arp_table_near(
     near: Option<Ipv4Addr>,
     inside: impl Fn(Ipv4Addr) -> bool,
 ) -> HashMap<String, String> {
-    // Every address each MAC answered for, in the order the table gave them.
+    let rank = |ip: Ipv4Addr| {
+        let shared = near.map_or(0, |n| (u32::from(ip) ^ u32::from(n)).leading_zeros());
+        (inside(ip), shared)
+    };
+    every_address_per_mac(out)
+        .into_iter()
+        .map(|(mac, ips)| {
+            // Strictly better only, so a tie keeps the one listed first.
+            let mut best = ips[0];
+            for &ip in &ips[1..] {
+                if rank(ip) > rank(best) {
+                    best = ip;
+                }
+            }
+            (mac, best.to_string())
+        })
+        .collect()
+}
+
+/// Every entry of the table, address and MAC, in the order listed and each
+/// pair once. A firewall answers for several addresses from one MAC, and a
+/// caller looking for one particular address needs them all.
+pub fn parse_arp_entries(out: &str) -> Vec<(String, String)> {
+    let mut entries = Vec::new();
+    for (mac, ips) in every_address_per_mac(out) {
+        for ip in ips {
+            let pair = (ip.to_string(), mac.clone());
+            if !entries.contains(&pair) {
+                entries.push(pair);
+            }
+        }
+    }
+    entries
+}
+
+/// Every address each MAC answered for, in the order the table gave them.
+fn every_address_per_mac(out: &str) -> Vec<(String, Vec<Ipv4Addr>)> {
     let mut seen: Vec<(String, Vec<Ipv4Addr>)> = Vec::new();
     for line in out.lines() {
         let mut ip: Option<Ipv4Addr> = None;
@@ -97,28 +133,31 @@ pub fn parse_arp_table_near(
             }
         }
     }
-
-    let rank = |ip: Ipv4Addr| {
-        let shared = near.map_or(0, |n| (u32::from(ip) ^ u32::from(n)).leading_zeros());
-        (inside(ip), shared)
-    };
-    seen.into_iter()
-        .map(|(mac, ips)| {
-            // Strictly better only, so a tie keeps the one listed first.
-            let mut best = ips[0];
-            for &ip in &ips[1..] {
-                if rank(ip) > rank(best) {
-                    best = ip;
-                }
-            }
-            (mac, best.to_string())
-        })
-        .collect()
+    seen
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_entry_is_kept_where_one_mac_answers_for_several_addresses() {
+        // Invented addresses, in the IOS layout.
+        let out = "Protocol  Address          Age (min)  Hardware Addr   Type   Interface\n\
+Internet  198.51.100.1            0   00a6.cafe.0002  ARPA   Vlan20\n\
+Internet  192.0.2.10              0   00a6.cafe.0002  ARPA   Vlan10\n\
+Internet  192.0.2.20              3   5254.0000.00aa  ARPA   Vlan10\n";
+        assert_eq!(
+            parse_arp_entries(out),
+            vec![
+                ("198.51.100.1".to_string(), "00a6cafe0002".to_string()),
+                ("192.0.2.10".to_string(), "00a6cafe0002".to_string()),
+                ("192.0.2.20".to_string(), "5254000000aa".to_string()),
+            ]
+        );
+        // The one-per-MAC reading still keeps the first listed.
+        assert_eq!(parse_arp_table(out).get("00a6cafe0002").map(String::as_str), Some("198.51.100.1"));
+    }
 
     /// Verbatim from a Catalyst 2960CX, trimmed.
     const IOS: &str = r#"

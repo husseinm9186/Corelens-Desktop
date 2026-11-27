@@ -111,17 +111,22 @@ interface Found {
   bPort: string;
   /** Told by MAC address rather than by a neighbour protocol. */
   via?: 'mac';
+  /** What `a` called `b`'s port where that is not one of `b`'s ports: a
+   *  description of it. Shown only where nothing names the port. */
+  bHint?: string;
 }
+
+/** An interface that is not a socket a cable goes into. */
+const isLogicalInterface = (port: string) => /^(vl|vlan|bvi|bdi|irb|lo|loopback|tu|tunnel|nve|vti|null|dialer|virtual-)[\s-]?\d/i.test(port.trim());
 
 export function fillDrawnLinks(
   nodes: readonly TopoNode[],
   edges: readonly TopoEdge[],
-  readings: readonly DeviceReading[],
+  allReadings: readonly DeviceReading[],
   newId: () => string,
 ): DrawnLinksResult {
   const devices = nodes.filter((n) => n.type === 'device');
   const dataOf = new Map(devices.map((n) => [n.id, n.data as DeviceNodeData]));
-  const asked = new Set(readings.map((r) => r.nodeId));
 
   // Who a reported neighbour is, among the devices drawn: by serial, then
   // by name, then by the address it is managed on — strongest first, and a
@@ -129,6 +134,7 @@ export function fillDrawnLinks(
   const bySerial = new Map<string, string>();
   const byName = new Map<string, string>();
   const byAddress = new Map<string, string>();
+  const twinOf = new Map<string, string>();
   for (const n of devices) {
     const d = n.data as DeviceNodeData;
     for (const s of parseSerials(d.serial ?? '')) if (!bySerial.has(s.toUpperCase())) bySerial.set(s.toUpperCase(), n.id);
@@ -138,8 +144,22 @@ export function fillDrawnLinks(
     }
     const primary = bare(d.addresses?.find((a) => a.isPrimary)?.address ?? d.addresses?.[0]?.address ?? '');
     if (primary && !byAddress.has(primary)) byAddress.set(primary, n.id);
+    // One device drawn twice is one device: the first drawing stands for
+    // both wherever cables are counted.
+    if (primary) twinOf.set(n.id, byAddress.get(primary)!);
   }
+  const one = (id: string) => twinOf.get(id) ?? id;
+  const readings: DeviceReading[] = [];
+  for (const r of allReadings) {
+    const nodeId = one(r.nodeId);
+    if (!readings.some((x) => x.nodeId === nodeId)) readings.push(nodeId === r.nodeId ? r : { ...r, nodeId });
+  }
+  const asked = new Set(readings.map((r) => r.nodeId));
   const drawnAs = (n: Neighbor): string | undefined => {
+    const id = drawnAsAny(n);
+    return id === undefined ? undefined : one(id);
+  };
+  const drawnAsAny = (n: Neighbor): string | undefined => {
     const serial = n.serial?.trim().toUpperCase();
     if (serial && bySerial.has(serial)) return bySerial.get(serial);
     const agrees = (id: string | undefined) => (id && !serialsDisagree(dataOf.get(id)?.serial, n.serial) ? id : undefined);
@@ -154,6 +174,23 @@ export function fillDrawnLinks(
 
   // The cables the devices report between two drawn devices, each once
   // however many of its ends reported it.
+  // The ports each device that was asked names as its own. LLDP sends a
+  // port's description where it has one, so what one end calls the other's
+  // port is a name only where the other end has a port called that.
+  const ownPorts = new Map<string, Set<string>>();
+  for (const r of readings) {
+    const ports = new Set<string>();
+    for (const n of r.neighbors) if (n.localInterface) ports.add(shortInterface(n.localInterface));
+    for (const p of r.ports) ports.add(shortInterface(p.port));
+    for (const o of r.own ?? []) ports.add(shortInterface(o.port));
+    for (const m of r.macs ?? []) ports.add(shortInterface(m.port));
+    ownPorts.set(r.nodeId, ports);
+  }
+  const isPortOf = (nodeId: string, port: string) => {
+    const ports = ownPorts.get(nodeId);
+    return !ports || ports.size === 0 || ports.has(port);
+  };
+
   const found: Found[] = [];
   let strangers = 0;
   for (const r of readings) {
@@ -165,24 +202,47 @@ export function fillDrawnLinks(
       }
       if (other === r.nodeId) continue;
       const here = shortInterface(n.localInterface ?? '');
-      const there = shortInterface(n.remoteInterface ?? '');
+      const said = shortInterface(n.remoteInterface ?? '');
+      const there = isPortOf(other, said) ? said : '';
+      const hint = there ? '' : said;
       const same = found.find(
         (f) =>
           (f.a === r.nodeId && f.b === other && f.aPort === here && (!f.bPort || !there || f.bPort === there)) ||
           (f.b === r.nodeId && f.a === other && (!f.bPort || f.bPort === here) && (!there || !f.aPort || f.aPort === there) && (Boolean(f.bPort) || Boolean(there))),
       );
       if (!same) {
-        found.push({ a: r.nodeId, aPort: here, b: other, bPort: there });
+        found.push({ a: r.nodeId, aPort: here, b: other, bPort: there, ...(hint ? { bHint: hint } : {}) });
         continue;
       }
       // The other end's own word for its port fills a blank.
-      if (same.a === r.nodeId) same.bPort ||= there;
-      else {
+      if (same.a === r.nodeId) {
+        same.bPort ||= there;
+        if (hint) same.bHint ||= hint;
+      } else {
         same.bPort ||= here;
         same.aPort ||= there;
       }
     }
   }
+  // Each end reporting a cable without naming the other's port: one report
+  // from each end is one cable, each end's port its own. More than one
+  // from each is that many cables, and which far port is whose is not known.
+  for (const f of [...found]) {
+    if (!found.includes(f) || f.bPort) continue;
+    const mine = found.filter((x) => x.a === f.a && x.b === f.b && !x.bPort);
+    const theirs = found.filter((x) => x.a === f.b && x.b === f.a && !x.bPort);
+    if (theirs.length === 0) continue;
+    if (mine.length === 1 && theirs.length === 1) {
+      f.bPort = theirs[0]!.aPort;
+      found.splice(found.indexOf(theirs[0]!), 1);
+      continue;
+    }
+    // The same cables, counted from both ends: the fewer are among the more.
+    const spare = mine.length >= theirs.length ? theirs : mine;
+    for (const x of spare) found.splice(found.indexOf(x), 1);
+  }
+  // Where nothing named the far port, what was said of it is all there is.
+  for (const f of found) if (!f.bPort && f.bHint) f.bPort = f.bHint;
 
   const byMac = macCables(readings, found, byAddress, dataOf);
   found.push(...byMac);
@@ -209,26 +269,32 @@ export function fillDrawnLinks(
     const d = (e.data ?? {}) as LinkData;
     // One drawn as a logical link or a tunnel on purpose is not a cable.
     if (d.linkKind === 'logical' || d.linkKind === 'tunnel') return false;
-    return dataOf.has(e.source) && dataOf.has(e.target) && e.source !== e.target && d.kind !== 'leader' && !d.overlay && !d.layer3;
+    return dataOf.has(e.source) && dataOf.has(e.target) && one(e.source) !== one(e.target) && d.kind !== 'leader' && !d.overlay && !d.layer3;
   };
   const drawnByPair = new Map<string, TopoEdge[]>();
-  for (const e of edges) if (checkable(e)) drawnByPair.set(pairKey(e.source, e.target), [...(drawnByPair.get(pairKey(e.source, e.target)) ?? []), e]);
+  for (const e of edges) {
+    if (!checkable(e)) continue;
+    const key = pairKey(one(e.source), one(e.target));
+    drawnByPair.set(key, [...(drawnByPair.get(key) ?? []), e]);
+  }
 
   const patches = new Map<string, Partial<LinkData>>();
   const addedEdges: TopoEdge[] = [];
   const result = { met: 0, unmet: 0, unasked: 0, management: 0, added: 0, undrawn: 0, strangers, byMac: byMac.length };
 
   /** The found cable's ports, the way round this drawn link runs. */
-  const portsAlong = (e: TopoEdge, f: Found) => (e.source === f.a ? [f.aPort, f.bPort] : [f.bPort, f.aPort]) as [string, string];
+  const portsAlong = (e: TopoEdge, f: Found) => (one(e.source) === f.a ? [f.aPort, f.bPort] : [f.bPort, f.aPort]) as [string, string];
   const confirm = (e: TopoEdge, f: Found) => {
     const [sourcePort, targetPort] = portsAlong(e, f);
     const had = (e.data ?? {}) as LinkData;
     const media = mediaFor(f);
     const mgmt = management(f);
+    // A port the devices did not name keeps whatever was typed; and one
+    // told by MAC address is an inference, so what was typed wins over it.
+    const port = (told: string, typed: string | undefined) => (f.via === 'mac' ? typed || told : told || typed) || '';
     patches.set(e.id, {
-      // A port the devices did not name keeps whatever was typed.
-      sourcePortLabel: sourcePort || had.sourcePortLabel || '',
-      targetPortLabel: targetPort || had.targetPortLabel || '',
+      sourcePortLabel: port(sourcePort, had.sourcePortLabel),
+      targetPortLabel: port(targetPort, had.targetPortLabel),
       drawnCheck: 'met',
       drawnVia: f.via,
       ...(media ? { media } : {}),
@@ -275,7 +341,7 @@ export function fillDrawnLinks(
     }
     // Drawn, and no device reports it.
     for (const e of drawn) {
-      if (asked.has(e.source) || asked.has(e.target)) {
+      if (asked.has(one(e.source)) || asked.has(one(e.target))) {
         patches.set(e.id, { drawnCheck: 'unmet' });
         result.unmet += 1;
       } else {
@@ -312,6 +378,12 @@ export function fillDrawnLinks(
       if (mgmt) result.management += 1;
       result.added += 1;
     }
+  }
+
+  // A link since chosen as logical or a tunnel is no longer a finding.
+  for (const e of edges) {
+    const d = (e.data ?? {}) as LinkData;
+    if (d.drawnCheck === 'unmet' && (d.linkKind === 'logical' || d.linkKind === 'tunnel')) patches.set(e.id, { drawnCheck: undefined });
   }
 
   const next = edges.map((e) => {
@@ -351,7 +423,8 @@ function macCables(
       return;
     }
     const entry = had ?? { nodeId, ports: new Set<string>() };
-    if (port) entry.ports.add(shortInterface(port));
+    // A VLAN interface or a loopback has the address and no socket.
+    if (port && !isLogicalInterface(port)) entry.ports.add(shortInterface(port));
     owner.set(m, entry);
   };
   const ownRead = new Set<string>();
@@ -371,7 +444,8 @@ function macCables(
 
   const pairKey = (x: string, y: string) => [x, y].sort().join('::');
   const pairs = new Set(known.map((f) => pairKey(f.a, f.b)));
-  const out: Found[] = [];
+  // Every port that qualifies, before any is believed.
+  const seen: { switchId: string; port: string; other: string; bPort: string; macs: string[]; learned: number }[] = [];
   for (const r of readings) {
     if (!r.macs?.length || !dataOf.has(r.nodeId)) continue;
     const named = new Set(r.neighbors.map((n) => shortInterface(n.localInterface ?? '')).filter(Boolean));
@@ -402,14 +476,35 @@ function macCables(
       if (pairs.has(pairKey(r.nodeId, other))) continue;
       const theirs = [...ports];
       const bPort = theirs.length === 1 && !theirs[0]!.startsWith('\u0000') ? theirs[0]! : '';
-      // The same cable seen from the other switch's table fills its blank.
-      const same = out.find((x) => x.a === other && x.b === r.nodeId);
-      if (same) {
-        same.bPort ||= port;
-        continue;
-      }
-      out.push({ a: r.nodeId, aPort: port, b: other, bPort, via: 'mac' });
+      seen.push({ switchId: r.nodeId, port, other, bPort, macs: [...macs].filter((m) => owner.get(m)?.nodeId === other), learned: macs.size });
     }
+  }
+  // One address is on one cable. A second switch learns it too, on the port
+  // towards the first; that port learned everything else behind it as well,
+  // so of the switches that learned an address, the one whose port learned
+  // fewest is where it is plugged in. Several may have learned as few as
+  // each other: that is a bundle to a pair of switches where the device has
+  // that many interfaces with the address, and otherwise nothing says
+  // which, and none is believed.
+  const dropped = new Set<(typeof seen)[number]>();
+  for (const mac of new Set(seen.flatMap((c) => c.macs))) {
+    const holders = seen.filter((c) => c.macs.includes(mac));
+    if (new Set(holders.map((c) => c.switchId)).size < 2) continue;
+    const fewest = Math.min(...holders.map((c) => c.learned));
+    const nearest = new Set(holders.filter((c) => c.learned === fewest).map((c) => c.switchId));
+    const sockets = Math.max(1, owner.get(mac)?.ports.size ?? 0);
+    for (const c of holders) if (nearest.size > sockets || !nearest.has(c.switchId)) dropped.add(c);
+  }
+  const out: Found[] = [];
+  for (const c of seen) {
+    if (dropped.has(c)) continue;
+    // The same cable seen from the other switch's table fills its blank.
+    const same = out.find((x) => x.a === c.other && x.b === c.switchId);
+    if (same) {
+      same.bPort ||= c.port;
+      continue;
+    }
+    out.push({ a: c.switchId, aPort: c.port, b: c.other, bPort: c.bPort, via: 'mac' });
   }
   return out;
 }
@@ -445,7 +540,8 @@ export function drawnLegend(edges: readonly TopoEdge[]): { key: LinkMedia | 'man
 /** The one mark a link is coloured by: not found beats everything, a
  *  management link is a management link whatever its port is made of. */
 export function drawnMark(d: Partial<Pick<LinkData, 'drawnCheck' | 'media' | 'linkKind'>>): LinkMedia | 'management' | 'unmet' | null {
-  if (d.drawnCheck === 'unmet') return 'unmet';
+  // Chosen as a logical link or a tunnel, it is what it was drawn to be.
+  if (d.drawnCheck === 'unmet' && d.linkKind !== 'logical' && d.linkKind !== 'tunnel') return 'unmet';
   if (d.linkKind === 'management') return 'management';
   return d.drawnCheck === 'met' && d.media ? d.media : null;
 }

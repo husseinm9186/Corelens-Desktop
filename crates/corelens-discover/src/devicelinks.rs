@@ -156,7 +156,9 @@ pub async fn read(device: &mut Device) -> DeviceLinks {
     for command in dialect.arp_commands() {
         commands.push(command.to_string());
         let out = device.run(command).await.unwrap_or_default();
-        arp = crate::arp::parse_arp_table(&out).into_iter().map(|(mac, ip)| ArpEntry { ip, mac }).collect();
+        // Every address, not one per MAC: a firewall answers for several
+        // from one, and the one it is drawn with may not be the first.
+        arp = crate::arp::parse_arp_entries(&out).into_iter().map(|(ip, mac)| ArpEntry { ip, mac }).collect();
         if !arp.is_empty() {
             arp.sort_by(|a, b| a.ip.cmp(&b.ip));
             break;

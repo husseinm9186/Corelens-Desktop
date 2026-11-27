@@ -2,6 +2,98 @@
 
 Newest first.
 
+## 2.22.5 — 2026-11-27
+
+The number goes from 2.22.2 to 2.22.5 so that this and Corelens Desktop AI
+carry the same number for the same work; there is no 2.22.3 or 2.22.4 of
+this product.
+
+**New**
+- **Several links selected at once.** A selection box or an `Alt` lasso
+  now catches every link it is drawn across, with or without a device in
+  it — before, a box drawn over a bundle of links selected nothing. The
+  links light up while you draw. `Delete` removes them together, a
+  right-click on one of them offers **Delete N selected links**, and the
+  details panel edits them all.
+- **Every link Fill in touched says what it rests on**, when you point at
+  it and in its details: "Reported by BGW-01 Eth1/1: it sees SPINE-01
+  Eth1/49. Matched to the device drawn here by name. Both ends report it."
+- **The status line says what was left out and why**: cables reported and
+  not drawn, and devices whose address answered as another device.
+
+**Fixed**
+- **Fill in drawn links cabled the wrong devices together.** On a VXLAN
+  page one leaf was joined to both border gateways and the DCI switch,
+  while their links to the spines were marked "no cable found". The
+  cables were real; what was wrong was *whose* they were. A neighbour is
+  matched to a drawn device by serial number, then name, then address,
+  and whatever came first was believed even where it could not tell two
+  devices apart. Now:
+  - A serial, a name or an address that two devices share identifies
+    neither. Cloned virtual switches report one serial; an anycast address
+    belongs to every leaf.
+  - Where the serial names one drawn device and the name another, nothing
+    is guessed.
+  - The device that answers at an address is checked against the device
+    drawn there. One that says it is another device on the page has its
+    answer counted as that device's, and the status line names the address
+    to correct. Two differently named devices drawn with one address are
+    no longer treated as one.
+  - One port, one cable: two reports that put two cables on one port are
+    neither believed, unless both ends report one of them.
+  - A cable is drawn only where the far device was named or its serial
+    given. A match by address alone can confirm a link you drew, and never
+    draws one.
+- **Fill in no longer reads ARP tables**, and matches by MAC address only
+  for a firewall or a router, from that device's own interfaces, and only
+  to fill in a link you drew. Behind an anycast gateway any switch may
+  answer for an address, so neither is evidence about a switch. Addresses
+  learned over the overlay (`nve`), on a VLAN interface or across the peer
+  link are ignored.
+- **Tunnels and shared segments are not cables.** A neighbour seen over a
+  tunnel, a VLAN interface or a loopback is left out. Several neighbours on
+  one port — a provider's layer-2 service between routers — can confirm a
+  link you drew and draw none. A link drawn between two BGP peers with no
+  cable between them is kept as a logical link, as before.
+- `Ctrl`-click on a selected link takes it out of the selection; its
+  handles used to be in the way of the click. A link shows its handles
+  only when it is selected alone.
+- A right-click on one of several selected links no longer drops the rest
+  of the selection.
+- **Escape closes a right-click menu.** It did nothing; only clicking away
+  closed one. The device or link the menu was opened on stays selected.
+- **The guided tour's title** could not be read on the light canvas (dark
+  on dark), nor the **Not checked** chip at the top of a link's or a
+  check's details.
+- **Dropdowns narrower than what they say**: "Mouse wheel on the diagram"
+  in Settings, and the source, engine and profile lists in Discover,
+  Path-Trace, Path check, Tracert and Where is, which cut a device's name
+  short. A dropdown is now as wide as its longest entry.
+- **Discover docked on the right** cut its Duo tick off at the panel's
+  edge. It wraps.
+- **In a window under 1080 px wide** the two handles that fold the side
+  panels sat in the wrong place, one over the diagram and one on top of
+  the details panel's text. The save state in the top bar was cut through
+  the middle of the time; it ends in an ellipsis.
+- **One dock tab that fails no longer takes the dock with it.** The tabs
+  stay, and choosing another one works.
+- **Fill in drawn links** drew one cable twice where LLDP sends a port's
+  description instead of its name, and where a device is drawn twice on
+  the page.
+- **A link you set to Logical** after it was marked "no cable found" kept
+  the mark.
+- **Imported logins**: a check over SNMP and a saved discovery profile
+  kept the id the login had on the machine it was exported from. They
+  follow the import now, and are exported with the project.
+- **An import that failed after its passphrase was accepted** said
+  nothing. The reason is shown on the start screen.
+- **An FTD backup could be cut short** by a long line of output ending in
+  `>` that wrapped onto a row of its own, which read as its prompt.
+- Three hints still pointed at Settings ▸ Display inside a project; it is
+  on the start screen.
+
+Discover, Collect and Path-Trace are unchanged.
+
 ## 2.22.2 — 2026-11-26
 
 The number jumps from 2.19.0 so that this and Corelens Desktop AI carry the

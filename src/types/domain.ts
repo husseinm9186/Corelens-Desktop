@@ -392,6 +392,22 @@ export interface LinkHealthRule {
   manualStatus?: HealthStatus;
 }
 
+/** What a link filled in from the devices rests on: the device asked
+ *  (`by`) and the port it named, the neighbour as it named it (`saw`, a
+ *  MAC address where the cable was told by one) and that neighbour's port,
+ *  and what matched the neighbour to a drawn device. */
+export interface DrawnSaid {
+  by: string;
+  port: string;
+  saw: string;
+  sawPort: string;
+  match: 'serial' | 'name' | 'address' | 'mac';
+  /** Reported by both of its ends. */
+  both?: boolean;
+  /** Seen on a port that has other neighbours too. */
+  segment?: boolean;
+}
+
 export interface LinkData extends Record<string, unknown> {
   /** What this line is. A 'leader' points a note at the thing it is about; it
    *  is an annotation, not a cable, so it carries no health, is not counted,
@@ -447,6 +463,9 @@ export interface LinkData extends Record<string, unknown> {
   /** How Fill in drawn links found the cable, where it was not a neighbour
    *  protocol: a switch's MAC table holding the other device's address. */
   drawnVia?: 'mac';
+  /** Who reported the cable and how the far device was matched, kept so
+   *  the link can say what it rests on. */
+  drawnSaid?: DrawnSaid;
   /** What its ports are made of, as the devices reported it. */
   media?: LinkMedia;
   /** What the link is physically made of, shown as a tag in its

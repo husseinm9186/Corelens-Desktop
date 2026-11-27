@@ -244,7 +244,6 @@ describe('where CDP and LLDP say nothing: by MAC address', () => {
   // whose address that is.
   const SW = node('sw', 'ACCESS-SW', { deviceType: 'access-switch', addresses: [{ id: 'a', label: 'Mgmt', address: '192.0.2.2', isPrimary: true }] });
   const FW = node('fw', 'FTD-1', { deviceType: 'firewall', addresses: [{ id: 'a', label: 'Mgmt', address: '192.0.2.10', isPrimary: true }] });
-  const SRV = node('sv', 'SERVER-1', { deviceType: 'server', addresses: [{ id: 'a', label: 'Mgmt', address: '192.0.2.20', isPrimary: true }] });
   const switchSays = (macs: { port: string; mac: string }[], over: Partial<DeviceReading> = {}): DeviceReading => ({ ...reading('sw', []), macs, ...over });
   const ftdSays = (own: { port: string; mac: string }[]): DeviceReading => ({ ...reading('fw', []), own });
 
@@ -257,24 +256,38 @@ describe('where CDP and LLDP say nothing: by MAC address', () => {
     expect(got).toMatchObject({ met: 1, byMac: 1 });
   });
 
-  it('draws the cable when nobody had', () => {
+  it('is not enough to draw a cable nobody drew', () => {
     const got = fillDrawnLinks([SW, FW], [], [switchSays([{ port: 'Gi1/0/5', mac: '00a6cafe0002' }]), ftdSays([{ port: 'Ethernet1/2', mac: '00a6cafe0002' }])], id);
-    expect(got).toMatchObject({ added: 1, byMac: 1 });
-    expect(got.edges[0]!.data).toMatchObject({ drawnVia: 'mac', drawnCheck: 'met' });
+    expect(got).toMatchObject({ added: 0, byMac: 0, unsure: 1 });
   });
 
-  it('finds a device it could not log in to through an ARP table, its own port left blank', () => {
-    const got = fillDrawnLinks([SW, FW], [link('e1', 'sw', 'fw')], [switchSays([{ port: 'Gi1/0/5', mac: '00a6cafe0002' }], { arp: [{ ip: '192.0.2.10', mac: '00a6cafe0002' }] })], id);
-    expect(dataOf(got.edges, 'e1')).toMatchObject({ sourcePortLabel: 'Gi1/0/5', targetPortLabel: '', drawnVia: 'mac' });
+  it('a firewall that could not be asked is not found: whose an address is comes only from the device itself', () => {
+    const got = fillDrawnLinks([SW, FW], [link('e1', 'sw', 'fw')], [switchSays([{ port: 'Gi1/0/5', mac: '00a6cafe0002' }])], id);
+    expect(dataOf(got.edges, 'e1')).toMatchObject({ drawnCheck: 'unmet', sourcePortLabel: '' });
+    expect(got.byMac).toBe(0);
   });
 
-  it('a port that learned two drawn devices is between switches, and joins neither', () => {
-    const got = fillDrawnLinks([SW, FW, SRV], [], [
-      switchSays([{ port: 'Te1/1/1', mac: '00a6cafe0002' }, { port: 'Te1/1/1', mac: '5254000000bb' }]),
+  it('is for a firewall or a router, never for a switch or anything else', () => {
+    const own = [{ port: 'Ethernet1/2', mac: '00a6cafe0002' }];
+    const told = (deviceType: string) => {
+      const far = node('fw', 'FAR', { deviceType: deviceType as never, addresses: [{ id: 'a', label: 'Mgmt', address: '192.0.2.10', isPrimary: true }] });
+      const got = fillDrawnLinks([SW, far], [link('e1', 'sw', 'fw')], [switchSays([{ port: 'Gi1/0/5', mac: '00a6cafe0002' }]), { ...reading('fw', []), own }], id);
+      return dataOf(got.edges, 'e1').drawnVia === 'mac';
+    };
+    expect(told('firewall')).toBe(true);
+    expect(told('router')).toBe(true);
+    // A leaf has the anycast gateway's address like every other leaf.
+    for (const kind of ['access-switch', 'core-switch', 'l3-switch', 'server', 'generic']) expect(told(kind), kind).toBe(false);
+  });
+
+  it('a port that learned two drawn firewalls is between switches, and joins neither', () => {
+    const fw2 = node('f2', 'FTD-2', { deviceType: 'firewall', addresses: [{ id: 'a', label: 'Mgmt', address: '192.0.2.11', isPrimary: true }] });
+    const got = fillDrawnLinks([SW, FW, fw2], [link('e1', 'sw', 'fw'), link('e2', 'sw', 'f2')], [
+      switchSays([{ port: 'Te1/1/1', mac: '00a6cafe0002' }, { port: 'Te1/1/1', mac: '00a6cafe00bb' }]),
       ftdSays([{ port: 'Ethernet1/2', mac: '00a6cafe0002' }]),
-      { ...reading('sv', []), own: [{ port: 'eth0', mac: '5254000000bb' }] },
+      { ...reading('f2', []), own: [{ port: 'Ethernet1/2', mac: '00a6cafe00bb' }] },
     ], id);
-    expect(got).toMatchObject({ added: 0, byMac: 0 });
+    expect(got).toMatchObject({ added: 0, byMac: 0, unmet: 2 });
   });
 
   it('a port that learned many addresses is an uplink, and joins nothing', () => {
@@ -293,8 +306,8 @@ describe('where CDP and LLDP say nothing: by MAC address', () => {
   });
 
   it('where every interface shares one address, the firewall\'s port is not guessed', () => {
-    const got = fillDrawnLinks([SW, FW], [], [switchSays([{ port: 'Gi1/0/5', mac: '00a6cafe0001' }]), ftdSays([{ port: 'Ethernet1/1', mac: '00a6cafe0001' }, { port: 'Ethernet1/2', mac: '00a6cafe0001' }])], id);
-    expect(got.edges[0]!.data).toMatchObject({ sourcePortLabel: 'Gi1/0/5', targetPortLabel: '' });
+    const got = fillDrawnLinks([SW, FW], [link('e1', 'sw', 'fw')], [switchSays([{ port: 'Gi1/0/5', mac: '00a6cafe0001' }]), ftdSays([{ port: 'Ethernet1/1', mac: '00a6cafe0001' }, { port: 'Ethernet1/2', mac: '00a6cafe0001' }])], id);
+    expect(dataOf(got.edges, 'e1')).toMatchObject({ sourcePortLabel: 'Gi1/0/5', targetPortLabel: '', drawnVia: 'mac' });
   });
 
   it('the mark comes off with the others', () => {
@@ -381,38 +394,39 @@ describe('by MAC address, more carefully', () => {
   const fwOwn: DeviceReading = { ...reading('fw', []), own: [{ port: 'Ethernet1/2', mac: '00a6cafe0002' }] };
 
   it('one address is one cable: a second switch that learned it on its uplink is not cabled to the firewall', () => {
-    const got = fillDrawnLinks([SW1, SW2, FW], [], [
+    const got = fillDrawnLinks([SW1, SW2, FW], [link('e1', 's1', 'fw'), link('e2', 's2', 'fw')], [
       { ...reading('s1', [says('ACCESS-SW', 'GigabitEthernet1/0/49', 'GigabitEthernet1/0/1')]), macs: [{ port: 'Gi1/0/5', mac: '00a6cafe0002' }] },
       // The uplink is a bundle the MAC table names and CDP does not.
       { ...reading('s2', [says('DIST-SW', 'GigabitEthernet1/0/1', 'GigabitEthernet1/0/49')]), macs: [{ port: 'Po1', mac: '00a6cafe0002' }, { port: 'Po1', mac: '5254000000aa' }] },
       fwOwn,
     ], id);
-    const cables = got.edges.map((e) => `${e.source}:${(e.data as LinkData).sourcePortLabel}-${e.target}`).sort();
-    expect(cables).toEqual(['s1:Gi1/0/49-s2', 's1:Gi1/0/5-fw']);
-    expect(got.byMac).toBe(1);
+    expect(dataOf(got.edges, 'e1')).toMatchObject({ sourcePortLabel: 'Gi1/0/5', drawnCheck: 'met', drawnVia: 'mac' });
+    // The link drawn to the second switch is kept, as what it then is.
+    expect(dataOf(got.edges, 'e2')).toMatchObject({ sourcePortLabel: '', drawnCheck: 'unmet' });
+    expect(got).toMatchObject({ byMac: 1, added: 1 });
   });
 
   it('where two switches learned it on ports that look alike, neither is guessed', () => {
-    const got = fillDrawnLinks([SW1, SW2, FW], [], [
+    const got = fillDrawnLinks([SW1, SW2, FW], [link('e1', 's1', 'fw'), link('e2', 's2', 'fw')], [
       { ...reading('s1', []), macs: [{ port: 'Gi1/0/5', mac: '00a6cafe0002' }] },
       { ...reading('s2', []), macs: [{ port: 'Gi1/0/1', mac: '00a6cafe0002' }] },
       fwOwn,
     ], id);
-    expect(got).toMatchObject({ added: 0, byMac: 0 });
+    expect(got).toMatchObject({ added: 0, byMac: 0, met: 0, unmet: 2 });
   });
 
   it('a bundle to a pair of switches is a cable to each, where the firewall has the interfaces for it', () => {
-    const got = fillDrawnLinks([SW1, SW2, FW], [], [
+    const got = fillDrawnLinks([SW1, SW2, FW], [link('e1', 's1', 'fw'), link('e2', 's2', 'fw')], [
       { ...reading('s1', []), macs: [{ port: 'Po10', mac: '00a6cafe0002' }] },
       { ...reading('s2', []), macs: [{ port: 'Po10', mac: '00a6cafe0002' }] },
       { ...reading('fw', []), own: [{ port: 'Port-channel1', mac: '00a6cafe0002' }, { port: 'Ethernet1/1', mac: '00a6cafe0002' }, { port: 'Ethernet1/2', mac: '00a6cafe0002' }] },
     ], id);
-    expect(got).toMatchObject({ added: 2, byMac: 2 });
+    expect(got).toMatchObject({ met: 2, byMac: 2, added: 0 });
     expect(got.edges.map((e) => (e.data as LinkData).targetPortLabel)).toEqual(['', '']);
   });
 
   it('a logical interface never names the port', () => {
-    const got = fillDrawnLinks([SW1, FW], [], [
+    const got = fillDrawnLinks([SW1, FW], [link('e1', 's1', 'fw')], [
       { ...reading('s1', []), macs: [{ port: 'Gi1/0/5', mac: '00a6cafe0002' }] },
       { ...reading('fw', []), own: [{ port: 'Vlan10', mac: '00a6cafe0002' }] },
     ], id);
@@ -420,7 +434,7 @@ describe('by MAC address, more carefully', () => {
   });
 
   it('and does not stop the physical interface that shares its address from naming it', () => {
-    const got = fillDrawnLinks([SW1, FW], [], [
+    const got = fillDrawnLinks([SW1, FW], [link('e1', 's1', 'fw')], [
       { ...reading('s1', []), macs: [{ port: 'Gi1/0/5', mac: '00a6cafe0002' }] },
       { ...reading('fw', []), own: [{ port: 'Ethernet1/2', mac: '00a6cafe0002' }, { port: 'BVI1', mac: '00a6cafe0002' }] },
     ], id);
@@ -448,5 +462,213 @@ describe('a link made logical after it was marked', () => {
     const got = fillDrawnLinks([SPINE, LEAF], [link('e1', 'sp', 'lf', { drawnCheck: 'unmet', linkKind: 'logical' })], [reading('sp', [])], id);
     expect(dataOf(got.edges, 'e1').drawnCheck).toBeUndefined();
     expect(got.unmet).toBe(0);
+  });
+});
+
+describe('who a reported neighbour is', () => {
+  const at = (address: string) => ({ addresses: [{ id: 'a', label: 'Mgmt', address, isPrimary: true }] });
+  const BGW = node('bg', 'BGW-01', at('192.0.2.23'));
+  const SP1 = node('s1', 'SPINE-01', at('192.0.2.21'));
+  const SP2 = node('s2', 'SPINE-02', at('192.0.2.22'));
+  const LF1 = node('l1', 'LEAF-01', at('192.0.2.25'));
+  const ends = (edges: TopoEdge[]) => edges.map((e) => [e.source, e.target].sort().join('-')).sort();
+
+  it('a serial two differently named neighbours share identifies neither of them', () => {
+    // Cloned virtual switches report one serial. The leaf it was once read
+    // from must not become every device that reports it.
+    const leaf = node('l1', 'LEAF-01', { ...at('192.0.2.25'), serial: '9CLONED0001' });
+    const got = fillDrawnLinks([leaf, SP1, SP2, BGW], [link('e1', 'bg', 's1'), link('e2', 'bg', 's2')], [
+      reading('bg', [
+        says('SPINE-01(9CLONED0001)', 'Ethernet1/1', 'Ethernet1/49', { shortName: 'SPINE-01', serial: '9CLONED0001' }),
+        says('SPINE-02(9CLONED0001)', 'Ethernet1/2', 'Ethernet1/49', { shortName: 'SPINE-02', serial: '9CLONED0001' }),
+      ]),
+    ], id);
+    expect(got).toMatchObject({ met: 2, added: 0 });
+    expect(ends(got.edges)).toEqual(['bg-s1', 'bg-s2']);
+  });
+
+  it('a serial that names one drawn device while the name names another is not guessed', () => {
+    const leaf = node('l1', 'LEAF-01', { ...at('192.0.2.25'), serial: 'FDO0000TES9' });
+    const got = fillDrawnLinks([leaf, SP1, BGW], [], [
+      reading('bg', [says('SPINE-01(FDO0000TES9)', 'Ethernet1/1', 'Ethernet1/49', { shortName: 'SPINE-01', serial: 'FDO0000TES9' })]),
+    ], id);
+    expect(got).toMatchObject({ added: 0, unsure: 1 });
+  });
+
+  it('an address two differently named neighbours report identifies neither', () => {
+    const got = fillDrawnLinks([LF1, BGW], [], [
+      reading('bg', [
+        says('DC-A', 'Ethernet1/1', 'Ethernet1/49', { addresses: [{ ip: '192.0.2.25' }] as never }),
+        says('DC-B', 'Ethernet1/2', 'Ethernet1/49', { addresses: [{ ip: '192.0.2.25' }] as never }),
+      ]),
+    ], id);
+    expect(got).toMatchObject({ added: 0, met: 0 });
+  });
+
+  it('matched by address alone, a cable confirms a link somebody drew and is never drawn by itself', () => {
+    const core = node('co', 'Core switch', at('192.0.2.7'));
+    const report = [reading('bg', [says('DC-CORE-7', 'Ethernet1/5', 'Ethernet2/1', { addresses: [{ ip: '192.0.2.7' }] as never })])];
+    const drawn = fillDrawnLinks([core, BGW], [link('e1', 'bg', 'co')], report, id);
+    expect(dataOf(drawn.edges, 'e1')).toMatchObject({ drawnCheck: 'met', sourcePortLabel: 'Eth1/5' });
+    const bare = fillDrawnLinks([core, BGW], [], report, id);
+    expect(bare).toMatchObject({ added: 0, unsure: 1 });
+    expect(bare.edges).toHaveLength(0);
+  });
+
+  it('an address is refused where the device drawn there is known under another name', () => {
+    const leaf = node('l1', 'LEAF-01', { ...at('192.0.2.25'), hostname: 'dc-leaf-01' });
+    const got = fillDrawnLinks([leaf, BGW], [link('e1', 'bg', 'l1')], [
+      reading('bg', [says('DC-SPINE-01', 'Ethernet1/1', 'Ethernet1/49', { addresses: [{ ip: '192.0.2.25' }] as never })]),
+    ], id);
+    expect(dataOf(got.edges, 'e1').drawnCheck).toBe('unmet');
+  });
+
+  it('what a device calls itself is a name for it, whatever it is called on the page', () => {
+    const core = node('co', 'Core switch', at('192.0.2.7'));
+    const got = fillDrawnLinks([core, BGW], [], [
+      { ...reading('co', []), hostname: 'DC-CORE-7' },
+      reading('bg', [says('DC-CORE-7.example.net', 'Ethernet1/5', 'Ethernet2/1', { shortName: 'DC-CORE-7' })]),
+    ], id);
+    expect(got.added).toBe(1);
+    expect(ends(got.edges)).toEqual(['bg-co']);
+  });
+
+  it('two differently named devices drawn with one address are two devices', () => {
+    // A copy of a spine relabelled as a leaf, its address never corrected.
+    const copy = node('l1', 'LEAF-01', at('192.0.2.21'));
+    const answer = { neighbors: [says('BGW-01', 'Ethernet1/1', 'Ethernet1/49')], ports: [], hostname: 'SPINE-01' };
+    const got = fillDrawnLinks([copy, SP1, BGW], [link('e1', 's1', 'bg')], [{ nodeId: 'l1', ...answer }, { nodeId: 's1', ...answer }], id);
+    expect(got).toMatchObject({ met: 1, added: 0 });
+    expect(ends(got.edges)).toEqual(['bg-s1']);
+    expect(got.misplaced).toEqual([{ label: 'LEAF-01', as: 'SPINE-01' }]);
+  });
+
+  it('an answer from a device that says it is another one on the page is counted as that one\'s', () => {
+    const spine = node('s1', 'SPINE-01');
+    const got = fillDrawnLinks([LF1, spine, BGW], [link('e1', 's1', 'bg')], [
+      { ...reading('l1', [says('BGW-01', 'Ethernet1/1', 'Ethernet1/49')]), hostname: 'SPINE-01.example.net' },
+    ], id);
+    expect(got).toMatchObject({ met: 1, added: 0 });
+    expect(got.misplaced).toEqual([{ label: 'LEAF-01', as: 'SPINE-01.example.net' }]);
+  });
+
+  it('devices sharing an address whose names say nothing of which answered are not asked', () => {
+    const a = node('x1', 'Switch A', at('192.0.2.50'));
+    const b = node('x2', 'Switch B', at('192.0.2.50'));
+    const answer = { neighbors: [says('BGW-01', 'Ethernet1/1', 'Ethernet1/49')], ports: [], hostname: 'DC-EDGE-9' };
+    const got = fillDrawnLinks([a, b, BGW], [], [{ nodeId: 'x1', ...answer }, { nodeId: 'x2', ...answer }], id);
+    expect(got.added).toBe(0);
+    expect(got.shared).toEqual(['Switch A', 'Switch B']);
+  });
+
+  it('every link it touches says who reported it and how the far device was matched', () => {
+    const got = fillDrawnLinks([SP1, BGW], [link('e1', 'bg', 's1')], [reading('bg', [says('SPINE-01', 'Ethernet1/1', 'Ethernet1/49')])], id);
+    expect(dataOf(got.edges, 'e1').drawnSaid).toEqual({ by: 'BGW-01', port: 'Eth1/1', saw: 'SPINE-01', sawPort: 'Eth1/49', match: 'name' });
+    expect('drawnSaid' in (clearDrawnMarks(got.edges).edges[0]!.data as object)).toBe(false);
+  });
+});
+
+describe('by MAC address, in a fabric', () => {
+  const at = (address: string) => ({ addresses: [{ id: 'a', label: 'Mgmt', address, isPrimary: true }] });
+  const LEAF = node('lf', 'LEAF-01', { deviceType: 'access-switch', ...at('192.0.2.25') });
+  const FW = node('fw', 'FTD-1', { deviceType: 'firewall', ...at('192.0.2.10') });
+  const fwOwn: DeviceReading = { ...reading('fw', []), own: [{ port: 'Ethernet1/2', mac: '00a6cafe0002' }] };
+
+  it('an address learned over the overlay, a VLAN interface or the peer link is not on a cable', () => {
+    for (const port of ['nve1(192.0.2.99)', 'Vlan10', 'vPC Peer-Link(R)', 'sup-eth1(R)']) {
+      const got = fillDrawnLinks([LEAF, FW], [link('e1', 'lf', 'fw')], [{ ...reading('lf', []), macs: [{ port, mac: '00a6cafe0002' }] }, fwOwn], id);
+      expect(dataOf(got.edges, 'e1').drawnCheck, port).toBe('unmet');
+      expect(got.byMac, port).toBe(0);
+    }
+  });
+
+  it('never draws a cable by itself: it fills in a link somebody drew', () => {
+    const got = fillDrawnLinks([LEAF, FW], [], [{ ...reading('lf', []), macs: [{ port: 'Eth1/5', mac: '00a6cafe0002' }] }, fwOwn], id);
+    expect(got).toMatchObject({ added: 0, byMac: 0, unsure: 1 });
+    expect(got.edges).toHaveLength(0);
+  });
+});
+
+describe('what is a cable, and what is not', () => {
+  const at = (address: string) => ({ addresses: [{ id: 'a', label: 'Mgmt', address, isPrimary: true }] });
+  const R1 = node('r1', 'EDGE-R1', { deviceType: 'router', ...at('192.0.2.1') });
+  const R2 = node('r2', 'EDGE-R2', { deviceType: 'router', ...at('192.0.2.2') });
+  const R3 = node('r3', 'EDGE-R3', { deviceType: 'router', ...at('192.0.2.3') });
+
+  it('a neighbour seen over a tunnel, a VLAN interface or a loopback is an adjacency, not a cable', () => {
+    for (const port of ['Tunnel10', 'Vlan100', 'Loopback0', 'nve1']) {
+      const got = fillDrawnLinks([R1, R2], [link('e1', 'r1', 'r2')], [reading('r1', [says('EDGE-R2', port, port)])], id);
+      expect(dataOf(got.edges, 'e1').drawnCheck, port).toBe('unmet');
+      expect(fillDrawnLinks([R1, R2], [], [reading('r1', [says('EDGE-R2', port, port)])], id).added, port).toBe(0);
+    }
+  });
+
+  it('a cable on a subinterface is the cable on its port', () => {
+    const got = fillDrawnLinks([R1, R2], [link('e1', 'r1', 'r2')], [
+      reading('r1', [says('EDGE-R2', 'GigabitEthernet0/0.100', 'GigabitEthernet0/1.100')]),
+      reading('r2', [says('EDGE-R1', 'GigabitEthernet0/1', 'GigabitEthernet0/0')]),
+    ], id);
+    expect(got).toMatchObject({ met: 1, added: 0 });
+    expect(dataOf(got.edges, 'e1')).toMatchObject({ sourcePortLabel: 'Gi0/0', targetPortLabel: 'Gi0/1' });
+  });
+
+  it('several neighbours on one port are a shared segment: it confirms a drawn link and draws none', () => {
+    // A provider's layer-2 service, or a switch that passes CDP through.
+    const sees = [reading('r1', [says('EDGE-R2', 'GigabitEthernet0/0', 'GigabitEthernet0/0'), says('EDGE-R3', 'GigabitEthernet0/0', 'GigabitEthernet0/0')])];
+    const mesh = fillDrawnLinks([R1, R2, R3], [], sees, id);
+    expect(mesh).toMatchObject({ added: 0, unsure: 2 });
+    const drawn = fillDrawnLinks([R1, R2, R3], [link('e1', 'r1', 'r2')], sees, id);
+    expect(dataOf(drawn.edges, 'e1')).toMatchObject({ drawnCheck: 'met', sourcePortLabel: 'Gi0/0' });
+    expect(dataOf(drawn.edges, 'e1').drawnSaid?.segment).toBe(true);
+    expect(drawn.added).toBe(0);
+  });
+
+  it('CDP and LLDP each naming the far device in their own words is one device, not a segment', () => {
+    const got = fillDrawnLinks([R1, R2], [], [reading('r1', [
+      says('EDGE-R2', 'GigabitEthernet0/0', 'GigabitEthernet0/1'),
+      says('7456.3c00.0001', 'Gi0/0', '7456.3c00.0002', { discoveredBy: 'lldp', shortName: '7456.3c00.0001' }),
+    ])], id);
+    expect(got).toMatchObject({ added: 1, unsure: 0 });
+    expect(got.edges[0]!.data).toMatchObject({ sourcePortLabel: 'Gi0/0', targetPortLabel: 'Gi0/1' });
+  });
+
+  it('one port, one cable: two reports that put two cables on one port of a device are neither believed', () => {
+    // Two routers each say their neighbour's port is Gi0/0 of what was
+    // matched to the same drawn device. At least one is someone else.
+    const got = fillDrawnLinks([R1, R2, R3], [], [
+      reading('r1', [says('EDGE-R3', 'GigabitEthernet0/1', 'GigabitEthernet0/0')]),
+      reading('r2', [says('EDGE-R3', 'GigabitEthernet0/1', 'GigabitEthernet0/0')]),
+    ], id);
+    expect(got).toMatchObject({ added: 0, unsure: 2 });
+  });
+
+  it('unless both ends report one of them, which is then the cable', () => {
+    const got = fillDrawnLinks([R1, R2, R3], [], [
+      reading('r1', [says('EDGE-R3', 'GigabitEthernet0/1', 'GigabitEthernet0/0')]),
+      reading('r2', [says('EDGE-R3', 'GigabitEthernet0/1', 'GigabitEthernet0/0')]),
+      reading('r3', [says('EDGE-R1', 'GigabitEthernet0/0', 'GigabitEthernet0/1')]),
+    ], id);
+    expect(got).toMatchObject({ added: 1, unsure: 1 });
+    expect(got.edges[0]).toMatchObject({ source: 'r1', target: 'r3' });
+    expect((got.edges[0]!.data as LinkData).drawnSaid?.both).toBe(true);
+  });
+
+  it('a full mesh of routers is every cable once, each on its own ports', () => {
+    const got = fillDrawnLinks([R1, R2, R3], [], [
+      reading('r1', [says('EDGE-R2', 'GigabitEthernet0/1', 'GigabitEthernet0/1'), says('EDGE-R3', 'GigabitEthernet0/2', 'GigabitEthernet0/1')]),
+      reading('r2', [says('EDGE-R1', 'GigabitEthernet0/1', 'GigabitEthernet0/1'), says('EDGE-R3', 'GigabitEthernet0/2', 'GigabitEthernet0/2')]),
+      reading('r3', [says('EDGE-R1', 'GigabitEthernet0/1', 'GigabitEthernet0/2'), says('EDGE-R2', 'GigabitEthernet0/2', 'GigabitEthernet0/2')]),
+    ], id);
+    expect(got).toMatchObject({ added: 3, unsure: 0 });
+    expect(got.edges.every((e) => (e.data as LinkData).drawnSaid?.both)).toBe(true);
+  });
+
+  it('a link drawn between two peers with no cable between them is kept as a logical link', () => {
+    const got = fillDrawnLinks([R1, R2, R3], [link('bgp', 'r1', 'r3')], [
+      reading('r1', [says('EDGE-R2', 'GigabitEthernet0/1', 'GigabitEthernet0/1')]),
+      reading('r3', [says('EDGE-R2', 'GigabitEthernet0/1', 'GigabitEthernet0/2')]),
+    ], id);
+    expect(dataOf(got.edges, 'bgp').drawnCheck).toBe('unmet');
+    expect(got.edges.some((e) => e.id === 'bgp')).toBe(true);
   });
 });

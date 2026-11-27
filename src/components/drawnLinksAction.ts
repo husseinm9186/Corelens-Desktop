@@ -56,7 +56,9 @@ export async function fillDrawnFromDevices() {
         const [address, target] = targets[next++]!;
         try {
           const said = await ipc.getDeviceLinks(address, target.credentialId);
-          for (const nodeId of target.nodeIds) readings.push({ nodeId, neighbors: said.neighbors, ports: said.ports, macs: said.macs, arp: said.arp, own: said.own });
+          // With what the device calls itself and its serials: whose answer
+          // this is is checked against the device drawn at the address.
+          for (const nodeId of target.nodeIds) readings.push({ nodeId, neighbors: said.neighbors, ports: said.ports, macs: said.macs, own: said.own, hostname: said.hostname, serials: said.serials });
         } catch {
           failed.push(target.label);
         }
@@ -77,7 +79,10 @@ export async function fillDrawnFromDevices() {
     const links = (count: number) => t('drawn.plural.links', { count });
     useStore.getState().setStatusMessage(
       t('drawn.done', { asked: targets.length - failed.length, count: targets.length, met: links(got.met), unmet: got.unmet, management: got.management, added: got.added }) +
-        (got.byMac ? t('drawn.doneByMac', { cables: t('drawn.plural.cables', { count: got.byMac }) }) : '') +
+        (got.byMac ? t('drawn.doneByMac', { links: links(got.byMac) }) : '') +
+        (got.unsure ? t('drawn.doneUnsure', { cables: t('drawn.plural.cables', { count: got.unsure }) }) : '') +
+        (got.misplaced.length ? t('drawn.doneMisplaced', { names: got.misplaced.map((m) => t('drawn.doneMisplacedOne', { label: m.label, as: m.as })).join(', ') }) : '') +
+        (got.shared.length ? t('drawn.doneShared', { names: got.shared.join(', ') }) : '') +
         (got.strangers ? t('drawn.doneStrangers', { strangers: t('drawn.plural.neighbours', { count: got.strangers }) }) : '') +
         (got.unasked ? t('drawn.doneUnasked', { unasked: links(got.unasked) }) : '') +
         (failed.length ? t('drawn.doneFailed', { names: failed.slice(0, 6).join(', ') + (failed.length > 6 ? '…' : '') }) : ''),

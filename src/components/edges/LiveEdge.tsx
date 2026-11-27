@@ -19,6 +19,7 @@ import { describeRule, shouldAnimate } from '../../health/evaluate';
 import { STATUS_COLOR_DARK, canvasPalette, statusColors } from '../../theme';
 import { capPath, capsFor, doubleWidths, stepAlong, strokeFor } from '../../lib/linkStyle';
 import { lineColourOf } from '../../lib/drawnLinks';
+import { drawnSaidText } from '../drawnSaid';
 import { withJumps } from '../../lib/lineJumps';
 import { cableTag, centreLabel } from '../../lib/cables';
 import { cssOf } from '../../lib/textStyle';
@@ -847,6 +848,8 @@ function LiveEdgeInner(props: EdgeProps) {
     portLine,
     // What Fill in drawn links made of it, where it found or did not find it.
     data.drawnCheck === 'unmet' ? t('drawn.tip.logical') : data.drawnVia === 'mac' ? t('drawn.tip.mac') : null,
+    // And what it rests on: who reported it, and how the far device was matched.
+    data.drawnCheck === 'met' ? drawnSaidText(data.drawnSaid) : null,
     `Health: ${STATUS_LABEL[status]}`,
     `Rule: ${ruleText}`,
     liveProbe ? `Target: ${liveProbe.target}` : null,

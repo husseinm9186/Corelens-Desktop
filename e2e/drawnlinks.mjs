@@ -59,6 +59,7 @@ const project = {
         link("s2", "sp", "l2"),            // confirmed, an SFP
         link("x", "l1", "l2"),             // drawn; no device reports it
         link("f", "l2", "fw"),             // LEAF-2 was asked and does not report it
+        link("m", "l2", "ftd"),            // drawn; no neighbour protocol, told by MAC address
       ] }],
   },
 };
@@ -68,12 +69,12 @@ const said = (name, local, remote, over = {}) => ({ deviceId: name, shortName: n
   localInterface: local, remoteInterface: remote, platform: null, capabilities: [], version: null, class: "switch",
   discoveredBy: "cdp", chassisId: null, vendor: null, ...over });
 const ANSWERS = {
-  "192.0.2.5": { neighbors: [said("LEAF-1", "Ethernet1/1", "Ethernet1/49"), said("LEAF-2", "Ethernet1/2", "Ethernet1/49"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/5"), said("NOT-ON-THE-PAGE", "Ethernet1/9", "Ethernet1/1", { addresses: [{ ip: "192.0.2.77", interface: null, isManagement: true }] })],
+  "192.0.2.5": { hostname: "SPINE-1", neighbors: [said("LEAF-1", "Ethernet1/1", "Ethernet1/49"), said("LEAF-2", "Ethernet1/2", "Ethernet1/49"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/5"), said("NOT-ON-THE-PAGE", "Ethernet1/9", "Ethernet1/1", { addresses: [{ ip: "192.0.2.77", interface: null, isManagement: true }] })],
     ports: [{ port: "Eth1/1", media: "QSFP-100G-SR4", speed: "100G" }, { port: "Eth1/2", media: "10Gbase-SR", speed: "10G" }] },
-  "192.0.2.1": { neighbors: [said("SPINE-1", "Ethernet1/49", "Ethernet1/1"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/1")], ports: [] },
-  "192.0.2.2": { neighbors: [said("SPINE-1", "Ethernet1/49", "Ethernet1/2"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/2")], ports: [],
+  "192.0.2.1": { hostname: "LEAF-1", neighbors: [said("SPINE-1", "Ethernet1/49", "Ethernet1/1"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/1")], ports: [] },
+  "192.0.2.2": { hostname: "LEAF-2", neighbors: [said("SPINE-1", "Ethernet1/49", "Ethernet1/2"), said("MGMT-SW", "mgmt0", "GigabitEthernet1/0/2")], ports: [],
     macs: [{ mac: "00a6cafe0002", port: "Ethernet1/10", vlan: "10" }, { mac: "5254000000aa", port: "Ethernet1/49", vlan: "10" }] },
-  "192.0.2.30": { neighbors: [], ports: [], own: [{ port: "Ethernet1/1", mac: "00a6cafe0001" }, { port: "Ethernet1/2", mac: "00a6cafe0002" }] },
+  "192.0.2.30": { hostname: "firepower", neighbors: [], ports: [], own: [{ port: "Ethernet1/1", mac: "00a6cafe0001" }, { port: "Ethernet1/2", mac: "00a6cafe0002" }] },
 };
 
 const browser = await chromium.launch();
@@ -153,8 +154,9 @@ check("a drawn link no device reports is kept, as a logical link", by("x").drawn
 check("no device was added to the page", (await st(() => window.__cvStore.getState().doc.pages[0].nodes.length)) === 6);
 const mgmt = after.filter((e) => e.linkKind === "management");
 check("the three management links are drawn, though nobody drew them", mgmt.length === 3 && after.length === 8, `${mgmt.length} of ${after.length}`);
-const ftdLink = after.find((e) => [e.source, e.target].includes("ftd"));
-check("the FTD, which speaks no neighbour protocol, is joined to the leaf port that learned its address",
+const ftdLink = by("m");
+check("no cable is drawn to the FTD by MAC address alone: only the link somebody drew", after.filter((e) => [e.source, e.target].includes("ftd")).length === 1);
+check("the link drawn to the FTD, which speaks no neighbour protocol, takes the leaf port that learned its address",
   ftdLink && ftdLink.drawnVia === "mac" && ftdLink.source === "l2" && ftdLink.sourcePortLabel === "Eth1/10" && ftdLink.targetPortLabel === "Eth1/2", JSON.stringify(ftdLink));
 check("each from a device's mgmt0 to the management switch's port",
   mgmt.every((e) => [e.sourcePortLabel, e.targetPortLabel].includes("mgmt0") && [e.source, e.target].includes("mg")), JSON.stringify(mgmt.map((e) => [e.sourcePortLabel, e.targetPortLabel])));
@@ -162,8 +164,8 @@ check("each from a device's mgmt0 to the management switch's port",
 const said1 = await message();
 check("the status line says what was asked, and that nothing else was contacted",
   /Asked 4 of 5 drawn devices; nothing else was contacted/.test(said1), said1);
-check("what was confirmed, kept as logical and drawn", /2 drawn links confirmed.*2 kept as logical links.*4 cables drawn that were missing \(3 management\)/.test(said1), said1);
-check("and how many were told by MAC address", /1 cable told by MAC address/.test(said1), said1);
+check("what was confirmed, kept as logical and drawn", /3 drawn links confirmed.*2 kept as logical links.*3 cables drawn that were missing \(3 management\)/.test(said1), said1);
+check("and how many were filled in from a MAC table", /1 drawn link filled in from a MAC address table/.test(said1), said1);
 // The hover text is made while the pointer is on the link's band.
 const tipOf = async (edgeId) => {
   const band = page.locator(`path.nodrag[data-id="${edgeId}"]`).first();
@@ -174,6 +176,8 @@ const tipOf = async (edgeId) => {
   return text;
 };
 check("a link found from the MAC table says so when pointed at", /Cable found from a switch’s MAC table/.test(await tipOf(ftdLink.id)), await tipOf(ftdLink.id));
+check("a confirmed link says who reported it and how the far device was matched",
+  /Reported by SPINE-1 Eth1\/1: it sees LEAF-1 Eth1\/49\. Matched to the device drawn here by name\./.test(await tipOf("s1")), await tipOf("s1"));
 check("and a logical one says why it is", /Logical link: no device reports a cable here/.test(await tipOf("x")), await tipOf("x"));
 check("the neighbour that is not on the page, left off it", /1 neighbour (is|are) not on this page/.test(said1), said1);
 check("and the device that could not be asked, by name", /Could not ask: MGMT-SW/.test(said1), said1);
@@ -221,7 +225,7 @@ await page.keyboard.press("Control+z");
 await page.keyboard.press("Control+z");
 await page.waitForTimeout(400);
 const undone = await edges();
-check("undo takes it all back as a step: the links as drawn, no marks", undone.length === 4 && undone.every((e) => e.drawnCheck === undefined && e.sourcePortLabel === ""), JSON.stringify(undone.map((e) => [e.id, e.drawnCheck])));
+check("undo takes it all back as a step: the links as drawn, no marks", undone.length === 5 && undone.every((e) => e.drawnCheck === undefined && e.sourcePortLabel === ""), JSON.stringify(undone.map((e) => [e.id, e.drawnCheck])));
 await page.keyboard.press("Control+Shift+z");
 await page.waitForTimeout(400);
 
@@ -234,6 +238,26 @@ check("the marks come off and the ports stay", cleared.every((e) => e.drawnCheck
 check("the link that was purple is no longer", (await strokeOf("x")).stroke !== rgb("#a45cf0"));
 check("through all of it, only the drawn devices were ever asked",
   (await st(() => window.__asked)).every((a) => ["192.0.2.1", "192.0.2.2", "192.0.2.5", "192.0.2.100", "192.0.2.30"].includes(a.device)) && (await st(() => window.__other)).length === 0);
+
+// ------------------------------ a device drawn with another one's address
+
+// LEAF-1 given the spine's address, as a copy that was relabelled and never
+// corrected would have it: the device that answers there says it is
+// SPINE-1, so its answer is the spine's, and LEAF-1 is cabled to nothing
+// it is not cabled to.
+await st(() => {
+  const store = window.__cvStore;
+  const doc = store.getState().doc;
+  store.setState({ doc: { ...doc, pages: doc.pages.map((pg) => ({ ...pg,
+    nodes: pg.nodes.map((n) => (n.id === "l1" ? { ...n, data: { ...n.data, addresses: n.data.addresses.map((a) => ({ ...a, address: "192.0.2.5" })) } } : n)) })) } });
+});
+await (await paneMenu("Fill in drawn links from the devices")).click();
+await page.waitForTimeout(1200);
+const said3 = await message();
+check("a device whose address answers as another one on the page is said, by name", /LEAF-1 \(answered as SPINE-1\)/.test(said3), said3);
+const wrong = (await edges()).filter((e) => [e.source, e.target].includes("l1") && [e.source, e.target].some((id) => id === "l2"));
+check("and it is not cabled to the other device's neighbours", wrong.length === 1 && wrong[0].id === "x", JSON.stringify(wrong.map((e) => e.id)));
+check("nor are any cables drawn twice for it", (await edges()).length === 8, String((await edges()).length));
 
 // --------------------------------------- a menu taller than the window
 

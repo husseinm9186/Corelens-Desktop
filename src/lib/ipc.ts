@@ -2068,8 +2068,6 @@ export interface DeviceLinks {
   ports: { port: string; media: string; speed: string }[];
   /** Its MAC address table: which port learned which address. */
   macs?: { mac: string; port: string; vlan?: string | null }[];
-  /** Its ARP table. */
-  arp?: { ip: string; mac: string }[];
   /** Its own interfaces' MAC addresses. */
   own?: { port: string; mac: string }[];
   commands: string[];

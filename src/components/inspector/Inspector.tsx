@@ -25,6 +25,7 @@ import { newProbe } from '../../lib/probes';
 import { spanOf } from '../../lib/dtg';
 import { formatTime, isLocalFormat, zoneLabel } from '../../lib/timeFormat';
 import { DEVICE_LABEL } from '../icons';
+import { drawnSaidText } from '../drawnSaid';
 import { STATUS_COLOR } from '../edges/LiveEdge';
 import { describeRule, linkStatus } from '../../health/evaluate';
 import { describeSelection, shared, withTag, withoutTag } from '../../lib/bulkEdit';
@@ -2306,6 +2307,9 @@ function LinkInspector({ edgeId }: { edgeId: string }) {
         <br />
         Driven by: {describeRule(rule, [...probes])}
       </p>
+      {/* What Fill in drawn links rests this link on, so one that looks
+          wrong can be traced to the report it came from. */}
+      {d.drawnCheck === 'met' && d.drawnSaid && <p className="cv-help" data-hint="drawn-said">{drawnSaidText(d.drawnSaid)}</p>}
 
       <div className="cv-row">
         <Field label="Source port label" hint="e.g. port3">

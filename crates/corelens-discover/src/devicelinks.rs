@@ -43,24 +43,12 @@ pub struct DeviceLinks {
     /// address. How a device that speaks neither CDP nor LLDP — an FTD — is
     /// found on a switch's port.
     pub macs: Vec<crate::mac_table::MacEntry>,
-    /// Its ARP table: address → MAC, for a drawn device whose own interfaces
-    /// could not be read.
-    pub arp: Vec<ArpEntry>,
     /// Its own interfaces' MAC addresses, from its interface listing.
     pub own: Vec<crate::ifmacs::OwnMac>,
     /// Every command sent, in order, so whoever asked can say what was.
     pub commands: Vec<String>,
     /// True where the family's readers were built from documentation.
     pub unverified: bool,
-}
-
-/// One port and what the device says is in it.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArpEntry {
-    pub ip: String,
-    /// Twelve lowercase hex digits.
-    pub mac: String,
 }
 
 /// The interface listing, each way a platform spells it, tried until one
@@ -91,7 +79,6 @@ pub fn questions(version: &str) -> Vec<String> {
         dialect.cdp_readings().iter().chain(dialect.lldp_readings()).map(|r| r.command.to_string()).collect();
     asked.extend(port_question(version).map(str::to_string));
     asked.extend(dialect.mac_table_readings().iter().map(|r| r.command.to_string()));
-    asked.extend(dialect.arp_commands().iter().map(|c| c.to_string()));
     asked.extend(INTERFACE_LISTINGS.iter().map(|c| c.to_string()));
     asked
 }
@@ -152,18 +139,9 @@ pub async fn read(device: &mut Device) -> DeviceLinks {
             break;
         }
     }
-    let mut arp = Vec::new();
-    for command in dialect.arp_commands() {
-        commands.push(command.to_string());
-        let out = device.run(command).await.unwrap_or_default();
-        // Every address, not one per MAC: a firewall answers for several
-        // from one, and the one it is drawn with may not be the first.
-        arp = crate::arp::parse_arp_entries(&out).into_iter().map(|(ip, mac)| ArpEntry { ip, mac }).collect();
-        if !arp.is_empty() {
-            arp.sort_by(|a, b| a.ip.cmp(&b.ip));
-            break;
-        }
-    }
+    // The ARP table is not read. Behind an anycast gateway any switch may
+    // answer for an address, so what it says of whose a MAC address is
+    // cannot be relied on; a device's own interface listing can.
     let mut own = Vec::new();
     for command in INTERFACE_LISTINGS {
         commands.push(command.to_string());
@@ -182,7 +160,6 @@ pub async fn read(device: &mut Device) -> DeviceLinks {
         neighbors: crate::crawl::merge_neighbors(cdp, lldp),
         ports,
         macs,
-        arp,
         own,
         commands,
         unverified: !dialect.verified_against_hardware(),
@@ -211,14 +188,14 @@ mod tests {
                 );
             }
             // Beyond them, only what tells where a MAC address is: the MAC
-            // table, the ARP table, the device's own interfaces. Never its
-            // routes, and nothing that is not a read.
+            // table and the device's own interfaces. Never its routes or
+            // its ARP table, and nothing that is not a read.
             let mut asked = neighbours.clone();
             asked.extend(d.mac_table_readings().iter().map(|r| r.command));
-            asked.extend(d.arp_commands());
             asked.extend(INTERFACE_LISTINGS);
             let mut never: Vec<&str> = Vec::new();
             never.extend(d.route_commands());
+            never.extend(d.arp_commands());
             never.extend(d.default_route_commands());
             never.extend(d.policy_route_readings().iter().map(|r| r.command));
             for a in &asked {
@@ -238,10 +215,11 @@ mod tests {
         let asked = questions("Cisco IOS Software, C2960X Software, Version 15.2(7)E");
         assert_eq!(asked.first().map(String::as_str), Some("show cdp neighbors detail"));
         assert!(asked.iter().any(|c| c == "show lldp neighbors detail"), "{asked:?}");
-        // Then its own port table, its MAC and ARP tables and its interfaces.
+        // Then its own port table, its MAC table and its interfaces; never
+        // its ARP table.
         assert!(asked.iter().any(|c| c == "show interfaces status"), "{asked:?}");
         assert!(asked.iter().any(|c| c.starts_with("show mac")), "{asked:?}");
-        assert!(asked.iter().any(|c| c.contains("arp")), "{asked:?}");
+        assert!(!asked.iter().any(|c| c.contains("arp")), "{asked:?}");
         assert_eq!(asked.last().map(String::as_str), Some("show interfaces"));
         // Every one of them a read the backup's own rule would let through.
         for c in &asked {

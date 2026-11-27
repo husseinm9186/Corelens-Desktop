@@ -1019,12 +1019,12 @@ Only the vault's reference is sent; the password never leaves the vault.
 **A diagram you drew, checked against its own devices.** Right-click an
 empty part of the canvas and choose **Fill in drawn links from the
 devices**. Every device drawn on the page that has an address and a login
-is asked who is on its ports — its CDP and LLDP tables, its own port
-table, and, for what speaks no neighbour protocol, its MAC address table,
-its ARP table and its interfaces' MAC addresses — and nothing else is
-contacted: a neighbour a device reports is never dialled, and one that is
-not on the page is not put on it. What the devices say is matched to what
-you drew, as one undo step:
+is asked who is on its ports — its CDP and LLDP tables and its own port
+table — and nothing else is contacted: a neighbour a device reports is
+never dialled, and one that is not on the page is not put on it. Routing,
+BGP and ARP are never read: a cable is told by what is plugged into a
+port, not by who a device talks to. What the devices say is matched to
+what you drew, as one undo step:
 
 - **A drawn link the devices confirm** takes its port at each end and is
   coloured by what the port is made of: Ethernet (copper), SFP or QSFP. That
@@ -1032,46 +1032,85 @@ you drew, as one undo step:
   from the port's name (`Te…` is an SFP, `Hu…` a QSFP). A Nexus names every
   port `Ethernet`, so a port it gives no type for is left uncoloured.
 - **A cable the devices report between two drawn devices that you did not
-  draw** is drawn, with its ports filled in.
+  draw** is drawn, with its ports filled in — where the far device was
+  named, or its serial number given. See "what is believed" below for what
+  is not enough to draw one.
 - **A drawn link no device reports is never removed.** Where at least one of
   its ends was asked, it is kept as a **logical link**: purple and dotted,
   "Logical: no cable found" in the legend — a link drawn to illustrate
-  something stays exactly where you put it. A link whose ends could not be
-  asked is left as it was; the status line says how many. A link you set to
-  **Logical** or **Tunnel** yourself is not checked at all.
-- **Devices that speak neither CDP nor LLDP** — an FTD, most firewalls —
-  are found by MAC address: a switch port that learned the address of one
-  of the device's interfaces, and of no other drawn device, is its cable,
-  on that interface. A device Corelens cannot log in to is found the same
-  way through another device's ARP table, its own port left blank. A port
-  that learned more than eight addresses leads to another switch and is
-  left alone. One address is one cable: where two switches both learned
-  it, the port that learned fewest addresses is where the device is
-  plugged in, and the other is the way there. Where they learned as few
-  as each other, neither is drawn — unless the device has that many
-  interfaces sharing the address, which is a bundle to a pair of
-  switches, and each gets its cable. A VLAN interface or a loopback never
-  names the port, and a port you typed on a link is kept over one found
-  this way. Such a link says it was found from the MAC table, and the
-  status line counts them. These readers are built from the vendors'
-  documentation and say so until a device's own output has confirmed them.
-- **Where LLDP sends a port's description** instead of its name, each end
-  names its own port and the description is kept only where nothing else
-  names that end. One cable reported by both its ends is one cable.
-- **A device drawn twice on the page** is one device: its cables are
-  counted once, on whichever drawing you linked.
+  something, or between two BGP peers with no cable between them, stays
+  exactly where you put it. A link whose ends could not be asked is left as
+  it was; the status line says how many. A link you set to **Logical** or
+  **Tunnel** yourself is not checked at all.
 - **Management links** — a cable on a device's `mgmt0`, `Management1`,
   `fxp0`, or a switch's `Gi0/0` — are drawn in **sky blue**, thinner than a
   cable. **Hide management links** on the same menu takes them off the page
   and out of exports without deleting them.
+
+**What is believed, and what is not.** A wrong cable is worse than a
+missing one, so:
+
+- **Which drawn device a neighbour is** goes by its serial number, then its
+  name — what the device calls itself when it answers, then what it is
+  called on the page — then the address it is managed on. Whatever two
+  devices share identifies neither: a serial that comes under two names
+  (cloned virtual switches all report one), an address two neighbours give
+  (an anycast or a virtual address), a name or an address two drawn devices
+  have. Where the serial names one drawn device and the name another,
+  nothing is guessed.
+- **Whose an answer is.** The device that answers at an address says what
+  it is called. Where that is the name of *another* device on the page, the
+  answer is counted as that device's, and the status line names the device
+  whose address needs correcting. Two differently named devices drawn with
+  one address are two devices; where the answer does not say which of them
+  it is, neither is asked. The same device drawn twice, under one name and
+  one address, is one device.
+- **A match by address alone** can confirm a link you drew. It never draws
+  one.
+- **One port, one cable.** Two reports that put two cables on the same port
+  of a device cannot both be right, and neither is believed — unless both
+  ends report one of them. A cable both of its ends report says so.
+- **Several neighbours on one port** are a shared segment — a provider's
+  layer-2 service between routers, a switch that passes CDP through — not
+  one cable. It can confirm a link you drew, and draws none.
+- **A neighbour seen over a tunnel, a VLAN interface or a loopback** is an
+  adjacency, not a cable, and is left out. A cable on a subinterface is the
+  cable on its port.
+- **Where LLDP sends a port's description** instead of its name, each end
+  names its own port and the description is kept only where nothing else
+  names that end. CDP and LLDP are both read; where both name a port's
+  neighbour, CDP's word for the far port is used and LLDP fills what CDP
+  left out.
+- **By MAC address, for a firewall or a router only.** An FTD and most
+  firewalls speak neither CDP nor LLDP. A link you drew from a switch to a
+  firewall or a router is filled in from the switch port that learned the
+  address of one of that device's own interfaces — read from the device
+  itself, so it needs a login — and of no other such device, and no more
+  than eight addresses. One address is one cable: where two switches both
+  learned it, the port that learned fewest is where it is plugged in; a
+  bundle to a pair of switches gets both. A VLAN interface never names the
+  port, an address learned over the overlay (`nve`), a VLAN interface or the
+  peer link is not on a cable, and a port you typed is kept. This never
+  draws a link nobody drew, is never used for a switch — in a fabric every
+  leaf answers with the anycast gateway's address — and an ARP table is
+  never consulted, for the same reason. These readers are built from the
+  vendors' documentation and say so until a device's own output has
+  confirmed them.
+
+**Every link Fill in touched says what it rests on**, when you point at it
+and in its details: which device reported it, on which port, what it said
+it saw there, and whether the far device was matched by serial number, by
+name, or by address only. A cable that looks wrong can be traced to the
+report it came from. The status line says what was left out and why:
+cables reported and not drawn, neighbours that are not on the page, and
+devices whose address answered as something else.
 
 A legend at the top left of the canvas says what each colour means, for the
 colours on the page; exported drawings carry the same key. A colour you gave
 a link yourself is kept, except that a logical link with no cable found is
 always purple.
 **Clear the marks the devices left on links** takes the colours off again
-and leaves the ports. A device is recognised by its serial number, then its
-name or hostname, then the address it is managed on.
+and leaves the ports.
 
 **What a device is, without a crawl.** Right-click a device and choose **Get
 device info**. Corelens logs in to that one device — its own address, with

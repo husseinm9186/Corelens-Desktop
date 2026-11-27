@@ -168,7 +168,7 @@ fn from_platform(s: &str) -> Option<DeviceClass> {
     // digits, so a hostname like "N1" cannot match.
     if s.contains("POWERCONNECT")
         || s.contains("FORCE10")
-        || (s.starts_with('N') && s.len() > 4 && s[1..5].chars().all(|c| c.is_ascii_digit()))
+        || (s.starts_with('N') && s.get(1..5).is_some_and(|d| d.chars().all(|c| c.is_ascii_digit())))
     {
         return Some(DeviceClass::Switch);
     }
@@ -291,6 +291,14 @@ pub fn class_from_vendor(vendor: &str) -> Option<DeviceClass> {
 
 #[cfg(test)]
 mod tests {
+
+    /// A model is looked at as text, not as bytes: a name with a letter
+    /// outside ASCII where the Dell rule expects digits is read, not a panic.
+    #[test]
+    fn a_platform_with_a_wide_letter_after_n_is_read_without_a_panic() {
+        assert_eq!(classify(Some("N12\u{800}"), &[], None), DeviceClass::Unknown);
+        assert_eq!(classify(Some("N1524P"), &[], None), DeviceClass::Switch);
+    }
 
     /// The last-resort classifier, and the makers it must refuse.
     #[test]

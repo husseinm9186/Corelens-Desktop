@@ -130,6 +130,13 @@ for (const [where, fx, fy] of [["near the top", 0.9, 0], ["near the bottom", 0.9
 }
 await page.locator(".react-flow__node", { hasText: "DEVICE-5" }).first().click({ button: "right" });
 await expectInside("a device's menu", ".cv-menu");
+// Escape by itself, with no click to help it: the menu goes, and the
+// device it was opened on stays chosen (the nearest thing first).
+await page.keyboard.press("Escape");
+await page.waitForTimeout(250);
+check("Escape alone closes a right-click menu", (await page.locator(".cv-menu").count()) === 0);
+check("and leaves the device it was opened on selected", (await page.evaluate(() => window.__cvStore.getState().selectedNodeId)) !== null,
+  String(await page.evaluate(() => window.__cvStore.getState().selectedNodeId)));
 await close();
 await page.locator(".react-flow__edge").first().locator("path").first().click({ button: "right", force: true }).catch(() => {});
 const edgeMenu = await measure(".cv-menu");
@@ -250,6 +257,19 @@ await page.waitForTimeout(300);
     const it = await look(sel);
     check(`${name}, while off, looks like Arrange beside it: no frame`, it.border === arrange.border && it.bg === arrange.bg, JSON.stringify({ it, arrange }));
   }
+}
+
+// The save state gives way with an ellipsis in a narrow window, never cut
+// through the middle of the time.
+{
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await page.waitForTimeout(400);
+  const cut = await page.evaluate(() => {
+    const el = document.querySelector(".cv-save-state .cv-save-text") ?? document.querySelector(".cv-save-state");
+    const cs = getComputedStyle(el);
+    return { clipped: el.scrollWidth > el.clientWidth + 1, ellipsis: cs.textOverflow === "ellipsis" && !cs.display.includes("flex") && cs.whiteSpace === "nowrap" };
+  });
+  check("the top bar's save state ends in an ellipsis where it does not fit", !cut.clipped || cut.ellipsis, JSON.stringify(cut));
 }
 
 await browser.close();

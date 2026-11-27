@@ -1,3 +1,4 @@
+import { chipInk } from '../theme';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -183,6 +184,20 @@ describe('note colours', () => {
       expect(contrast(light.text, 'light')).toBeGreaterThan(0.55);
       const dark = notePalette(variant, 'dark');
       expect(contrast(dark.text, 'dark')).toBeGreaterThan(0.55);
+    }
+  });
+});
+
+describe('the text on a chip filled with a status colour', () => {
+  it('stands out against every status colour, on both grounds', () => {
+    const lum = (hex: string) => {
+      const n = parseInt(hex.slice(1), 16);
+      const f = (v: number) => (v / 255 <= 0.03928 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * f((n >> 16) & 255) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255);
+    };
+    for (const fill of [...Object.values(STATUS_COLOR_DARK), ...Object.values(STATUS_COLOR_LIGHT)]) {
+      const a = lum(fill), b = lum(chipInk(fill));
+      expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), fill).toBeGreaterThanOrEqual(4.5);
     }
   });
 });

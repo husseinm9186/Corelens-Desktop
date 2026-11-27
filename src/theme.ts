@@ -142,6 +142,19 @@ export function readableOn(hex: string, ground: Ground): string {
   return `#${shifted.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 }
 
+/** The text colour for a chip filled with a status colour: whichever of
+ *  near-black and white stands out more against it. The status colours sit
+ *  in the middle of the range, where a fixed choice is wrong for half. */
+export function chipInk(hex: string): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return '#ffffff';
+  const f = (v: number) => (v / 255 <= 0.03928 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4);
+  const [r, g, b] = rgb;
+  const l = 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  // Against near-black (#0b1220) and against white.
+  return (l + 0.05) / 0.0553 >= 1.05 / (l + 0.05) ? '#0b1220' : '#ffffff';
+}
+
 /** The ink that reads on a solid fill of `hex`: near-black on a light
  *  colour, white on a dark one. An unparseable colour gets white. */
 export function inkOn(hex: string): string {

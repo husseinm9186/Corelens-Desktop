@@ -524,6 +524,13 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
   }
   .cv-main.has-selection .cv-palette { display: none; }
   .cv-main.has-selection .cv-inspector { display: block; }
+  /* The fold handles go where the panels now are: one panel shows at a
+     time here, at a width of its own, and a handle left at the wide
+     window's place floats over the canvas or sits on the panel's text. */
+  .cv-main:not(.palette-hidden):not(.has-selection) > .cv-rail-left { left: calc(clamp(10.76923077rem, 16vw, 14.61538462rem) - 0.53846154rem); }
+  .cv-main.has-selection > .cv-rail-left { left: 0; }
+  .cv-main:not(.has-selection) > .cv-rail-right { right: 0; }
+  .cv-main.has-selection:not(.inspector-hidden) > .cv-rail-right { right: calc(clamp(20rem, 34vw, 26.15384615rem) - 0.53846154rem); }
 }
 
 /* Narrower still: the canvas is the whole point, and a 140px palette beside a
@@ -536,6 +543,8 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
     position: absolute; inset: 0 0 0 auto; width: min(26.15384615rem, 88vw);
     z-index: 20; box-shadow: -12px 0 28px var(--shadow);
   }
+  .cv-main > .cv-rail-left, .cv-main:not(.palette-hidden):not(.has-selection) > .cv-rail-left { left: 0; }
+  .cv-main.has-selection:not(.inspector-hidden) > .cv-rail-right { right: calc(min(26.15384615rem, 88vw) - 0.53846154rem); z-index: 21; }
 }
 
 .cv-browser-banner {
@@ -599,7 +608,8 @@ a:hover { color: var(--text); }
 /* One row, always. On a narrow window the left side shortens and the clock
    goes: the time is on every screen already, More is not. */
 .cv-topbar-left .cv-project-name { flex: 0 1 auto; min-width: 3rem; }
-.cv-topbar-left .cv-save-state { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cv-topbar-left .cv-save-state { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.cv-save-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 1100px) { .cv-topbar .cv-clock { display: none; } }
 .cv-divider { width: 1px; height: 1.69230769rem; background: var(--line); margin: 0 0.30769231rem; }
 
@@ -1412,6 +1422,13 @@ button.cv-start-card:hover { border-color: var(--accent); }
    Sweep button off the edge of the window entirely. */
 .cv-field { display: flex; flex-direction: column; gap: 0.30769231rem; flex: 0 1 23.07692308rem; min-width: 13.84615385rem; }
 .cv-field-narrow { flex: 0 0 8.46153846rem; min-width: 8.46153846rem; }
+/* A dropdown is as wide as the longest thing it can say, never narrower
+   than the narrow field: a device's name cut off at ten letters is not a
+   choice anybody can make. */
+.cv-field-narrow:has(> select.cv-input) { flex: 0 0 auto; max-width: 24rem; }
+.cv-field-narrow > select.cv-input { width: auto; min-width: 100%; max-width: 100%; }
+/* A tick with a sentence beside it wraps inside a narrow panel. */
+.cv-discover-form > .cv-check-inline { white-space: normal; min-width: 0; }
 .cv-field > span {
   font-size: var(--text-sm); color: var(--text-dim); font-weight: 500;}
 .cv-discover-status { margin: 0.76923077rem 0 0; font-size: var(--text-md); color: var(--text-dim); }
@@ -1530,6 +1547,8 @@ button.cv-start-card:hover { border-color: var(--accent); }
 .cv-ipam { display: flex; flex-direction: column; gap: 0.76923077rem; }
 .cv-ipam-bar { display: flex; align-items: center; gap: 0.92307692rem; }
 .cv-ipam-bar .cv-help { margin: 0; }
+/* The count beside it wraps in a narrow window; the button's name does not. */
+.cv-ipam-bar .cv-btn { white-space: nowrap; flex: none; }
 .cv-ipam-add { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.92307692rem; background: var(--panel); }
 .cv-ipam-empty { max-width: 62ch; }
 .cv-ipam-table td { vertical-align: middle; }
@@ -1741,6 +1760,7 @@ button.cv-start-card:hover { border-color: var(--accent); }
 .cv-settings .cv-input { max-width: 20rem; }
 .cv-settings select.cv-input { max-width: 18rem; width: auto; min-width: 12rem; }
 .cv-settings .cv-field-narrow .cv-input { max-width: 8.46153846rem; }
+.cv-settings .cv-field-narrow select.cv-input { max-width: 18rem; }
 .cv-settings-sample { margin: 0.30769231rem 0 0; font-size: var(--text-lg); color: var(--text-dim); }
 .cv-settings-under { margin: -0.30769231rem 0 0.30769231rem 2.92307692rem; }
 /* A switch: the checkbox stays for the keyboard and the harnesses; the track is what is seen. */
@@ -3590,7 +3610,9 @@ details[open] > .cv-palette-lib::before { content: '▾'; }
 .cv-credential-use > summary { cursor: pointer; color: var(--text-dim); }
 
 /* The guided tour. */
-.cv-tour { position: absolute; left: 0.92307692rem; top: 3.38461538rem; z-index: 8; width: min(23.07692308rem, calc(100% - 1.84615385rem)); padding: 0.76923077rem 0.92307692rem; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.35); }
+/* Furniture over the canvas: its own text colour, or it inherits the
+   ground's ink and goes dark on dark when the ground is light. */
+.cv-tour { position: absolute; left: 0.92307692rem; top: 3.38461538rem; z-index: 8; width: min(23.07692308rem, calc(100% - 1.84615385rem)); padding: 0.76923077rem 0.92307692rem; color: var(--text); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.35); }
 .cv-tour header { display: flex; align-items: center; gap: 0.61538462rem; margin-bottom: 0.46153846rem; }
 .cv-tour header strong { margin-right: auto; }
 .cv-tour ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.30769231rem; }

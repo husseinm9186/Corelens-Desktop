@@ -161,6 +161,34 @@ await settle();
 check("Ctrl+Shift+0 goes back to following the window", (await scale()) === 1 && (await st(() => window.__cvStore.getState().settings.uiScale)) === "auto",
   String(await scale()));
 
+// --- the fold handles follow their panels in a small window -----------------
+// Under 1080 px one side panel shows at a time, at a width of its own: the
+// shapes with nothing selected, the details with something.
+{
+  await st(() => { const s = window.__cvStore.getState(); s.setPanelOpen(false); s.setSettings({ uiScale: "auto" }); s.select(null, null); });
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await settle();
+  const where = () => page.evaluate(() => {
+    const box = (sel) => { const el = document.querySelector(sel); if (!el || getComputedStyle(el).display === "none") return null; const r = el.getBoundingClientRect(); return r.width ? r : null; };
+    const main = box(".cv-main"), palette = box(".cv-main > .cv-palette"), inspector = box(".cv-main > .cv-inspector");
+    const left = box(".cv-rail-left"), right = box(".cv-rail-right");
+    const mid = (r) => r.left + r.width / 2;
+    return {
+      // How far each handle's middle is from the edge it belongs on.
+      left: Math.round(Math.abs(mid(left) - (palette ? palette.right : main.left + left.width / 2))),
+      right: Math.round(Math.abs(mid(right) - (inspector ? inspector.left : main.right - right.width / 2))),
+      palette: Boolean(palette), inspector: Boolean(inspector),
+    };
+  });
+  const idle = await where();
+  check("with nothing selected the shapes show, and each handle is on its edge", idle.palette && !idle.inspector && idle.left <= 10 && idle.right <= 10, JSON.stringify(idle));
+  await st(() => window.__cvStore.getState().select("sw1", null));
+  await settle();
+  const chosen = await where();
+  check("with a device selected the details show, and each handle is on its edge", chosen.inspector && !chosen.palette && chosen.left <= 10 && chosen.right <= 10, JSON.stringify(chosen));
+  await st(() => window.__cvStore.getState().select(null, null));
+}
+
 await browser.close();
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
 process.exit(failures ? 1 : 0);

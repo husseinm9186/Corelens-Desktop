@@ -177,6 +177,17 @@ await st(() => window.__cvStore.getState().select(null, "e1"));
 await page.waitForTimeout(300);
 check("a link's inspector has no tabs", (await tabs.count()) === 0);
 check("and still takes a cable length", (await insp.locator(".cv-field", { hasText: "Cable length" }).locator("input").count()) === 1);
+{
+  const ratio = await insp.locator(".cv-inspector-title .cv-status-chip").evaluate((el) => {
+    const rgb = (c) => { const p = c.match(/rgba?\(([^)]+)\)/)[1].split(/[ ,/]+/).map(Number); return { r: p[0], g: p[1], b: p[2], a: p[3] ?? 1 }; };
+    const lum = ({ r, g, b }) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    let p = el, bg = null;
+    while (p && p.nodeType === 1) { const b = rgb(getComputedStyle(p).backgroundColor); if (b.a > 0.6) { bg = b; break; } p = p.parentElement; }
+    const a = lum(rgb(getComputedStyle(el).color)), b = lum(bg ?? { r: 0, g: 0, b: 0 });
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  });
+  check("the link's status chip can be read", ratio >= 4.5, ratio.toFixed(1));
+}
 
 await browser.close();
 if (failures) {

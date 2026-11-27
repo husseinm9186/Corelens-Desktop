@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULTS, deviceColor, statusMark } from '../../theme';
+import { DEFAULTS, chipInk, deviceColor, statusMark } from '../../theme';
 
 import { useRuntimeSlowly, useStore, type InspectorTab } from '../../state/store';
 import { openSsh } from '../sshActions';
@@ -1966,7 +1966,7 @@ function ProbeEditor({
           onChange={(e) => patch({ name: e.target.value })}
         />
         {runtime && (
-          <span className="cv-status-chip" style={{ background: STATUS_COLOR[runtime.status] }}>
+          <span className="cv-status-chip" style={{ background: STATUS_COLOR[runtime.status], color: chipInk(STATUS_COLOR[runtime.status]) }}>
             {STATUS_GLYPH[runtime.status]} {STATUS_LABEL[runtime.status]}
           </span>
         )}
@@ -2297,7 +2297,7 @@ function LinkInspector({ edgeId }: { edgeId: string }) {
     <>
       <h2 className="cv-inspector-title">
         Link
-        <span className="cv-status-chip" style={{ background: STATUS_COLOR[status] }}>
+        <span className="cv-status-chip" style={{ background: STATUS_COLOR[status], color: chipInk(STATUS_COLOR[status]) }}>
           {STATUS_GLYPH[status]} {STATUS_LABEL[status]}
         </span>
       </h2>

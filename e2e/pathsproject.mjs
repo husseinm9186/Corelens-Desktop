@@ -144,6 +144,23 @@ await page.locator(".cv-pathtrace .cv-discover-form button", { hasText: /^Measur
 await page.waitForTimeout(400);
 check("Measure goes to Tracert with it", (await st(() => window.__cvStore.getState().dockTab)) === "tracert" && (await field(".cv-tracert", "To").inputValue()) === "192.0.2.11");
 
+// No dropdown in the four path tools is narrower than what it says.
+for (const name of ["Path-Trace", "Path check", "Tracert", "Where is"]) {
+  await tab(name).click();
+  await page.waitForTimeout(300);
+  const clipped = await page.locator(".cv-panel").evaluate((root) => [...(root ?? document).querySelectorAll("select")].flatMap((el) => {
+    const r = el.getBoundingClientRect();
+    if (!r.width) return [];
+    const cs = getComputedStyle(el);
+    const c = document.createElement("canvas").getContext("2d");
+    c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const text = el.selectedOptions[0]?.text ?? "";
+    const need = c.measureText(text).width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    return need > r.width + 1 ? [`"${text}" needs ${Math.round(need)} has ${Math.round(r.width)}`] : [];
+  }));
+  check(`${name}: no dropdown is narrower than what it says`, clipped.length === 0, clipped.join(" | "));
+}
+
 await browser.close();
 if (failures) {
   console.log(`\n${failures} check(s) failed`);

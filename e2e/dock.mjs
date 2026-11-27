@@ -271,6 +271,22 @@ check("and that is remembered too, keyed by the tab",
   check("and nothing was thrown on the way", pageErrors.length === 0, pageErrors.join(" | ").slice(0, 300));
 }
 
+// One tab that fails does not take the others with it. The stub answers the
+// sweep's subnet question with nothing it can use, which is enough to break
+// that one tab.
+{
+  await st(() => { const s = window.__cvStore.getState(); s.setPanelOpen(true); s.requestPanelTab("discover"); });
+  await page.waitForTimeout(700);
+  const broke = (await page.locator(".cv-panel .cv-boundary").filter({ hasText: /stopped working/ }).count()) > 0;
+  check("(the fixture breaks the Ping sweep tab)", broke);
+  const strip = page.locator('.cv-panel button[role="tab"]');
+  check("the tab strip is still there", (await strip.count()) > 3, String(await strip.count()));
+  await strip.filter({ hasText: /^Backups/ }).first().click().catch(() => {});
+  await page.waitForTimeout(400);
+  check("and another tab opens and works",
+    (await st(() => window.__cvStore.getState().dockTab)) === "backup" && (await page.locator(".cv-panel").filter({ hasText: /stopped working/ }).count()) === 0);
+}
+
 await browser.close();
 if (failures) {
   console.log(`\n${failures} check(s) failed`);

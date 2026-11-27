@@ -774,7 +774,9 @@ export function TopBar({ onExit }: { onExit: () => void }) {
           aria-live="polite"
         >
           {save.tone === 'acknowledged' && <span className="cv-save-tick" aria-hidden="true"><ChromeIcon name="check" size={12} /></span>}
-          {save.at === null ? save.label : `${save.label} ${new Date(save.at).toLocaleTimeString()}`}
+          {/* In an element of its own: the state is a row of a tick and
+              this, and only a block of text can end in an ellipsis. */}
+          <span className="cv-save-text">{save.at === null ? save.label : `${save.label} ${new Date(save.at).toLocaleTimeString()}`}</span>
         </span>
         {/* The document's own verbs, beside its save state. */}
         <span className="cv-doc-verbs" role="group" aria-label={t('topbar.document')}>

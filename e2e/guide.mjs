@@ -87,6 +87,23 @@ await page.keyboard.press("Escape");
 await page.waitForTimeout(200);
 check("opening search is the fifth", /5 of 6/.test(await guide.textContent()));
 
+// The tour is furniture: on the light ground its own text stays readable.
+await st(() => window.__cvStore.getState().setSettings({ ground: "light" }));
+await page.waitForTimeout(250);
+{
+  const ratio = await guide.locator("header strong").evaluate((el) => {
+    const rgb = (c) => { const p = c.match(/rgba?\(([^)]+)\)/)[1].split(/[ ,/]+/).map(Number); return { r: p[0], g: p[1], b: p[2], a: p[3] ?? 1 }; };
+    const lum = ({ r, g, b }) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    let p = el, bg = null;
+    while (p && p.nodeType === 1) { const b = rgb(getComputedStyle(p).backgroundColor); if (b.a > 0.6) { bg = b; break; } p = p.parentElement; }
+    const a = lum(rgb(getComputedStyle(el).color)), b = lum(bg ?? { r: 0, g: 0, b: 0 });
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  });
+  check("the tour's title can be read on the light ground", ratio >= 4.5, ratio.toFixed(1));
+}
+await st(() => window.__cvStore.getState().setSettings({ ground: "dark" }));
+await page.waitForTimeout(150);
+
 const kept = await st(() => window.__cvStore.getState().doc.guide.done);
 check("what was done is kept on the project", JSON.stringify(kept) === JSON.stringify(["select", "link", "validate", "answer", "search"]), JSON.stringify(kept));
 await guide.getByRole("button", { name: "Hide the tour" }).click();

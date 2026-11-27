@@ -4,6 +4,7 @@ import { useStableList } from '../lib/useStableList';
 import { useReactFlow } from '@xyflow/react';
 import { findNodes } from '../lib/findNodes';
 import { dockOwnerWindow } from '../lib/dockWindow';
+import { ErrorBoundary } from './ErrorBoundary';
 import { t } from '../i18n';
 
 import { useRuntimeSlowly, useStore, type DockTab } from '../state/store';
@@ -671,6 +672,11 @@ export function StatusPanel() {
       {statusMessage && <div className="cv-panel-message" role="status" aria-live="polite">{statusMessage}</div>}
 
       <div className="cv-panel-body" ref={bodyRef}>
+        {/* A boundary of the tab's own, so one that fails leaves the strip
+            and every other tab working; choosing another tab clears it.
+            Tabs that are one panel in two guises share a key, and so keep
+            what was typed when moving between them. */}
+        <ErrorBoundary key={tab === 'collect' ? 'crawl' : tab === 'console' ? 'ssh' : tab} what={t('dock.thisTab')}>
         {tab === 'compare' ? (
           <ComparePanel />
         ) : tab === 'discover' ? (
@@ -850,6 +856,7 @@ export function StatusPanel() {
           </table>
           </>
         )}
+        </ErrorBoundary>
       </div>
 
       {/* Every running job, whichever tab started it, along

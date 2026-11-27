@@ -120,6 +120,29 @@ const hasClass = async (sel, cls) => (await page.locator(sel).first().getAttribu
   check("after a reopen Discover is still along the bottom where it was left", !(await hasClass(".cv-body", "is-dock-right")));
 }
 
+// Docked on the right, where it is narrow: nothing in Discover's form runs
+// off the panel's edge, and no dropdown is narrower than what it says.
+{
+  await st(() => { const s = window.__cvStore.getState(); s.setDockPlacement("crawl", "right"); s.requestPanelTab("crawl"); });
+  await page.waitForTimeout(500);
+  const over = await page.evaluate(() => {
+    const panel = document.querySelector(".cv-panel").getBoundingClientRect();
+    return [...document.querySelectorAll(".cv-panel .cv-check, .cv-panel .cv-field, .cv-panel .cv-btn")].filter((e) => { const r = e.getBoundingClientRect(); return r.width && r.right > panel.right + 1; }).map((e) => (e.innerText || "").slice(0, 30));
+  });
+  check("Discover on the right keeps every control inside the panel", over.length === 0, over.join(" | "));
+  const clipped = await page.locator(".cv-panel").evaluate((root) => [...(root ?? document).querySelectorAll("select")].flatMap((el) => {
+    const r = el.getBoundingClientRect();
+    if (!r.width) return [];
+    const cs = getComputedStyle(el);
+    const c = document.createElement("canvas").getContext("2d");
+    c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const text = el.selectedOptions[0]?.text ?? "";
+    const need = c.measureText(text).width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    return need > r.width + 1 ? [`"${text}" needs ${Math.round(need)} has ${Math.round(r.width)}`] : [];
+  }));
+  check("and no dropdown there is narrower than what it says", clipped.length === 0, clipped.join(" | "));
+}
+
 await browser.close();
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);

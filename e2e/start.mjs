@@ -120,6 +120,19 @@ await page.waitForTimeout(500);
   const now = await fresh.locator(".cv-settings-nav-item.is-current").innerText();
   check("its nav moves to a section", now === "Saved credentials", now);
   check("the button now leads back", /Back to projects/.test(await button.innerText()));
+  {
+    const clipped = await fresh.locator('[data-region="settings-application"]').evaluate((root) => [...(root ?? document).querySelectorAll("select")].flatMap((el) => {
+    const r = el.getBoundingClientRect();
+    if (!r.width) return [];
+    const cs = getComputedStyle(el);
+    const c = document.createElement("canvas").getContext("2d");
+    c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const text = el.selectedOptions[0]?.text ?? "";
+    const need = c.measureText(text).width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    return need > r.width + 1 ? [`"${text}" needs ${Math.round(need)} has ${Math.round(r.width)}`] : [];
+  }));
+    check("no dropdown in the application's settings is narrower than what it says", clipped.length === 0, clipped.join(" | "));
+  }
   await button.click();
   await fresh.waitForTimeout(300);
   check("and back to the projects", (await fresh.locator('[data-region="settings-application"]').count()) === 0);

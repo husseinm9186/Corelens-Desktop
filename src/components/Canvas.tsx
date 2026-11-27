@@ -65,7 +65,8 @@ import { stackLevels } from '../lib/drawOrder';
 import { frameAround, withBoxAtBack } from '../lib/groupBox';
 import { useDragOverlay } from '../state/dragOverlay';
 import { restack, sameOrder, type Restack } from '../lib/zOrder';
-import { addPoint, lassoed, type Point } from '../lib/lasso';
+import { addPoint, insideBox, insidePolygon, lassoed, linksThrough, type LinkLine, type Point } from '../lib/lasso';
+import { ManyLinksSelected } from './edges/manyLinks';
 import { snapUnguided } from '../lib/gridSnap';
 import { snapStep } from '../lib/gridScale';
 import { PRINT_ACTUAL_ZOOM } from '../lib/pageSize';
@@ -196,6 +197,23 @@ interface MenuState {
 
 
 
+/** Every link on the canvas as the points along its drawn line, in the
+ *  page's own coordinates: what a selection box or a lasso is tested
+ *  against. Read off what is drawn, so a curve, a route round a device and
+ *  a straight run are each tested as they look. */
+function linkLines(root: HTMLElement | null): LinkLine[] {
+  const lines: LinkLine[] = [];
+  for (const g of root?.querySelectorAll<SVGGElement>('.react-flow__edge[data-id]') ?? []) {
+    const path = g.querySelector<SVGPathElement>('path.react-flow__edge-path');
+    const id = g.getAttribute('data-id');
+    if (!path || !id) continue;
+    const length = path.getTotalLength();
+    const pieces = Math.max(2, Math.min(300, Math.ceil(length / 6)));
+    lines.push({ id, points: Array.from({ length: pieces + 1 }, (_, i) => { const p = path.getPointAtLength((length * i) / pieces); return { x: p.x, y: p.y }; }) });
+  }
+  return lines;
+}
+
 export function Canvas() {
   const wrapper = useRef<HTMLDivElement>(null);
   // The outline of a lasso being drawn, in the wrapper's own pixels.
@@ -206,6 +224,46 @@ export function Canvas() {
   /** React Flow's own store, for cancelling a selection box it has already
    *  started when space turns the drag into a pan. */
   const rfStore = useStoreApi();
+
+  // The selection box catches the links it is drawn across. React Flow's
+  // box selects devices, and of the links only those attached to a device
+  // it caught; a box drawn over a bundle of links and no device selected
+  // nothing. So the box is watched: the links whose line passes through it
+  // are marked while it is drawn, and selected when it is let go.
+  useEffect(() => {
+    let lines: LinkLine[] | null = null;
+    let caught = new Set<string>();
+    const mark = (next: Set<string>) => {
+      for (const g of wrapper.current?.querySelectorAll('.react-flow__edge[data-id]') ?? []) {
+        g.classList.toggle('is-caught', next.has(g.getAttribute('data-id') ?? ''));
+      }
+      caught = next;
+    };
+    return rfStore.subscribe((s, before) => {
+      const box = s.userSelectionRect;
+      if (box === before.userSelectionRect) return;
+      if (box && s.userSelectionActive && (box.width > 0 || box.height > 0)) {
+        lines ??= linkLines(wrapper.current);
+        const [tx, ty, zoom] = s.transform;
+        const next = new Set(linksThrough(lines, insideBox({ x: (box.x - tx) / zoom, y: (box.y - ty) / zoom, width: box.width / zoom, height: box.height / zoom })));
+        if (next.size !== caught.size || [...next].some((id) => !caught.has(id))) mark(next);
+        return;
+      }
+      if (box || !lines) return;
+      // Let go: what was marked is selected, beside whatever the box caught
+      // by its devices.
+      const ids = caught;
+      lines = null;
+      mark(new Set());
+      if (ids.size === 0) return;
+      const st = useStore.getState();
+      st.onEdgesChange(activePage(st.doc).edges.filter((e) => ids.has(e.id) && !e.selected).map((e) => ({ type: 'select' as const, id: e.id, selected: true })));
+      const now = activePage(useStore.getState().doc);
+      const links = now.edges.filter((e) => e.selected);
+      if (!now.nodes.some((n) => n.selected)) st.select(null, links.length === 1 ? links[0]!.id : null);
+      st.setStatusMessage(t('canvas.linksSelected', { links: t('plural.link', { count: links.length }) }));
+    });
+  }, [rfStore]);
   const ground = useStore((s) => s.settings.ground);
   const settings = useStore((s) => s.settings);
 
@@ -644,8 +702,18 @@ export function Canvas() {
     [pg.nodes],
   );
 
+  const manyLinks = useMemo(() => pg.edges.filter((e) => e.selected).length > 1, [pg.edges]);
+
   const edgeMenu = (edgeId: string): MenuItem[] => {
     const edge = pg.edges.find((e) => e.id === edgeId);
+    // One of several selected links: what is offered first is for them all.
+    const together = edge?.selected ? pg.edges.filter((e) => e.selected).length : 0;
+    if (together > 1) {
+      return [
+        { label: t('canvas.deleteLinks', { count: together }), danger: true, onSelect: () => useStore.getState().deleteSelected() },
+        { label: 'Edit link properties', onSelect: () => useStore.getState().select(null, edgeId) },
+      ];
+    }
     const data = edge?.data;
     return [
       { label: 'Edit link properties', onSelect: () => useStore.getState().select(null, edgeId) },
@@ -1901,7 +1969,16 @@ export function Canvas() {
                 .filter((n) => (adding ? caught.has(n.id) && !n.selected : Boolean(n.selected) !== caught.has(n.id)))
                 .map((n) => ({ type: 'select', id: n.id, selected: caught.has(n.id) || (adding && Boolean(n.selected)) })),
             );
-            if (caught.size > 0) useStore.getState().setStatusMessage(`Lasso caught ${t('plural.object', { count: caught.size })}.`);
+            // And the links its outline goes across, the same way.
+            const across = new Set(flow.length < 3 ? [] : linksThrough(linkLines(wrapper.current), (p) => insidePolygon(p, flow)));
+            useStore.getState().onEdgesChange(
+              activePage(useStore.getState().doc).edges
+                .filter((e) => (adding ? across.has(e.id) && !e.selected : Boolean(e.selected) !== across.has(e.id)))
+                .map((e) => ({ type: 'select' as const, id: e.id, selected: across.has(e.id) || (adding && Boolean(e.selected)) })),
+            );
+            if (caught.size === 0 && across.size > 0) useStore.getState().select(null, across.size === 1 ? [...across][0]! : null);
+            if (caught.size > 0) useStore.getState().setStatusMessage(`Lasso caught ${t('plural.object', { count: caught.size })}${across.size ? ` and ${t('plural.link', { count: across.size })}` : ''}.`);
+            else if (across.size > 0) useStore.getState().setStatusMessage(t('canvas.linksSelected', { links: t('plural.link', { count: across.size }) }));
           };
           // A cancelled lasso catches nothing and leaves no outline behind.
           followPointer(window, move, up, () => setLasso(null));
@@ -1918,6 +1995,7 @@ export function Canvas() {
         </svg>
       )}
       <EdgeHitHost.Provider value={hitHost}>
+      <ManyLinksSelected.Provider value={manyLinks}>
       <ReactFlow
         nodes={nodes}
         edges={shownEdges}
@@ -1987,7 +2065,10 @@ export function Canvas() {
         }}
         onEdgeContextMenu={(e, edge) => {
           e.preventDefault();
-          useStore.getState().select(null, edge.id);
+          // On one of several selected links the selection stays as it
+          // is, and the menu is for all of them.
+          const several = edge.selected && pg.edges.filter((x) => x.selected).length > 1;
+          if (!several) useStore.getState().select(null, edge.id);
           setMenu({ x: e.clientX, y: e.clientY, items: edgeMenu(edge.id) });
         }}
         onPaneContextMenu={(e) => {
@@ -2071,6 +2152,7 @@ export function Canvas() {
         )}
         <EdgeHitLayer onHost={setHitHost} />
       </ReactFlow>
+      </ManyLinksSelected.Provider>
       </EdgeHitHost.Provider>
       {/* Rulers over the pane's edge, when the page asks for them. */}
       {(pg.canvas.rulers ?? false) && !presenting && <Rulers units={pg.canvas.rulerUnits ?? 'mm'} />}

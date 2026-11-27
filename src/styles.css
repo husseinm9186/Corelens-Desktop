@@ -496,6 +496,10 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
 .cv-minimap.is-health .cv-mm-down { stroke: currentColor; stroke-width: 18; stroke-dasharray: 30 18; }
 .cv-minimap.is-health .cv-mm-warning { stroke: currentColor; stroke-width: 18; }
 
+/* A link the selection box is being drawn across: lit, the way it will be
+   when the box is let go and it is selected. On the canvas, so its token. */
+.react-flow__edge.is-caught path.react-flow__edge-path { filter: drop-shadow(0 0 5px var(--canvas-accent)); }
+
 .cv-rail {
   position: absolute; top: 50%; transform: translateY(-50%); z-index: 12;
   width: 1.07692308rem; height: 4.15384615rem; padding: 0;

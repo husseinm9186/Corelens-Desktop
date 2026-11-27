@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { TopoNode } from '../state/store';
-import { addPoint, insidePolygon, lassoed } from './lasso';
+import { addPoint, insideBox, insidePolygon, lassoed, linksThrough } from './lasso';
 
 const square = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
 const node = (id: string, x: number, y: number) =>
@@ -35,5 +35,26 @@ describe('lasso selection', () => {
     o = addPoint(o, { x: 1, y: 1 });
     o = addPoint(o, { x: 10, y: 0 });
     expect(o).toEqual([{ x: 0, y: 0 }, { x: 10, y: 0 }]);
+  });
+});
+
+describe('the links a box or a lasso goes across', () => {
+  // A link is the points along its line, in the page's coordinates.
+  const across = { id: 'across', points: [{ x: 0, y: 50 }, { x: 50, y: 50 }, { x: 100, y: 50 }] };
+  const away = { id: 'away', points: [{ x: 0, y: 500 }, { x: 100, y: 500 }] };
+  const through = { id: 'through', points: [{ x: 40, y: 0 }, { x: 45, y: 55 }, { x: 50, y: 200 }] };
+
+  it('a box catches every link whose line passes through it, device or no device', () => {
+    expect(linksThrough([across, away, through], insideBox({ x: 30, y: 40, width: 40, height: 30 }))).toEqual(['across', 'through']);
+  });
+
+  it('and none of those that only pass by', () => {
+    expect(linksThrough([across, away, through], insideBox({ x: 200, y: 200, width: 50, height: 50 }))).toEqual([]);
+    expect(linksThrough([], insideBox({ x: 0, y: 0, width: 10, height: 10 }))).toEqual([]);
+  });
+
+  it('a lasso catches them the same way', () => {
+    const outline = [{ x: 30, y: 40 }, { x: 70, y: 40 }, { x: 70, y: 70 }, { x: 30, y: 70 }];
+    expect(linksThrough([across, away, through], (p) => insidePolygon(p, outline))).toEqual(['across', 'through']);
   });
 });

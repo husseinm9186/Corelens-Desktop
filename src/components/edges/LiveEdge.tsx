@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BaseEdge,
@@ -20,6 +20,7 @@ import { STATUS_COLOR_DARK, canvasPalette, statusColors } from '../../theme';
 import { capPath, capsFor, doubleWidths, stepAlong, strokeFor } from '../../lib/linkStyle';
 import { lineColourOf } from '../../lib/drawnLinks';
 import { drawnSaidText } from '../drawnSaid';
+import { ManyLinksSelected } from './manyLinks';
 import { withJumps } from '../../lib/lineJumps';
 import { cableTag, centreLabel } from '../../lib/cables';
 import { cssOf } from '../../lib/textStyle';
@@ -228,6 +229,9 @@ function LiveEdgeInner(props: EdgeProps) {
     selected,
   } = props;
   const data = (props.data ?? {}) as LinkData;
+  // The handles a link is edited by show only for one selected by itself.
+  const several = useContext(ManyLinksSelected);
+  const alone = Boolean(selected) && !several;
   // Live while the curve handle is dragged; the store learns the
   // final value on release.
   const [curveDrag, setCurveDrag] = useState<number | null>(null);
@@ -1112,7 +1116,7 @@ function LiveEdgeInner(props: EdgeProps) {
         {/* A step link edits by segment grips that slide orthogonally;
             A straight or curved link edits by free vertex/midpoint
             handles. One or the other, never both. */}
-        {selected && isElbow &&
+        {alone && isElbow &&
           segmentGrips(pathVertices(livePath)).map((g) => (
             <div
               key={`grip-${g.index}`}
@@ -1122,7 +1126,7 @@ function LiveEdgeInner(props: EdgeProps) {
               onPointerDown={dragElbow(pathVertices(livePath), g.index)}
             />
           ))}
-        {selected && isBezier && (
+        {alone && isBezier && (
           <div
             className="cv-edge-curve nodrag nopan"
             title={t('liveEdge.dragToChangeHow')}
@@ -1136,7 +1140,7 @@ function LiveEdgeInner(props: EdgeProps) {
             }}
           />
         )}
-        {selected && !isElbow && !isBezier &&
+        {alone && !isElbow && !isBezier &&
           (wpDrag?.points ?? wps).map((w, i) => (
             <div
               key={`wp-${i}`}
@@ -1151,7 +1155,7 @@ function LiveEdgeInner(props: EdgeProps) {
               }}
             />
           ))}
-        {selected && !isElbow && !isBezier &&
+        {alone && !isElbow && !isBezier &&
           segmentMidpoints({ x: sourceX, y: sourceY }, wpDrag?.points ?? wps, { x: targetX, y: targetY }).map((m, i) => (
             <div
               key={`mid-${i}`}
@@ -1196,7 +1200,7 @@ function LiveEdgeInner(props: EdgeProps) {
             {anchorDrag.port && <span className="cv-connection-snap-name">{anchorDrag.port.name}</span>}
           </div>
         )}
-        {selected && (
+        {alone && (
           <>
             <div
               className="cv-edge-endpoint nodrag nopan"

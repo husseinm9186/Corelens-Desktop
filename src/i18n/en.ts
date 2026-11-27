@@ -225,6 +225,8 @@ export const en = {
   'credentialPicker.saveOverIt': 'Save over it',
   'canvas.boxAroundSelection': 'Box around the selection',
   'canvas.boxAroundThis': 'Box around this',
+  'canvas.linksSelected': '{links} selected. Delete removes them; Ctrl+click adds one or takes it away.',
+  'canvas.deleteLinks': 'Delete {count} selected links',
   'canvas.boxed': { one: 'Drew a box round {count} object, behind everything. Fill and border are in its properties.', other: 'Drew a box round {count} objects, behind everything. Fill and border are in its properties.' },
   'csvImportPanel.inSites': { one: 'in {count} site', other: 'in {count} sites, each in a frame of its own' },
   'csvImportPanel.headingsRead': { one: '{count} heading row ("{first}") is read as the site of the devices under it.', other: '{count} heading rows ("{first}", …) are read as the site of the devices under each.' },

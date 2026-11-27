@@ -58,6 +58,13 @@ underlined and the inspector says why.
 - **Multi-select** — drag on empty canvas, or Shift-click.
 - **Lasso** — hold `Alt` and drag a freehand outline on empty canvas; what it goes
   round (by its middle) is selected. `Alt+Shift` adds to the selection.
+- **Several links at once** — a box or a lasso also selects every link it is
+  drawn across, whether or not a device is in it; the links light up while
+  you draw. `Ctrl`-click adds a link to the selection or takes it away.
+  `Delete` removes them together (one undo brings them back), a right-click
+  on one of them offers **Delete N selected links**, and the details panel
+  sets cable, path, line style and width for all of them. A link shows the
+  handles it is reshaped by only when it is selected alone.
 - **Grid snap** — the magnet button in the strip above the canvas (or
   `Ctrl+Shift+G`) makes a dragged object land on the grid, unless it is lining up
   with a neighbour: the alignment guides always win. Holding `Alt` while dragging

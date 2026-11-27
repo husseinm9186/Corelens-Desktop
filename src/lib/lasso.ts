@@ -42,3 +42,37 @@ export function addPoint(outline: Point[], p: Point, step = 4): Point[] {
   if (last && Math.hypot(p.x - last.x, p.y - last.y) < step) return outline;
   return [...outline, p];
 }
+
+/** A link as a box or a lasso sees it: the points along its line, in the
+ *  page's own coordinates. */
+export interface LinkLine {
+  id: string;
+  points: readonly Point[];
+}
+
+/** Whether a point is in a box. */
+export const insideBox = (box: { x: number; y: number; width: number; height: number }) => (p: Point) =>
+  p.x >= box.x && p.x <= box.x + box.width && p.y >= box.y && p.y <= box.y + box.height;
+
+/**
+ * The links whose line passes through an area, in the order given.
+ *
+ * A link has no middle to go by the way a device has: it is caught where
+ * any part of its line is inside, which is what drawing a box across a
+ * bundle of links means. The line is walked between its points as well, a
+ * few units at a time, so a small box between two of them still catches it.
+ */
+export function linksThrough(lines: readonly LinkLine[], inside: (p: Point) => boolean, step = 4): string[] {
+  const caught: string[] = [];
+  for (const line of lines) {
+    let hit = line.points.some(inside);
+    for (let i = 1; !hit && i < line.points.length; i++) {
+      const a = line.points[i - 1]!;
+      const b = line.points[i]!;
+      const pieces = Math.min(400, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / step));
+      for (let k = 1; !hit && k < pieces; k++) hit = inside({ x: a.x + ((b.x - a.x) * k) / pieces, y: a.y + ((b.y - a.y) * k) / pieces });
+    }
+    if (hit) caught.push(line.id);
+  }
+  return caught;
+}

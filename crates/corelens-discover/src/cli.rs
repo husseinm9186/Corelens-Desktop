@@ -47,10 +47,42 @@ pub fn find_prompt(buffer: &str) -> Option<Prompt> {
     // start of its line: Junos indents a `>` in front of each active route,
     // and output that stops just after one must not end the read. The
     // visible text is trimmed, so the indentation is judged on the raw line.
-    if last == ">" && raw.trim_start_matches('\r').starts_with([' ', '\t']) {
+    if last == ">" && !starts_with_the_mark(raw) {
         return None;
     }
     prompt_from_line(&last)
+}
+
+/// Whether a raw line opens with `>` itself. Colour and erase sequences in
+/// front of it move nothing and are passed over; a space, a tab or a
+/// sequence that moves the cursor (`ESC [ 20 C`) means the mark was drawn
+/// somewhere along the line, which is output and not a prompt.
+fn starts_with_the_mark(raw: &str) -> bool {
+    let mut rest = raw.trim_start_matches('\r');
+    while let Some(after) = rest.strip_prefix("\u{1b}[") {
+        let end = after.find(|c: char| ('@'..='~').contains(&c));
+        match end {
+            Some(i) if matches!(after.as_bytes()[i], b'm' | b'K' | b'J') => rest = after[i + 1..].trim_start_matches('\r'),
+            _ => return false,
+        }
+    }
+    rest.starts_with('>')
+}
+
+/// The prompt a device has drawn, read off the screen and checked against
+/// what it sent.
+///
+/// The screen is what can read a painted prompt, and for every prompt with
+/// a hostname in it that is enough. A bare `>` has nothing to be judged by,
+/// and a long line of output that ends in one — markup in a replacement
+/// message, a certificate — wraps to a row that is exactly that. So a bare
+/// `>` is the prompt only where the device also sent it as a line of its
+/// own.
+pub fn prompt_drawn(screen: &crate::screen::Screen, raw: &str) -> Option<Prompt> {
+    match find_prompt_on_screen(screen) {
+        Some(p) if is_ftd_prompt(&p) => find_prompt(raw).filter(is_ftd_prompt),
+        found => found,
+    }
 }
 
 /// The prompt on one already-visible line, if it is one.
@@ -533,6 +565,34 @@ mod tests {
         let p = find_prompt("EDGE-RTR>").unwrap();
         assert_eq!(p.hostname, "EDGE-RTR");
         assert!(!p.enabled, "> is user mode, not enable");
+    }
+
+    /// A line of output one column longer than the screen, ending in `>`,
+    /// wraps to a row that is that mark alone.
+    #[test]
+    fn a_long_line_that_wraps_to_a_bare_mark_is_not_a_prompt() {
+        let line = format!("{}>", "x".repeat(80));
+        let raw = format!("show something\r\n{line}");
+        let mut screen = crate::screen::Screen::new(24, 80);
+        screen.feed(raw.as_bytes());
+        assert_eq!(screen.cursor_line().trim(), ">", "the fixture wraps as intended");
+        assert!(prompt_drawn(&screen, &raw).is_none());
+        // The real thing, sent as a line of its own, still is one.
+        let raw = "show something\r\nsome output\r\n> ";
+        let mut screen = crate::screen::Screen::new(24, 80);
+        screen.feed(raw.as_bytes());
+        assert!(prompt_drawn(&screen, raw).is_some_and(|p| is_ftd_prompt(&p)));
+        // And a prompt with a hostname needs nothing from the raw text.
+        let mut screen = crate::screen::Screen::new(24, 80);
+        screen.feed(b"output\r\nCORE-SW-01#");
+        assert_eq!(prompt_drawn(&screen, "").map(|p| p.hostname), Some("CORE-SW-01".to_string()));
+    }
+
+    #[test]
+    fn a_mark_moved_along_its_line_by_an_escape_sequence_is_not_a_prompt() {
+        assert!(find_prompt("route\r\n\u{1b}[20C>").is_none(), "moved right by the cursor");
+        assert!(find_prompt("route\r\n\u{1b}[K   >").is_none(), "erased, then indented");
+        assert!(find_prompt("banner\r\n\u{1b}[0m\u{1b}[K> ").is_some(), "colour and erase in front of it move nothing");
     }
 
     /// An FTD's command line: `> ` after its banner, with no hostname.

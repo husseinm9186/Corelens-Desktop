@@ -29,7 +29,7 @@ use russh::{ChannelMsg, Disconnect};
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
-use crate::cli::{extract_output, find_prompt, find_prompt_on_screen, Prompt};
+use crate::cli::{extract_output, find_prompt, prompt_drawn, Prompt};
 use crate::screen::Screen;
 
 /// The terminal Corelens claims to be when it opens a shell, and the answer it
@@ -666,7 +666,10 @@ impl Device {
                     return Err(self.timed_out(command, &buffer));
                 }
                 // The channel closed. Whatever arrived is all there is.
-                Ok(None) => return Ok((buffer, find_prompt_on_screen(&screen))),
+                Ok(None) => {
+                    let prompt = prompt_drawn(&screen, &buffer);
+                    return Ok((buffer, prompt));
+                }
                 Ok(Some(msg)) => match msg {
                     // Stderr is the same screen to a terminal, was
                     // that it used to be appended and then never checked for a
@@ -676,7 +679,8 @@ impl Device {
                         data.to_vec()
                     }
                     ChannelMsg::Eof | ChannelMsg::Close => {
-                        return Ok((buffer, find_prompt_on_screen(&screen)))
+                        let prompt = prompt_drawn(&screen, &buffer);
+                        return Ok((buffer, prompt));
                     }
                     _ => continue,
                 },
@@ -743,7 +747,7 @@ impl Device {
             // The screen first, because it is the one that can read a painted
             // prompt. The raw buffer stays as a fallback so that no device
             // which already worked can stop working.
-            if let Some(prompt) = find_prompt_on_screen(&screen).or_else(|| find_prompt(&buffer)) {
+            if let Some(prompt) = prompt_drawn(&screen, &buffer).or_else(|| find_prompt(&buffer)) {
                 return Ok((buffer, Some(prompt)));
             }
         }

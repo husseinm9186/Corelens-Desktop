@@ -779,16 +779,43 @@ pub fn table_questions(version: &str) -> Vec<TableQuestion> {
         ]
     } else {
         let d = crate::dialect::dialect_for(version);
+        let family = d.family();
+        // NX-OS answers its interface and route commands for the default
+        // VRF alone, and a leaf keeps its SVIs, its management port and
+        // every tenant's routes in others. Every VRF is asked for first;
+        // the plain spelling stays behind it for a release that refuses.
+        let nxos = family == crate::dialect::Family::CiscoNxOs;
         let mut interfaces: Vec<String> = d.interface_readings().iter().map(|r| r.command.to_string()).collect();
+        if nxos {
+            interfaces.insert(0, "show ip interface brief vrf all".to_string());
+        }
         if crate::arubasw::is_arubaos_switch(version) {
             interfaces.push("show ip".to_string());
         }
-        vec![
+        let mut tables = vec![
             TableQuestion { what: "interfaces", spellings: interfaces, every: false },
             TableQuestion { what: "arp", spellings: own(d.arp_commands()), every: false },
             TableQuestion { what: "mac addresses", spellings: d.mac_table_readings().iter().map(|r| r.command.to_string()).collect(), every: false },
-            TableQuestion { what: "routes", spellings: own(d.route_commands()), every: true },
-        ]
+        ];
+        if nxos {
+            // IPv4 and IPv6 are two tables, each asked once: all VRFs, or
+            // the default alone where that is all the device will give.
+            for plain in d.route_commands() {
+                let what = if plain.contains("ipv6") { "ipv6 routes" } else { "routes" };
+                tables.push(TableQuestion { what, spellings: vec![format!("{plain} vrf all"), plain.to_string()], every: false });
+            }
+        } else {
+            let mut routes = own(d.route_commands());
+            // IOS prints its global table for `show ip route` and its VRFs'
+            // only when asked; one more table, after the global ones.
+            if family == crate::dialect::Family::CiscoIos {
+                if let Some(all) = d.vrf().all_command() {
+                    routes.push(all.to_string());
+                }
+            }
+            tables.push(TableQuestion { what: "routes", spellings: routes, every: true });
+        }
+        tables
     };
     tables
         .into_iter()
@@ -987,6 +1014,31 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// On NX-OS the interface and route commands answer for the default
+    /// VRF alone, and a leaf keeps nearly everything in others: its SVIs,
+    /// its management port, every tenant's routes. A backup's tables ask
+    /// for all of them, and fall back to the plain spelling where a
+    /// platform refuses.
+    #[test]
+    fn a_nexus_is_asked_for_every_vrfs_tables_and_ios_for_its_vrf_routes_too() {
+        let nxos = table_questions("Cisco Nexus Operating System (NX-OS) Software\n  NXOS: version 10.3(1)");
+        let of = |tables: &[TableQuestion], what: &str| {
+            let t = tables.iter().find(|t| t.what == what).unwrap_or_else(|| panic!("no `{what}` among {:?}", tables.iter().map(|t| t.what).collect::<Vec<_>>()));
+            (t.spellings.clone(), t.every)
+        };
+        let (interfaces, _) = of(&nxos, "interfaces");
+        assert_eq!(interfaces[..2], ["show ip interface brief vrf all", "show ip interface brief"]);
+        assert_eq!(of(&nxos, "routes"), (vec!["show ip route vrf all".to_string(), "show ip route".to_string()], false));
+        assert_eq!(of(&nxos, "ipv6 routes"), (vec!["show ipv6 route vrf all".to_string(), "show ipv6 route".to_string()], false));
+        assert_eq!(of(&nxos, "arp").0[0], "show ip arp vrf all");
+
+        // IOS lists every interface whatever its VRF; its VRF routes are
+        // one more table, after the global ones.
+        let ios = table_questions("Cisco IOS Software, Version 15.2");
+        assert_eq!(of(&ios, "routes"), (vec!["show ip route".to_string(), "show ipv6 route".to_string(), "show ip route vrf *".to_string()], true));
+        assert_eq!(of(&ios, "interfaces").0, ["show ip interface brief"]);
     }
 
     #[test]

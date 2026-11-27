@@ -176,8 +176,20 @@ impl server::Handler for FakeSwitch {
             return Ok(());
         }
 
+        // A Nexus leaf, by its name: every table per VRF, the way NX-OS
+        // prints them. The shapes are written from the platform's
+        // documented output, not captured; the addresses are the
+        // documentation ranges. It has no `vrf all` for IPv6 routes, so
+        // that the plain spelling is seen to be fallen back to.
+        let nexus = self.hostname.starts_with("NX-");
         let body: String = match command {
             "terminal length 0" | "terminal pager 0" => String::new(),
+            "show version" if nexus => "Cisco Nexus Operating System (NX-OS) Software\r\nSoftware\r\n  NXOS: version 10.3(1)\r\n".into(),
+            "show ip interface brief vrf all" if nexus => "IP Interface Status for VRF \"default\"(1)\r\nInterface            IP Address      Interface Status\r\nLo0                  192.0.2.1       protocol-up/link-up/admin-up\r\n\r\nIP Interface Status for VRF \"TENANT-A\"(3)\r\nInterface            IP Address      Interface Status\r\nVlan10               198.51.100.1    protocol-up/link-up/admin-up\r\n".into(),
+            "show ip interface brief" if nexus => "IP Interface Status for VRF \"default\"(1)\r\nInterface            IP Address      Interface Status\r\nLo0                  192.0.2.1       protocol-up/link-up/admin-up\r\n".into(),
+            "show ip route vrf all" if nexus => "IP Route Table for VRF \"default\"\r\n192.0.2.1/32, ubest/mbest: 2/0, attached\r\n    *via 192.0.2.1, Lo0, [0/0], 1d00h, local\r\n\r\nIP Route Table for VRF \"TENANT-A\"\r\n198.51.100.0/24, ubest/mbest: 1/0, attached\r\n    *via 198.51.100.1, Vlan10, [0/0], 1d00h, direct\r\n".into(),
+            "show ipv6 route" if nexus => "IPv6 Routing Table for VRF \"default\"\r\n'*' denotes best ucast next-hop\r\n".into(),
+            _ if nexus && command.ends_with("vrf all") => "% Invalid command at '^' marker.\r\n".into(),
             "show version" => "Fake Switch Software, Version 1.0\r\nuptime is 1 day\r\n".into(),
             "show clock" => "*12:00:00.000 UTC Thu Jan 1 2026\r\n".into(),
             "show ip interface brief" => "Interface              IP-Address      OK? Method Status                Protocol\r\nVlan10                 192.0.2.1       YES NVRAM  up                    up\r\n".into(),
@@ -732,6 +744,49 @@ async fn a_backup_files_the_devices_tables_beside_its_configuration() {
     for c in &got {
         assert!(!c.starts_with("conf") && !c.starts_with("copy") && !c.starts_with("write"), "`{c}` was sent");
     }
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A Nexus answers its interface and route commands for the default VRF
+/// alone. Its tables are asked for across every VRF, and where the device
+/// has no such spelling the plain one is asked instead.
+#[tokio::test]
+async fn a_nexus_backup_files_every_vrfs_tables_not_the_default_alone() {
+    let (port, received) = start_with_log("NX-LEAF-EXAMPLE", false).await;
+    let root = temp_root("nexus-tables");
+    let store = Arc::new(std::sync::Mutex::new(HostKeyStore::new()));
+    let (tx, _rx) = mpsc::channel(128);
+    let mut options = show_options(root.clone(), port, vec![BackupKind::Running], &[], corelens_discover::showcmd::Paging::Auto);
+    options.tables = true;
+
+    let run = run_backups(
+        vec![BackupTarget { address: "127.0.0.1".into(), name: "NX-LEAF-EXAMPLE".into(), commands: Vec::new(), site: String::new() }],
+        creds("correct-horse"),
+        options,
+        store,
+        "20260101-120000".into(),
+        tx,
+        CancellationToken::new(),
+    )
+    .await;
+
+    assert!(run.failed.is_empty(), "{:?}", run.failed);
+    let capture = run.saved.iter().find(|s| !s.path.contains("running")).expect("a show capture");
+    let text = std::fs::read_to_string(&capture.path).unwrap();
+    // The tenant's interface and route, which the plain commands leave out.
+    assert!(text.contains("show ip interface brief vrf all") && text.contains("Vlan10               198.51.100.1"), "{text}");
+    assert!(text.contains("show ip route vrf all") && text.contains("IP Route Table for VRF \"TENANT-A\""), "{text}");
+    // IPv6 has no `vrf all` on this one: the plain table is filed, the refusal is not.
+    assert!(text.contains("IPv6 Routing Table for VRF \"default\""), "{text}");
+    assert!(!text.contains("Invalid command"), "a spelling the device refused is not filed: {text}");
+
+    let got = received.lock().unwrap().clone();
+    let asked = |c: &str| got.iter().filter(|g| g.as_str() == c).count();
+    assert_eq!(asked("show ip interface brief vrf all"), 1, "{got:?}");
+    assert_eq!(asked("show ip interface brief"), 0, "the default VRF alone is not asked for again: {got:?}");
+    assert_eq!(asked("show ip route vrf all"), 1, "{got:?}");
+    assert_eq!(asked("show ip route"), 0, "{got:?}");
+    assert_eq!((asked("show ipv6 route vrf all"), asked("show ipv6 route")), (1, 1), "{got:?}");
     let _ = std::fs::remove_dir_all(&root);
 }
 

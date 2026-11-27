@@ -1497,6 +1497,14 @@ that run, so two runs can be compared with **Before and after**. Only
 commands that read are sent. A table a device has no command for, or
 refuses, is left out rather than filed as an error. The tick is remembered.
 
+**Every VRF, where the platform keeps them apart.** A Nexus answers
+`show ip interface brief` and `show ip route` for the default VRF alone, and
+a leaf keeps its SVIs, its management port and every tenant's routes in
+others. Its tables are asked for with `vrf all` — interfaces, ARP, IPv4 and
+IPv6 routes — and with the plain command where a release refuses that. Cisco
+IOS lists every interface whatever its VRF; its VRF routes are asked for as
+one more table, `show ip route vrf *`.
+
 A device drawn on more than one page is one device to a backup: it is listed
 once, logged in to once and filed once.
 

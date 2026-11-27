@@ -791,7 +791,7 @@ MIT OR Apache-2.0 (350), MIT (142), Apache-2.0 OR MIT (98), MIT/Apache-2.0 (29),
 | winnow | 0.5.40 | MIT |
 | winnow | 1.0.4 | MIT |
 | wit-bindgen | 0.57.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
-| wnaf | 0.14.0 | Apache-2.0 OR MIT |
+| wnaf | 0.14.1 | Apache-2.0 OR MIT |
 | write-fonts | 0.48.1 | MIT OR Apache-2.0 |
 | writeable | 0.6.4 | Unicode-3.0 |
 | wry | 0.57.2 | Apache-2.0 OR MIT |
@@ -1881,7 +1881,7 @@ SOFTWARE.
 - weezl 0.1.12
 - window-vibrancy 0.8.1
 - wit-bindgen 0.57.1
-- wnaf 0.14.0
+- wnaf 0.14.1
 - wry 0.57.2
 - xattr 1.6.1
 - zeroize 1.9.0
@@ -24798,7 +24798,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/window-vibrancy.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### wnaf 0.14.0
+### wnaf 0.14.1
 
 ```
 Copyright (c) 2026 RustCrypto Developers

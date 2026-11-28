@@ -2,6 +2,41 @@
 
 Newest first.
 
+## 2.22.6 — 2026-11-27
+
+**Fixed**
+- **A Nexus backup's tables cover every VRF.** NX-OS answers
+  `show ip interface brief` and `show ip route` for the default VRF alone,
+  so a leaf's SVIs, its management port and every tenant's routes were
+  missing from the tables filed with a backup. Interfaces, IPv4 routes and
+  IPv6 routes are now asked for with `vrf all`, as ARP already was, with the
+  plain command where a release refuses that. Cisco IOS is also asked for
+  its VRF routes (`show ip route vrf *`).
+- **A backup is the whole answer, or it is a failure.** A line of a
+  configuration that only looks like a prompt no longer ends the read: the
+  device's own prompt is believed at once, any other line of that shape
+  only after a second of silence. A session the device closes part-way
+  through its answer is a failed backup that says so, where it used to be
+  filed as if whole. Over telnet too.
+- **A configuration without its closing line is marked.** Cisco IOS and
+  IOS-XE close a configuration with `end`, an ASA or an FTD with `: end`;
+  one filed without it reads **may be incomplete** in the results.
+- **Page tabs can be read in a project with many pages.** The open page's
+  tab shows its whole name, the others keep the start of theirs and say the
+  whole name when pointed at, and the strip scrolls under the mouse wheel
+  where it used to cut every tab to a few letters.
+- **The inspector's address and check-name fields show what is in them.**
+  Their buttons wrap under them in a narrow panel where they used to
+  squeeze the field to a few characters. Any text field too short for its
+  value says the whole value when pointed at.
+- **The rail's labels are whole.** "Addresses" and "Inventory" were cut.
+- **A neighbour's odd model name can no longer stop a crawl.** A platform
+  string starting with `N` and holding a letter wider than a byte crashed
+  the device classifier.
+
+**Maintenance**
+- `wnaf` 0.14.0, withdrawn by its publisher, is replaced by 0.14.1.
+
 ## 2.22.5 — 2026-11-27
 
 The number goes from 2.22.2 to 2.22.5 so that this and Corelens Desktop AI

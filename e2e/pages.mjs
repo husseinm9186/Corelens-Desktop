@@ -139,7 +139,7 @@ await page.keyboard.press("Enter");
 await page.waitForTimeout(200);
 check("and Enter keeps the new name", (await names()) === "Branch office,Overview,Notes", await names());
 check("which the tab strip shows too",
-  (await page.locator(".cv-page-tab-name").evaluateAll((els) => els.map((e) => e.value).join(","))) === "Branch office,Overview,Notes");
+  (await page.locator(".cv-page-tab-name").evaluateAll((els) => els.map((e) => e.textContent).join(","))) === "Branch office,Overview,Notes");
 await rows.nth(1).dblclick();
 await page.waitForTimeout(150);
 await page.keyboard.press("Control+a");

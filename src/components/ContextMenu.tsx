@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface MenuItem {
   label: string;
@@ -7,17 +8,40 @@ export interface MenuItem {
   disabled?: boolean;
 }
 
-export function ContextMenu({
-  x,
-  y,
-  items,
-  onClose,
-}: {
+interface MenuProps {
   x: number;
   y: number;
   items: MenuItem[];
   onClose: () => void;
-}) {
+}
+
+/**
+ * A menu at the pointer, drawn at the top of the application and not
+ * inside whatever opened it.
+ *
+ * Where it is opened is often a strip or a pane that scrolls, clips or has
+ * a stacking order of its own, and a menu drawn inside one is cut at its
+ * edge or left underneath the panel beside it: the page tabs' menu went
+ * under the dock, with Delete out of reach. So it is drawn in the
+ * application's own element, which is where the theme's classes are, in
+ * the window it was opened in.
+ */
+export function ContextMenu(props: MenuProps) {
+  const anchor = useRef<HTMLSpanElement>(null);
+  const [host, setHost] = useState<Element | null>(null);
+  useLayoutEffect(() => {
+    const el = anchor.current;
+    setHost(el?.closest('.cv-app') ?? el?.ownerDocument.body ?? null);
+  }, []);
+  return (
+    <>
+      <span ref={anchor} hidden />
+      {host && createPortal(<Menu {...props} />, host)}
+    </>
+  );
+}
+
+function Menu({ x, y, items, onClose }: MenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   // Where it can actually be drawn. A menu opened near the bottom of the
   // window used to run off the edge, and the items past the edge were simply

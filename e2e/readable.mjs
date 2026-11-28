@@ -64,19 +64,19 @@ const settle = () => page.waitForTimeout(250);
 // --------------------------------------------------------- the page tabs
 // What each tab shows of its name, and what it says when pointed at.
 const tabs = () => st(() => {
-  const strip = document.querySelector(".cv-page-tabs").getBoundingClientRect();
+  const strip = document.querySelector(".cv-page-tabs-scroll").getBoundingClientRect();
   return [...document.querySelectorAll(".cv-page-tab")].map((tab) => {
-    const input = tab.querySelector("input");
+    const label = tab.querySelector(".cv-page-tab-name");
     const r = tab.getBoundingClientRect();
     // How wide the first twelve characters of the name are, in the tab's own type.
-    const cs = getComputedStyle(input);
+    const cs = getComputedStyle(label);
     const ctx = document.createElement("canvas").getContext("2d");
     ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
     return {
-      name: input.value, active: tab.classList.contains("is-active"),
-      whole: input.scrollWidth <= input.clientWidth + 1,
-      room: input.clientWidth, start: Math.ceil(ctx.measureText(input.value.slice(0, 12)).width),
-      says: tab.getAttribute("title") ?? input.getAttribute("title") ?? "",
+      name: label.textContent, active: tab.classList.contains("is-active"),
+      whole: label.scrollWidth <= label.clientWidth + 1,
+      room: label.clientWidth, start: Math.ceil(ctx.measureText(label.textContent.slice(0, 12)).width),
+      says: tab.getAttribute("title") ?? "",
       inView: r.left >= strip.left - 1 && r.right <= strip.right + 1,
     };
   });
@@ -105,12 +105,12 @@ const tabs = () => st(() => {
   check("a page chosen from elsewhere has its tab brought into view, whole", last?.name === "18 · As built" && last.inView && last.whole, JSON.stringify(last));
 
   // The wheel moves along the strip, which has no other way to be moved by a mouse.
-  const before = await st(() => document.querySelector(".cv-page-tabs").scrollLeft);
-  const box = await page.locator(".cv-page-tabs").boundingBox();
+  const before = await st(() => document.querySelector(".cv-page-tabs-scroll").scrollLeft);
+  const box = await page.locator(".cv-page-tabs-scroll").boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.wheel(0, -400);
   await settle();
-  const after = await st(() => document.querySelector(".cv-page-tabs").scrollLeft);
+  const after = await st(() => document.querySelector(".cv-page-tabs-scroll").scrollLeft);
   check("the wheel over the strip moves along it", before > 0 && after < before, `${before} -> ${after}`);
 }
 

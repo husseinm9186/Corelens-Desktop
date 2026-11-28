@@ -2033,7 +2033,12 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   renamePage(id, name) {
-    set((s) => ({ doc: renamePageIn(s.doc, id, name), dirty: true }));
+    // One step to take back, and none for a name that is the one it has
+    // or is blank, which changes nothing.
+    const next = renamePageIn(get().doc, id, name);
+    if (next === get().doc || next.pages.every((p, i) => p.name === get().doc.pages[i]?.name)) return;
+    get().commit('Rename a page');
+    set({ doc: next, dirty: true });
   },
 
   duplicatePage(id) {
@@ -2042,7 +2047,10 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   reorderPages(fromIndex, toIndex) {
-    set((s) => ({ doc: reorderPagesIn(s.doc, fromIndex, toIndex), dirty: true }));
+    const next = reorderPagesIn(get().doc, fromIndex, toIndex);
+    if (next === get().doc) return;
+    get().commit('Move a page');
+    set({ doc: next, dirty: true });
   },
 
   setInkTool(t) {

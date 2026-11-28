@@ -326,7 +326,13 @@ menu) pastes it exactly where it was copied from — on another page too, to put
 the same block in the same place there.
 
 **Pages.** Each tab along the bottom is a separate drawing. `Ctrl+Page Down` and
-`Ctrl+Page Up` step through them. The **☰** button at the start of the tabs lists
+`Ctrl+Page Up` step through them. Click a tab to open its page and drag it
+to move it. Double-click a tab, or press `F2` on it, to rename the page:
+type the name, spaces and all, and press `Enter` (or click anywhere else) to
+keep it, `Esc` to leave it as it was. Right-click a tab for **Rename**,
+**Duplicate**, **Move left**, **Move right** and **Delete**; with the
+keyboard on a tab, the arrow keys go from tab to tab and `Alt` with an arrow
+moves the page. Renaming, moving and deleting a page are each one undo. The **☰** button at the start of the tabs lists
 every page with a small sketch of what is on it: click a page or use the arrow
 keys to open it, double-click or press `F2` to rename it, and drag it or press
 `Alt+↑`/`Alt+↓` to move it.

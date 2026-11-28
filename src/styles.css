@@ -2720,43 +2720,59 @@ details[open] > .cv-palette-sub::before { transform: rotate(90deg); }
    canvas's own width rather than the whole window — the shape palette and
    inspector rails either side keep their own space, the way Lucidchart's
    page tabs sit only under the drawing area. */
-/* A 28 px row; the active page is a 2 px accent underline, not a box. */
+/* A 28 px row; the active page is a 2 px accent underline, not a box.
+   The strip itself does not scroll or clip: the list of all pages opens
+   out of it, and its two buttons stay at its ends. The tabs between them
+   are what moves. */
 .cv-page-tabs {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
   display: flex; align-items: stretch; gap: 0.15384615rem; padding: 0 0.61538462rem; height: 2.15384615rem;
   background: var(--panel-2); border-top: 1px solid var(--line);
-  /* More pages than fit: the strip moves under the wheel, and the open
-     page's tab is kept in it. A scrollbar would take half of a 28 px row. */
-  overflow-x: auto; scrollbar-width: none;
 }
+/* More pages than fit: the tabs move under the wheel, and the open page's
+   is kept in view. A scrollbar would take half of a 28 px row. */
+.cv-page-tabs-scroll {
+  display: flex; align-items: stretch; gap: 0.15384615rem; flex: 0 1 auto; min-width: 0;
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+.cv-page-tabs-scroll::-webkit-scrollbar { display: none; }
 /* A tab is as wide as its name, up to a limit. When there are too many to
    fit, each gives up room down to the start of its name (its own
    min-width) and no further; the open page's gives up none. */
 .cv-page-tab {
-  display: flex; align-items: center; padding: 0 0.30769231rem;
+  display: flex; align-items: center; padding: 0 0.61538462rem;
   border: 0; border-bottom: 2px solid transparent;
   background: none; cursor: pointer; flex: 0 1 auto; max-width: 14rem;
+  user-select: none; -webkit-user-select: none; touch-action: none;
 }
-.cv-page-tab.is-active { flex: 0 0 auto; max-width: 32rem; }
-.cv-page-tab-fit { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.cv-page-tab:hover { background: var(--hover); }
+.cv-page-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cv-page-tab.is-active { border-bottom-color: var(--accent); flex: 0 0 auto; max-width: 32rem; }
+.cv-page-tab.is-renaming { flex: 0 0 auto; max-width: 32rem; cursor: text; }
+.cv-page-tab-name {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text-dim); font-size: var(--text-md);
+}
+.cv-page-tab.is-active .cv-page-tab-name { color: var(--text); font-weight: 500; }
+/* A tab being dragged, and the edge of the tab it would go beside. */
+.cv-page-tab.is-dragging { opacity: 0.55; cursor: grabbing; }
+.cv-page-tab.is-drop-before { box-shadow: inset 2px 0 0 var(--accent); }
+.cv-page-tab.is-drop-after { box-shadow: inset -2px 0 0 var(--accent); }
+/* The name while it is being typed: a field as wide as what it holds. A
+   text field has no width of its own but twenty characters, so the same
+   text, unseen, sizes the cell and the field fills it. */
+.cv-page-tab-fit { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; flex: 0 1 auto; min-width: 3rem; overflow: hidden; }
 .cv-page-tab-fit::after {
   content: attr(data-value) " "; grid-area: 1 / 1; visibility: hidden; height: 0; white-space: pre;
-  font-size: var(--text-md); padding: 0 0.30769231rem;
+  font-size: var(--text-md); font-weight: 500; padding: 0 0.38461538rem;
 }
-.cv-page-tab.is-active .cv-page-tab-fit::after { font-weight: 500; }
-/* No width of its own (a text field's is twenty characters whatever it
-   holds): the unseen text sizes the cell and the field fills it. */
-.cv-page-tab-fit > .cv-page-tab-name { grid-area: 1 / 1; width: 0; min-width: 100%; }
-.cv-page-tab:hover { background: var(--hover); }
-.cv-page-tab.is-active { border-bottom-color: var(--accent); }
-.cv-page-tab.is-active .cv-page-tab-name { color: var(--text); font-weight: 500; }
-.cv-page-tab-name {
-  min-width: 0; width: 100%; background: none; border: none;
-  color: var(--text-dim); font-size: var(--text-md); font-family: inherit;
-  padding: 0 0.30769231rem; cursor: inherit; text-overflow: ellipsis;
+.cv-page-tab-rename {
+  grid-area: 1 / 1; width: 0; min-width: 100%; box-sizing: border-box;
+  background: var(--bg); color: var(--text); border: 1px solid var(--accent); border-radius: 3px;
+  font: inherit; font-size: var(--text-md); font-weight: 500; padding: 0.07692308rem 0.30769231rem;
+  user-select: text; -webkit-user-select: text;
 }
-.cv-page-tab.is-active .cv-page-tab-name { cursor: text; }
-.cv-page-tab-name:focus { outline: none; }
+.cv-page-tab-rename:focus { outline: none; }
 .cv-page-tab-add {
   background: none; border: none; cursor: pointer; color: var(--text-dim);
   font-size: var(--text-2xl); line-height: 1; padding: 0 0.76923077rem; border-radius: 4px;
@@ -2769,7 +2785,6 @@ details[open] > .cv-palette-sub::before { transform: rotate(90deg); }
   font-size: var(--text-lg); padding: 0 0.61538462rem; border-radius: 4px; margin-right: 0.30769231rem;
 }
 .cv-page-nav-toggle:hover, .cv-page-nav-toggle.is-on { color: var(--text); background: var(--hover); }
-.cv-page-tabs:has(.cv-page-nav) { overflow: visible; }
 .cv-page-nav {
   position: absolute; left: 0.61538462rem; bottom: calc(100% + 0.30769231rem); z-index: 20;
   width: 23.07692308rem; max-height: min(60vh, 40rem); display: flex; flex-direction: column;

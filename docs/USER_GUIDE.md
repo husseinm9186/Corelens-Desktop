@@ -1486,6 +1486,30 @@ why. Show commands always go over SSH. Nothing listens on this machine.
 Built from the MIB's definition; the first Cisco to answer one of these for
 real is what verifies it, so a diagnostic of that run is worth keeping.
 
+## A backup is the whole answer, or it is a failure
+
+A configuration is read off the device's command line, which ends an answer
+only by drawing its prompt again. Three things keep a short capture from
+being filed as a whole one:
+
+- **A line that only looks like a prompt does not end the read.** The
+  device's own prompt, left at the end, is believed at once. Any other line
+  of that shape — the close of a comment in a page of markup, a word and a
+  `#` — is believed only after the device has said nothing for a second, and
+  forgotten when more follows. A command that really changes the prompt to
+  another name takes that second longer.
+- **A session the device closes part-way is a failed backup.** The device is
+  listed under what failed, with *closed the session while answering*, and no
+  file is written.
+- **A configuration without its closing line is marked.** Cisco IOS and
+  IOS-XE end a configuration with `end`, an ASA or an FTD with `: end`.
+  One filed without it is kept and reads **may be incomplete** in the
+  results; run the backup again, and compare with the device if it stays.
+  Platforms with no such line (NX-OS, FortiOS, Junos) cannot be judged this
+  way, and are not marked either way.
+
+The same holds over telnet.
+
 ## The device's tables, with every backup
 
 A backup also files each device's own **interface, ARP, MAC address and

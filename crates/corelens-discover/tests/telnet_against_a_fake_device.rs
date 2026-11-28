@@ -98,6 +98,19 @@ async fn fake_switch(accept: bool) -> u16 {
                     continue;
                 }
                 "show version" => "Cisco IOS Software, C2960X Software\r\n".into(),
+                // A configuration in two pieces, the first ending on a line
+                // that reads like a prompt; the rest follows a moment later.
+                "show running-config" => {
+                    socket.write_all(b"show running-config\r\n!\r\nbanner motd ^\r\nBuilding-2#\r\n").await.unwrap();
+                    tokio::time::sleep(Duration::from_millis(250)).await;
+                    socket.write_all(b"^\r\ninterface Vlan10\r\n!\r\nend\r\nSW-TELNET>").await.unwrap();
+                    continue;
+                }
+                // A session the device ends part-way through an answer.
+                "show startup-config" => {
+                    socket.write_all(b"show startup-config\r\n!\r\nversion 15.2\r\ninterface Vlan10\r\n").await.unwrap();
+                    return;
+                }
                 other => format!("% Unknown command: {other}\r\n"),
             };
             let prompt = "SW-TELNET>";
@@ -139,6 +152,36 @@ async fn logs_in_over_telnet_and_runs_a_command() {
     assert!(out.contains("Cisco IOS Software"), "got: {out:?}");
     // The echoed command must not be in the output.
     assert!(!out.starts_with("show version"), "the echo leaked: {out:?}");
+
+    device.close().await;
+}
+
+#[tokio::test]
+async fn a_configuration_is_read_past_a_line_that_only_looks_like_a_prompt() {
+    let port = fake_switch(true).await;
+    let mut device = TelnetDevice::connect("127.0.0.1", port, &creds(), Duration::from_secs(5), Duration::from_secs(5))
+        .await
+        .expect("the session should establish");
+
+    let config = device.run("show running-config").await.expect("the command should run");
+    assert!(config.contains("interface Vlan10"), "stopped early: {config:?}");
+    assert!(config.trim().ends_with("end"), "did not reach the end: {config:?}");
+    // Nothing of it is left to arrive in front of the next answer.
+    let version = device.run("show version").await.unwrap();
+    assert!(version.starts_with("Cisco IOS Software"), "{version:?}");
+
+    device.close().await;
+}
+
+#[tokio::test]
+async fn a_session_that_closes_part_way_through_an_answer_says_so() {
+    let port = fake_switch(true).await;
+    let mut device = TelnetDevice::connect("127.0.0.1", port, &creds(), Duration::from_secs(5), Duration::from_secs(5))
+        .await
+        .expect("the session should establish");
+
+    let said = device.run("show startup-config").await.expect_err("a part of an answer is not an answer").to_string();
+    assert!(said.contains("closed the session") && said.contains("show startup-config"), "{said}");
 
     device.close().await;
 }

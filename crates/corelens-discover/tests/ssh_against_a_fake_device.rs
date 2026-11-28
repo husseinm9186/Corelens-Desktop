@@ -192,6 +192,39 @@ impl server::Handler for FakeDevice {
                 session.data(channel, b"  3  *  *  * \r\n".to_vec())?;
                 return Ok(());
             }
+            // A configuration that arrives in two pieces, the first ending
+            // on a line that reads like a prompt: the close of a comment in
+            // a page of markup the device keeps, a word and a hash. The
+            // rest, and the real prompt, follow a moment later, as the next
+            // packet does.
+            "show full-configuration" | "show configuration" => {
+                let ending = if command == "show full-configuration" { "-->" } else { "Building-2#" };
+                let first = format!("{command}\r\nconfig system replacemsg\r\n    set buffer \"<html>\r\n<!-- shown when a page is blocked\r\n{ending}\r\n");
+                session.data(channel, first.into_bytes())?;
+                let handle = session.handle();
+                let rest = format!("</html>\"\r\nend\r\nconfig system interface\r\n    edit \"port1\"\r\n    next\r\nend\r\n{}#", self.hostname);
+                tokio::spawn(async move {
+                    tokio::time::sleep(Duration::from_millis(250)).await;
+                    let _ = handle.data(channel, rest.into_bytes()).await;
+                });
+                return Ok(());
+            }
+            // A session the device ends part-way through an answer: the
+            // first lines, then the channel closed and no prompt.
+            "show startup-config" => {
+                let mut c = format!("{command}\r\n!\r\nversion 15.2\r\n!\r\nhostname {}\r\n!\r\n", self.hostname);
+                for i in 1..=3 {
+                    c.push_str(&format!("interface GigabitEthernet0/{i}\r\n switchport mode access\r\n!\r\n"));
+                }
+                session.data(channel, c.into_bytes())?;
+                let handle = session.handle();
+                tokio::spawn(async move {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    let _ = handle.eof(channel).await;
+                    let _ = handle.close(channel).await;
+                });
+                return Ok(());
+            }
             _ => "% Invalid input detected at '^' marker.\r\n".into(),
         };
 
@@ -367,6 +400,50 @@ async fn a_configuration_survives_a_banner_containing_a_hash() {
     assert!(config.contains("interface GigabitEthernet0/4"), "capture stopped early: {config:?}");
     assert!(config.trim().ends_with("end"), "capture did not reach the end: {config:?}");
     assert!(corelens_discover::cli::looks_like_config(&config).is_ok());
+
+    device.close().await;
+}
+
+#[tokio::test]
+async fn a_configuration_is_read_past_a_line_that_only_looks_like_a_prompt() {
+    // The device's packets end where they end. One that ends on a line of
+    // the configuration which reads like a prompt is not the end of the
+    // answer: the rest is on its way.
+    let addr = start_device(AuthStyle::PasswordOnly, "EDGE-FW-01").await;
+    let store = Arc::new(std::sync::Mutex::new(HostKeyStore::new()));
+    let mut device = Device::connect("127.0.0.1", &creds("correct-horse"), options(port_of(&addr)), store, None)
+        .await
+        .unwrap();
+
+    for command in ["show full-configuration", "show configuration"] {
+        let config = device.run(command).await.unwrap();
+        assert!(config.contains("config system interface"), "`{command}` stopped early: {config:?}");
+        assert!(config.trim().ends_with("end"), "`{command}` did not reach the end: {config:?}");
+        // The next command starts clean: nothing of this one is left to
+        // arrive in front of its answer.
+        let version = device.run("show version").await.unwrap();
+        assert!(version.starts_with("Cisco IOS Software"), "after `{command}`: {version:?}");
+    }
+
+    device.close().await;
+}
+
+#[tokio::test]
+async fn a_session_that_closes_part_way_through_an_answer_is_not_an_answer() {
+    // What arrived before the device hung up is not the configuration, and
+    // must never come back as one to be filed.
+    let addr = start_device(AuthStyle::PasswordOnly, "CORE-SW-01").await;
+    let store = Arc::new(std::sync::Mutex::new(HostKeyStore::new()));
+    let mut device = Device::connect("127.0.0.1", &creds("correct-horse"), options(port_of(&addr)), store, None)
+        .await
+        .unwrap();
+
+    let result = device.run("show startup-config").await;
+    assert!(result.is_err(), "a part of an answer came back as the whole: {result:?}");
+    let said = result.unwrap_err().to_string();
+    assert!(said.contains("show startup-config"), "{said}");
+    // What did arrive is still there to be looked at.
+    assert!(device.take_partial("show startup-config").contains("interface GigabitEthernet0/3"));
 
     device.close().await;
 }

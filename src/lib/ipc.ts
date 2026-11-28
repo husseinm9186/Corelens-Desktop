@@ -846,7 +846,9 @@ export type BackupTarget = { address: string; name: string; commands?: string[];
 export type BackupEvent =
   | { kind: 'started'; devices: number }
   | ({ kind: 'ssh' } & { [k: string]: unknown })
-  | { kind: 'saved'; name: string; address: string; path: string; bytes: number; unchanged: boolean }
+  // `endsEarly`: a configuration whose kind closes with one fixed line,
+  // filed without it — possibly cut short.
+  | { kind: 'saved'; name: string; address: string; path: string; bytes: number; unchanged: boolean; endsEarly?: boolean }
   | { kind: 'note'; address: string; text: string }
   | { kind: 'failed'; name: string; address: string; reason: string }
   | { kind: 'finished'; saved: number; failed: number; cancelled: boolean };

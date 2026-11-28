@@ -85,6 +85,32 @@ pub fn prompt_drawn(screen: &crate::screen::Screen, raw: &str) -> Option<Prompt>
     }
 }
 
+/// Whether `found` is plainly the session's own prompt, drawn and left.
+///
+/// A prompt is recognised by its shape, and a line of output can have the
+/// shape: the close of a comment in a page of markup, a word and a hash.
+/// Two things tell the device's prompt from such a line. It names the host
+/// the session is on (`known`: the prompt at login, and the one the last
+/// command ended at), and it is the last thing sent: a prompt is drawn and
+/// waited at, where a line of output ends in a newline. Anything else that
+/// reads like a prompt may still be one, a command having changed it, and
+/// is believed once the device has gone quiet.
+pub fn prompt_is_own(found: &Prompt, known: &[&Prompt], raw: &str) -> bool {
+    let tail = visible_text(raw.rsplit('\n').next().unwrap_or(""));
+    let Some(last) = prompt_from_line(&tail) else { return false };
+    if last.hostname != found.hostname {
+        return false;
+    }
+    known.iter().any(|k| {
+        if k.hostname.is_empty() || found.hostname.is_empty() {
+            // An FTD's bare `>`, which names nothing: the same mark.
+            return !k.text.is_empty() && k.hostname.is_empty() && found.hostname.is_empty() && k.text.trim() == found.text.trim();
+        }
+        // A long name is cut short in some modes' prompts.
+        k.hostname == found.hostname || k.hostname.starts_with(&found.hostname) || found.hostname.starts_with(&k.hostname)
+    })
+}
+
 /// The prompt on one already-visible line, if it is one.
 ///
 /// Split out of [`find_prompt`] so the same rules can judge a line taken from
@@ -536,9 +562,51 @@ pub fn looks_like_config(text: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// The line a configuration of this kind always closes with, where a
+/// capture does not reach it.
+///
+/// Only for the platforms whose configuration says what it is at the top
+/// and has one fixed last line: Cisco IOS and IOS-XE (`Building
+/// configuration...`, closing `end`) and the ASA command line, on an ASA or
+/// an FTD (`: Saved`, closing `: end`). NX-OS, FortiOS, Junos and the rest
+/// have no such line, and `None` there means only that nothing can be said.
+/// A warning to show beside the file, never a reason to refuse it: what
+/// arrived is still worth keeping.
+pub fn missing_last_line(config: &str) -> Option<&'static str> {
+    let mut lines = config.lines().map(str::trim).filter(|l| !l.is_empty());
+    let head: Vec<&str> = lines.by_ref().take(8).collect();
+    let closes_with = if head.iter().any(|l| *l == ": Saved" || l.starts_with("ASA Version") || l.starts_with("NGFW Version")) {
+        ": end"
+    } else if head.iter().any(|l| *l == "Building configuration..." || l.starts_with("Current configuration :")) {
+        "end"
+    } else {
+        return None;
+    };
+    let last = lines.next_back().or(head.last().copied()).unwrap_or("");
+    (last != closes_with).then_some(closes_with)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_configuration_that_stops_short_of_its_closing_line_is_noticed() {
+        let ios = "Building configuration...\n\nCurrent configuration : 2048 bytes\n!\nversion 15.2\n!\nhostname SW1\n!\ninterface Vlan10\n ip address 192.0.2.1 255.255.255.0\n!\n";
+        assert_eq!(missing_last_line(ios), Some("end"));
+        assert_eq!(missing_last_line(&format!("{ios}end\n")), None);
+        assert_eq!(missing_last_line(&format!("{ios}end\n\n  \n")), None, "blank lines after it are nothing");
+        let asa = ": Saved\n\n:\nASA Version 9.16(4)\n!\nhostname FW1\n!\ninterface Management1/1\n!\nCryptochecksum:00000000000000000000000000000000\n";
+        assert_eq!(missing_last_line(asa), Some(": end"));
+        assert_eq!(missing_last_line(&format!("{asa}: end\n")), None);
+        assert_eq!(missing_last_line(": Saved\n:\nNGFW Version 7.4.1\n!\nhostname FTD1\n: end"), None);
+        // A platform with no fixed last line: nothing is said either way.
+        assert_eq!(missing_last_line("!Command: show running-config\n\nversion 10.3(1)\nhostname LEAF\nevpn\n  vni 10 l2\n"), None);
+        assert_eq!(missing_last_line("#config-version=FGT60F-7.6.7\nconfig system global\n    set hostname \"FW\"\nend\n"), None);
+        assert_eq!(missing_last_line(""), None);
+        // A short one that is whole.
+        assert_eq!(missing_last_line("Building configuration...\nend"), None);
+    }
 
     /// The prompts of the platforms that put a user in front.
     #[test]
@@ -549,6 +617,40 @@ mod tests {
         assert_eq!(prompt_from_line("[admin@MikroTik] > ").unwrap().hostname, "MikroTik");
         assert_eq!(prompt_from_line("ubnt@edge-1:~$").unwrap().hostname, "edge-1");
         assert!(prompt_from_line("mail@example.com sent").is_none(), "trailing text is still not a prompt");
+    }
+
+    /// The session's own prompt, left at the end, is believed at once;
+    /// anything else of the shape waits for the device to go quiet.
+    #[test]
+    fn only_the_sessions_own_prompt_left_at_the_end_is_plainly_a_prompt() {
+        let own = prompt_from_line("EDGE-FW-01#").unwrap();
+        let known = [&own];
+        let sure = |raw: &str| find_prompt(raw).is_some_and(|p| prompt_is_own(&p, &known, raw));
+        assert!(sure("end\r\nEDGE-FW-01#"));
+        assert!(sure("end\r\nEDGE-FW-01# "), "a space after it is how it is drawn");
+        assert!(sure("end\r\n\u{1b}[2KEDGE-FW-01#\u{1b}[K"), "painted, it is still the last thing sent");
+        assert!(sure("end\r\nEDGE-FW-01(config)#"), "a mode in brackets is the same host");
+        // A line of output that reads like a prompt, with more to come.
+        assert!(find_prompt("<!-- a comment\r\n-->\r\n").is_some(), "(the shape alone is taken for a prompt)");
+        assert!(!sure("<!-- a comment\r\n-->\r\n"));
+        assert!(!sure("<!-- a comment\r\n-->"), "nor where the packet ends before its newline");
+        assert!(!sure("description\r\nBuilding-2#\r\n"));
+        assert!(!sure("description\r\nBuilding-2#"), "another name is not this host's prompt");
+        // The session's own name inside the output, a line of its own.
+        assert!(!sure("banner\r\nEDGE-FW-01#\r\nmore"), "something followed it");
+        assert!(!sure("banner\r\nEDGE-FW-01#\r\n"), "a newline followed it");
+        // A name cut short in a mode's prompt.
+        let long = prompt_from_line("DISTRIBUTION-SWITCH-BUILDING-A#").unwrap();
+        let cut = prompt_from_line("DISTRIBUTION-SWITCH-(config)#").unwrap();
+        assert!(prompt_is_own(&cut, &[&long], "x\r\nDISTRIBUTION-SWITCH-(config)#"));
+        // An FTD's bare mark names nothing, and is its own only as that mark.
+        let ftd = prompt_from_line(">").unwrap();
+        assert!(prompt_is_own(&ftd, &[&ftd], ": end\r\n> "));
+        assert!(!prompt_is_own(&ftd, &[&own], ": end\r\n> "));
+        assert!(!prompt_is_own(&own, &[&ftd], "end\r\nEDGE-FW-01#"));
+        // Nothing known yet: nothing is plainly anyone's.
+        assert!(!prompt_is_own(&own, &[], "end\r\nEDGE-FW-01#"));
+        assert!(!prompt_is_own(&own, &[&Prompt::default()], "end\r\nEDGE-FW-01#"));
     }
 
     #[test]

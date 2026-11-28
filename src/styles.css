@@ -1931,6 +1931,8 @@ tr[data-picked="yes"] td { background: var(--hover); }
 /* Whether a capture differs from the one before it of its kind. */
 .cv-backup-badge { margin-left: 0.61538462rem; font-size: var(--text-sm); color: var(--text-dim); }
 .cv-backup-badge.is-changed { color: var(--warning); }
+/* A configuration filed without its closing line: said beside the file. */
+.cv-backup-early { color: var(--warning); }
 .cv-backup-captures ul { list-style: none; margin: 0.46153846rem 0 0; padding: 0; font-size: var(--text-md); }
 .cv-backup-captures li {
   display: flex; align-items: center; gap: 0.76923077rem; padding: 0.23076923rem 0;

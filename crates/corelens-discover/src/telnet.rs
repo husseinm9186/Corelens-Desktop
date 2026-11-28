@@ -146,6 +146,9 @@ pub struct TelnetDevice {
     pending: Vec<u8>,
     command_timeout: Duration,
     pub prompt: Prompt,
+    /// The prompt the last command ended at; the session's own as much as
+    /// the one at login, after a command that changes it.
+    last_prompt: Option<Prompt>,
 }
 
 impl TelnetDevice {
@@ -180,6 +183,7 @@ impl TelnetDevice {
             pending: Vec::new(),
             command_timeout,
             prompt: Prompt::default(),
+            last_prompt: None,
         };
 
         device.log_in(credentials).await?;
@@ -332,11 +336,38 @@ impl TelnetDevice {
     }
 
     /// Reads until the device draws its prompt, answering paging as it goes.
+    ///
+    /// While a command answers, a prompt is believed at once only where it
+    /// is plainly the session's own ([`crate::cli::prompt_is_own`]); any
+    /// other line that reads like one is believed after the device has said
+    /// nothing for a moment, and forgotten if more arrives. A connection
+    /// the device closes part-way is an error, never the answer.
     async fn read_until_prompt(&mut self, command: Option<&str>) -> Result<String, SshError> {
         let deadline = tokio::time::Instant::now() + self.command_timeout;
         let mut buffer = String::new();
+        // A line that reads like a prompt and is not plainly this
+        // session's: the end of the answer if nothing follows it.
+        let mut doubted: Option<Prompt> = None;
         loop {
-            buffer.push_str(&self.read_chunk(deadline).await?);
+            let until = if doubted.is_some() { deadline.min(tokio::time::Instant::now() + crate::ssh::PROMPT_QUIET) } else { deadline };
+            match self.read_chunk(until).await {
+                Ok(chunk) => buffer.push_str(&chunk),
+                // Quiet since that line: it was the prompt.
+                Err(SshError::CommandTimeout { .. }) if doubted.is_some() => {
+                    self.last_prompt = doubted;
+                    return Ok(buffer);
+                }
+                Err(SshError::NoPrompt { .. }) if command.is_some() => {
+                    let command = command.unwrap_or_default();
+                    return Err(SshError::ClosedMidCommand {
+                        host: self.host.clone(),
+                        command: command.to_string(),
+                        lines: extract_output(&buffer, command).lines().count(),
+                    });
+                }
+                Err(e) => return Err(e),
+            }
+            doubted = None;
             if is_paging(&buffer) {
                 self.stream
                     .write_all(b" ")
@@ -348,10 +379,16 @@ impl TelnetDevice {
                     })?;
                 continue;
             }
-            if find_prompt(&buffer).is_some() {
+            if let Some(found) = find_prompt(&buffer) {
                 // The echoed command is still in there; the caller strips it.
-                let _ = command;
-                return Ok(buffer);
+                let known: Vec<&Prompt> = std::iter::once(&self.prompt).chain(self.last_prompt.as_ref()).collect();
+                if command.is_none() || crate::cli::prompt_is_own(&found, &known, &buffer) {
+                    if command.is_some() {
+                        self.last_prompt = Some(found);
+                    }
+                    return Ok(buffer);
+                }
+                doubted = Some(found);
             }
         }
     }

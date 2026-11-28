@@ -46,6 +46,26 @@ const PTY_ROWS: u16 = 200;
 /// megabytes is several times the largest running-config or forwarding table
 /// a real device produces, and far short of what would hurt.
 pub const DEFAULT_MAX_OUTPUT_BYTES: usize = 32 * 1024 * 1024;
+
+/// How long a device must say nothing before a line that reads like a
+/// prompt, but is not plainly the session's own, is believed to be one.
+///
+/// A command that changes the prompt (a jump to another device, a firewall's
+/// diagnostic shell) ends at a prompt nobody has seen yet, and waits this
+/// long to be believed. A line of output that only looks like a prompt is
+/// followed by the rest of the output well inside it.
+pub(crate) const PROMPT_QUIET: Duration = Duration::from_millis(1000);
+
+/// What one read of the channel came to.
+struct Reading {
+    /// Everything the device sent.
+    raw: String,
+    /// The prompt it ended at, if it ended at one.
+    prompt: Option<Prompt>,
+    /// The channel closed, or the device said it had no more to send,
+    /// before a prompt was drawn.
+    closed: bool,
+}
 use crate::hostkeys::{changed_key_message, HostKeyStore, HostKeyVerdict};
 
 /// A password, kept out of anything that prints.
@@ -205,6 +225,12 @@ pub enum SshError {
     /// The command was abandoned because its output passed
     /// `SshOptions::max_output_bytes`. Nothing of the output is kept in the
     /// error, for the same reason `CommandTimeout` keeps none of a command's.
+    #[error("{host} closed the session while answering `{command}`; the {lines} line(s) that arrived are not the whole answer")]
+    ClosedMidCommand {
+        host: String,
+        command: String,
+        lines: usize,
+    },
     #[error("{host} sent more than {} MB in reply to `{command}` and was still sending; the command was abandoned", .limit / (1024 * 1024))]
     OutputTooLarge {
         host: String,
@@ -346,8 +372,12 @@ pub struct Device {
     /// Where each chunk of a command's output goes as it arrives,
     /// for a caller that shows it live — a traceroute's hops.
     watch: Option<mpsc::UnboundedSender<String>>,
-    /// What a command had printed when it timed out.
+    /// What a command had printed when it timed out, or when the device
+    /// closed the session on it.
     partial: String,
+    /// The prompt the last command ended at: after a command that changes
+    /// it, this is the session's own as much as the one at login.
+    last_prompt: Option<Prompt>,
 }
 
 impl Device {
@@ -506,6 +536,7 @@ impl Device {
             },
             watch: None,
             partial: String::new(),
+            last_prompt: None,
         };
 
         crate::say!(
@@ -571,7 +602,7 @@ impl Device {
         let started = std::time::Instant::now();
         let result = self.read_raw_until_prompt(Some(command)).await;
         match &result {
-            Ok((raw, _)) => crate::say!(
+            Ok(Reading { raw, .. }) => crate::say!(
                 crate::debuglog::Area::Ssh,
                 "{}: ran `{command}` in {}ms, {} bytes, {} lines{}",
                 self.host,
@@ -594,7 +625,24 @@ impl Device {
                 started.elapsed().as_millis(),
             ),
         }
-        let (raw, _) = result?;
+        let Reading { raw, prompt, closed } = result?;
+        // A session the device ended part-way through its answer has not
+        // answered. What arrived is kept to be looked at, and is never
+        // handed back as the answer: a configuration cut short and filed
+        // as a backup is trusted until the day it is restored.
+        if closed && prompt.is_none() {
+            let lines = extract_output(&crate::cli::readable(&raw), command).lines().count();
+            crate::say!(
+                crate::debuglog::Area::Ssh,
+                "{}: the session closed while `{command}` was answering, {lines} lines in; not kept as its answer",
+                self.host,
+            );
+            self.partial = raw;
+            return Err(SshError::ClosedMidCommand { host: self.host.clone(), command: command.to_string(), lines });
+        }
+        if prompt.is_some() {
+            self.last_prompt = prompt;
+        }
         // As text, before anything reads it. A device that paints its
         // screen wraps the echo in cursor moves, and an echo that cannot be
         // found is an echo that is never removed.
@@ -611,7 +659,7 @@ impl Device {
 
     /// Reads until the device draws its prompt, returning the prompt itself.
     async fn read_until_prompt(&mut self, command: Option<&str>) -> Result<Prompt, SshError> {
-        let (raw, prompt) = self.read_raw_until_prompt(command).await?;
+        let Reading { raw, prompt, .. } = self.read_raw_until_prompt(command).await?;
         // The rendered screen is what found it. The raw buffer is the fallback
         // for a channel that closed before the loop got that far.
         prompt
@@ -637,11 +685,22 @@ impl Device {
     /// Paging is answered rather than treated as the end of output: on a
     /// device where `terminal length 0` was refused, stopping at the first
     /// `--More--` would truncate every long capture.
+    ///
+    /// **A prompt is recognised by its shape, and output can have the
+    /// shape.** While a command is answering, a prompt is believed at once
+    /// only where it is plainly the session's own ([`crate::cli::prompt_is_own`]);
+    /// any other line that reads like one is believed after the device has
+    /// said nothing for [`PROMPT_QUIET`], and forgotten if more arrives. The
+    /// login is read as it always was: there is no prompt yet to compare
+    /// with.
     async fn read_raw_until_prompt(
         &mut self,
         command: Option<&str>,
-    ) -> Result<(String, Option<Prompt>), SshError> {
+    ) -> Result<Reading, SshError> {
         let mut buffer = String::new();
+        // A line that reads like a prompt and is not plainly this
+        // session's: the end of the answer if nothing follows it.
+        let mut doubted: Option<Prompt> = None;
         let mut screen = Screen::new(PTY_ROWS, PTY_COLS);
         let deadline = tokio::time::Instant::now() + self.options.command_timeout;
         // Which line a continuation was last answered for. The buffer
@@ -660,15 +719,20 @@ impl Device {
                 return Err(self.timed_out(command, &buffer));
             }
 
-            let data = match timeout(remaining, self.channel.wait()).await {
+            let wait = if doubted.is_some() { remaining.min(PROMPT_QUIET) } else { remaining };
+            let data = match timeout(wait, self.channel.wait()).await {
                 Err(_) => {
+                    // Quiet since a line that read like a prompt: it was one.
+                    if let Some(prompt) = doubted.take() {
+                        return Ok(Reading { raw: buffer, prompt: Some(prompt), closed: false });
+                    }
                     self.partial = buffer.clone();
                     return Err(self.timed_out(command, &buffer));
                 }
                 // The channel closed. Whatever arrived is all there is.
                 Ok(None) => {
-                    let prompt = prompt_drawn(&screen, &buffer);
-                    return Ok((buffer, prompt));
+                    let prompt = self.prompt_at_close(command, &screen, &buffer);
+                    return Ok(Reading { raw: buffer, prompt, closed: true });
                 }
                 Ok(Some(msg)) => match msg {
                     // Stderr is the same screen to a terminal, was
@@ -679,12 +743,21 @@ impl Device {
                         data.to_vec()
                     }
                     ChannelMsg::Eof | ChannelMsg::Close => {
-                        let prompt = prompt_drawn(&screen, &buffer);
-                        return Ok((buffer, prompt));
+                        let prompt = self.prompt_at_close(command, &screen, &buffer);
+                        return Ok(Reading { raw: buffer, prompt, closed: true });
                     }
                     _ => continue,
                 },
             };
+            if doubted.take().is_some() {
+                // Named, never quoted: the line is the device's output.
+                crate::say!(
+                    crate::debuglog::Area::Ssh,
+                    "{}: a line of `{}` read like a prompt and more followed it; still reading",
+                    self.host,
+                    command.unwrap_or("<login>"),
+                );
+            }
 
             if recording {
                 record_login(&self.options.login_transcript, &data);
@@ -748,8 +821,29 @@ impl Device {
             // prompt. The raw buffer stays as a fallback so that no device
             // which already worked can stop working.
             if let Some(prompt) = prompt_drawn(&screen, &buffer).or_else(|| find_prompt(&buffer)) {
-                return Ok((buffer, Some(prompt)));
+                if command.is_none() || self.is_own(&prompt, &buffer) {
+                    return Ok(Reading { raw: buffer, prompt: Some(prompt), closed: false });
+                }
+                doubted = Some(prompt);
             }
+        }
+    }
+
+    /// Whether a prompt found while a command answers is plainly this
+    /// session's own, drawn and left.
+    fn is_own(&self, found: &Prompt, raw: &str) -> bool {
+        let known: Vec<&Prompt> = std::iter::once(&self.prompt).chain(self.last_prompt.as_ref()).collect();
+        crate::cli::prompt_is_own(found, &known, raw)
+    }
+
+    /// The prompt a closed channel ended at. For a command, only the
+    /// session's own counts: a line of output that reads like a prompt,
+    /// with the device gone, is where the answer was cut.
+    fn prompt_at_close(&self, command: Option<&str>, screen: &Screen, raw: &str) -> Option<Prompt> {
+        let found = prompt_drawn(screen, raw);
+        match command {
+            Some(_) => found.filter(|p| self.is_own(p, raw)),
+            None => found,
         }
     }
 

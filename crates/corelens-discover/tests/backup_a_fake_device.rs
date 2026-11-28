@@ -194,6 +194,9 @@ impl server::Handler for FakeSwitch {
             "show clock" => "*12:00:00.000 UTC Thu Jan 1 2026\r\n".into(),
             "show ip interface brief" => "Interface              IP-Address      OK? Method Status                Protocol\r\nVlan10                 192.0.2.1       YES NVRAM  up                    up\r\n".into(),
             "show ip arp" => "Protocol  Address          Age (min)  Hardware Addr   Type   Interface\r\nInternet  192.0.2.7                0   0000.5e00.5301  ARPA   Vlan10\r\n".into(),
+            // A device whose answer stops short of its closing line, by its
+            // name: whatever cut it, the prompt came back after it.
+            "show running-config" if is_enabled && self.hostname.starts_with("CUT-") => running_config(&self.hostname).replace("!\r\nend\r\n", ""),
             "show running-config" if is_enabled => running_config(&self.hostname),
             "show running-config" => "% Invalid input detected at '^' marker.\r\n".into(),
             "show startup-config" if is_enabled => running_config(&self.hostname),
@@ -788,6 +791,35 @@ async fn a_nexus_backup_files_every_vrfs_tables_not_the_default_alone() {
     assert_eq!(asked("show ip route"), 0, "{got:?}");
     assert_eq!((asked("show ipv6 route vrf all"), asked("show ipv6 route")), (1, 1), "{got:?}");
     let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A configuration of a kind that closes with one fixed line, filed without
+/// it, is still filed and is said to be possibly cut short; a whole one is
+/// not marked.
+#[tokio::test]
+async fn a_configuration_missing_its_closing_line_is_filed_and_marked() {
+    let (cut, _) = start_with_log("CUT-SW-EXAMPLE", false).await;
+    let (whole, _) = start_with_log("SW-WHOLE", false).await;
+    let (ftd, _) = start_any("FTD-EXAMPLE", false, None, true).await;
+    for (port, name, marked) in [(cut, "CUT-SW-EXAMPLE", true), (whole, "SW-WHOLE", false), (ftd, "FTD-EXAMPLE", false)] {
+        let root = temp_root(&format!("closing-{name}"));
+        let store = Arc::new(std::sync::Mutex::new(HostKeyStore::new()));
+        let (tx, _rx) = mpsc::channel(128);
+        let run = run_backups(
+            vec![BackupTarget { address: "127.0.0.1".into(), name: name.into(), commands: Vec::new(), site: String::new() }],
+            creds("correct-horse"),
+            options(root.clone(), port, vec![BackupKind::Running]),
+            store,
+            "20260101-120000".into(),
+            tx,
+            CancellationToken::new(),
+        )
+        .await;
+        assert!(run.failed.is_empty(), "{name}: {:?}", run.failed);
+        assert_eq!(run.saved.len(), 1, "{name}: {:?}", run.saved);
+        assert_eq!(run.saved[0].ends_early, marked, "{name}: {:?}", run.saved[0]);
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }
 
 /// And not when it was not asked for: an ordinary backup sends nothing more.

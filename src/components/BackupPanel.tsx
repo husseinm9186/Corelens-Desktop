@@ -155,7 +155,7 @@ export function BackupPanel({
   const [status, setStatus] = useState<string | null>(null);
   const [pushMessage, setPushMessage] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const [saved, setSaved] = useState<{ name: string; path: string; bytes: number; unchanged: boolean }[]>([]);
+  const [saved, setSaved] = useState<{ name: string; path: string; bytes: number; unchanged: boolean; endsEarly?: boolean }[]>([]);
   const [failed, setFailed] = useState<{ name: string; reason: string }[]>([]);
 
   // Browsing what is already there.
@@ -1027,6 +1027,7 @@ export function BackupPanel({
               <span className="cv-reached">Saved</span> {s.name ?? 'device'} —{' '}
               {typeof s.bytes === 'number' ? `${s.bytes.toLocaleString()} bytes` : 'size unknown'}
               {s.unchanged && ' (unchanged since the last capture)'}
+              {s.endsEarly && <span className="cv-backup-early" data-hint="ends-early"> {t('backup.savedEndsEarly')}</span>}
             </p>
           ))}
           {failed.map((f) => (

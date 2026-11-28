@@ -59,6 +59,10 @@ pub struct BackupSaved {
     /// Still written — a backup that silently skips is a backup you cannot
     /// prove you took — but worth saying.
     pub unchanged: bool,
+    /// The configuration is of a kind that closes with one fixed line and
+    /// this capture does not reach it (`cli::missing_last_line`): filed,
+    /// and said to be possibly cut short.
+    pub ends_early: bool,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -222,6 +226,7 @@ pub fn write_show_capture(
         bytes: contents.len(),
         kind: BackupKind::ShowCommands,
         unchanged: false,
+        ends_early: false,
     })
 }
 
@@ -585,6 +590,7 @@ async fn back_up_over_snmp(
                 bytes: text.len(),
                 kind: *kind,
                 unchanged,
+                ends_early: ends_early(&name, *kind, &text),
             }),
         }
     }
@@ -726,6 +732,7 @@ async fn back_up_over_ssh(
                     bytes: text.len(),
                     kind: *kind,
                     unchanged,
+                    ends_early: ends_early(&name, *kind, &text),
                 }),
             },
         }
@@ -742,6 +749,22 @@ async fn back_up_over_ssh(
         return Err(problems.join("; "));
     }
     Ok(saved)
+}
+
+/// Whether a configuration just filed stops short of the line its kind
+/// closes with; noted in the log by name, never by content.
+fn ends_early(name: &str, kind: BackupKind, text: &str) -> bool {
+    match crate::cli::missing_last_line(text) {
+        Some(line) => {
+            crate::say!(
+                crate::debuglog::Area::Ssh,
+                "{name}: the {} configuration does not close with `{line}`; filed, and marked as possibly cut short",
+                kind.slug(),
+            );
+            true
+        }
+        None => false,
+    }
 }
 
 /// One of a device's own tables, as a backup asks for it.

@@ -178,6 +178,16 @@ check("the progress lists every group, first running and the rest waiting",
 check("the form is locked while it runs", await groupField(0, "Name").isDisabled());
 
 await emit({ kind: "saved", value: { name: "LAB-RTR-B", address: "192.0.2.20", path: "/x", bytes: 10, kind: "running", unchanged: false } });
+// A configuration filed without its closing line is said to be possibly
+// incomplete, beside the file; a whole one is not.
+await emit({ kind: "saved", value: { name: "LAB-RTR-C", address: "192.0.2.21", path: "/y", bytes: 12, kind: "running", unchanged: false, endsEarly: true } });
+await page.waitForTimeout(150);
+{
+  const rows = await page.locator(".cv-backup-results p").allInnerTexts();
+  const whole = rows.find((r) => r.includes("LAB-RTR-B")) ?? "", short = rows.find((r) => r.includes("LAB-RTR-C")) ?? "";
+  check("a backup missing its closing line says it may be incomplete", /may be incomplete/.test(short), short);
+  check("and a whole one does not", whole !== "" && !/incomplete/.test(whole), whole);
+}
 await finished(1, 0);
 calls = await starts();
 check("with pausing on, the next group waits", calls.length === 1, `${calls.length}`);

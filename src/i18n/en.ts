@@ -936,6 +936,7 @@ export const en = {
   'backup.historyOne': 'One capture so far — there is nothing to compare it with yet.',
   'backup.rowChanged': 'changed',
   'backup.rowUnchanged': 'unchanged',
+  'backup.savedEndsEarly': '— may be incomplete: the configuration\'s closing line is missing. Run the backup again, and compare with the device if it stays.',
   'backup.rowFirst': 'first of its kind',
   'backup.diffToPrevious': 'Diff to previous',
   // The running jobs, as the header over each one reads.

@@ -457,7 +457,9 @@ async fn classify_failure(error: &crate::ssh::SshError, address: &str) -> Failur
                 FailureKind::Unreachable
             }
         }
-        SshError::Protocol { .. } => FailureKind::Other,
+        // The device hung up part-way through an answer: the session is
+        // gone, as when the transport fails under it.
+        SshError::Protocol { .. } | SshError::ClosedMidCommand { .. } => FailureKind::Other,
         // A hop that did not land. The device before it answered; the
         // one we were reaching for did not become reachable through it.
         SshError::Hop { reason, .. } if reason.contains("reject") => FailureKind::AuthRejected,

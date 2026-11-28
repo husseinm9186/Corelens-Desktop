@@ -41,6 +41,17 @@ export function PageTabs() {
     return () => window.removeEventListener('pointerdown', away, true);
   }, [navOpen]);
 
+  // The open page's tab is always in the strip: a page chosen from the
+  // navigator, a search or a link may be one whose tab is off its end.
+  useEffect(() => {
+    const strip = stripRef.current;
+    const tab = strip?.querySelector<HTMLElement>('.cv-page-tab.is-active');
+    if (!strip || !tab) return;
+    const left = tab.offsetLeft, right = left + tab.offsetWidth;
+    if (left < strip.scrollLeft) strip.scrollLeft = left;
+    else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth;
+  }, [activePageId, pages.length]);
+
   const menuItems = (id: string): MenuItem[] => [
     { label: 'Duplicate', onSelect: () => duplicatePage(id) },
     {
@@ -52,7 +63,16 @@ export function PageTabs() {
   ];
 
   return (
-    <div ref={stripRef} className="cv-page-tabs" role="tablist" aria-label={t('pageTabs.pages')}>
+    <div
+      ref={stripRef}
+      className="cv-page-tabs"
+      role="tablist"
+      aria-label={t('pageTabs.pages')}
+      // A mouse has one wheel, and the strip runs sideways.
+      onWheel={(e) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+      }}
+    >
       <button
         type="button"
         className={`cv-page-nav-toggle${navOpen ? ' is-on' : ''}`}
@@ -70,6 +90,11 @@ export function PageTabs() {
           className={`cv-page-tab${p.id === activePageId ? ' is-active' : ''}`}
           role="tab"
           aria-selected={p.id === activePageId}
+          // The whole name, for a tab with room only for the start of it.
+          title={p.name}
+          // Room for the start of the name however many pages there are;
+          // past that the strip scrolls rather than cut every tab to nothing.
+          style={{ minWidth: `calc(${Math.min([...p.name].length, 14)}ch + 1.4rem)` }}
           draggable
           onDragStart={() => setDragFrom(i)}
           onDragOver={(e) => e.preventDefault()}
@@ -84,6 +109,9 @@ export function PageTabs() {
             setMenu({ x: e.clientX, y: e.clientY, id: p.id });
           }}
         >
+          {/* The name's own width, which a text field does not have: the
+              same text, unseen, gives the field its size. */}
+          <span className="cv-page-tab-fit" data-value={p.name}>
           <input
             className="cv-page-tab-name"
             aria-label={t('pageTabs.pageName')}
@@ -100,6 +128,7 @@ export function PageTabs() {
               if (!e.target.value.trim()) e.target.value = p.name;
             }}
           />
+          </span>
         </div>
       ))}
       <button

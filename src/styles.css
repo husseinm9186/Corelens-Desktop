@@ -325,7 +325,8 @@ h1, h2, h3, h4, h5, h6 { line-height: 1.25; }
 /* The rail: 62 px at the laptop size — it was 52, and "Addresses" at the
    rail's type size needs 46 inside the padding and borders. */
 /* 64 px: "Addresses" at the rail's 11 px label fits with room. */
-.cv-workspace { display: grid; grid-template-columns: 4.92307692rem 1fr; grid-template-rows: 100%; }
+/* The rail is as wide as its longest label ("Addresses") needs. */
+.cv-workspace { display: grid; grid-template-columns: 5.53846154rem 1fr; grid-template-rows: 100%; }
 .cv-shell { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; }
 /* The canvas and the dock; the dock along the bottom, or down the right. */
 .cv-body { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
@@ -1042,13 +1043,20 @@ details.cv-discover-advanced[open] > summary::after { content: '▾'; }
   font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--text-dim); margin: 0 0 0.61538462rem;
   display: flex; align-items: center; justify-content: space-between; font-weight: 600;}
-.cv-addr { display: grid; grid-template-columns: 6.92307692rem 1fr auto auto; gap: 0.30769231rem; margin-bottom: 0.38461538rem; align-items: center; }
-.cv-addr-label { font-size: var(--text-sm); }
+/* The label and the address take the row and keep a width that shows what
+   is in them; the two buttons go beside them where there is room and under
+   them where there is not, never out of the fields' own space. */
+.cv-addr { display: flex; flex-wrap: wrap; gap: 0.30769231rem; margin-bottom: 0.61538462rem; align-items: center; }
+.cv-addr > .cv-addr-label { flex: 1 1 6.92307692rem; min-width: 6.92307692rem; width: auto; font-size: var(--text-sm); }
+.cv-addr > .cv-mono { flex: 2 1 11.53846154rem; min-width: min(11.53846154rem, 100%); width: auto; }
+/* The row's buttons stay together, at its end, and wrap as one. */
+.cv-row-actions { display: inline-flex; align-items: center; gap: 0.30769231rem; flex: none; margin-left: auto; }
 
 .cv-probe { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 0.61538462rem; }
-.cv-probe-head { display: flex; align-items: center; gap: 0.46153846rem; padding: 0.46153846rem; background: var(--panel-2); }
+.cv-probe-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.46153846rem; padding: 0.46153846rem; background: var(--panel-2); }
 .cv-probe-toggle { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: var(--text-sm); }
-.cv-probe-name { flex: 1; }
+/* The name keeps room to be read; the buttons wrap under it in a narrow panel. */
+.cv-probe-name { flex: 1 1 9.23076923rem; min-width: 9.23076923rem; width: auto; }
 .cv-probe-body { padding: 0.61538462rem; }
 .cv-probe-actions { display: flex; align-items: center; gap: 0.61538462rem; margin-top: 0.46153846rem; }
 .cv-probe-result { color: var(--text-dim); font-size: var(--text-sm); }
@@ -2717,13 +2725,28 @@ details[open] > .cv-palette-sub::before { transform: rotate(90deg); }
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
   display: flex; align-items: stretch; gap: 0.15384615rem; padding: 0 0.61538462rem; height: 2.15384615rem;
   background: var(--panel-2); border-top: 1px solid var(--line);
-  overflow-x: auto;
+  /* More pages than fit: the strip moves under the wheel, and the open
+     page's tab is kept in it. A scrollbar would take half of a 28 px row. */
+  overflow-x: auto; scrollbar-width: none;
 }
+/* A tab is as wide as its name, up to a limit. When there are too many to
+   fit, each gives up room down to the start of its name (its own
+   min-width) and no further; the open page's gives up none. */
 .cv-page-tab {
   display: flex; align-items: center; padding: 0 0.30769231rem;
   border: 0; border-bottom: 2px solid transparent;
-  background: none; cursor: pointer; max-width: 12.30769231rem;
+  background: none; cursor: pointer; flex: 0 1 auto; max-width: 14rem;
 }
+.cv-page-tab.is-active { flex: 0 0 auto; max-width: 32rem; }
+.cv-page-tab-fit { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.cv-page-tab-fit::after {
+  content: attr(data-value) " "; grid-area: 1 / 1; visibility: hidden; height: 0; white-space: pre;
+  font-size: var(--text-md); padding: 0 0.30769231rem;
+}
+.cv-page-tab.is-active .cv-page-tab-fit::after { font-weight: 500; }
+/* No width of its own (a text field's is twenty characters whatever it
+   holds): the unseen text sizes the cell and the field fills it. */
+.cv-page-tab-fit > .cv-page-tab-name { grid-area: 1 / 1; width: 0; min-width: 100%; }
 .cv-page-tab:hover { background: var(--hover); }
 .cv-page-tab.is-active { border-bottom-color: var(--accent); }
 .cv-page-tab.is-active .cv-page-tab-name { color: var(--text); font-weight: 500; }

@@ -331,6 +331,12 @@ every page with a small sketch of what is on it: click a page or use the arrow
 keys to open it, double-click or press `F2` to rename it, and drag it or press
 `Alt+↑`/`Alt+↓` to move it.
 
+With many pages the tabs do not shrink to nothing. The open page's tab shows
+its whole name; the others keep the start of theirs, and each says its whole
+name when you point at it. When they no longer fit, the strip moves instead:
+turn the mouse wheel over it, and the tab of a page you open from anywhere
+else is brought into view.
+
 **Minimap by health.** **Colour the minimap by health** in the canvas menu colours
 each device in the minimap by its status; a device that is down is also outlined
 dashed and a warning one outlined solid, so the colour is not the only cue.
@@ -560,6 +566,9 @@ the old device; the other end keeps its own. Undo puts it back.
 
 Select a node. Under **Addresses**, add one row per address with a friendly
 label — `Management`, `Loopback0`, `WAN1`. Mark one primary.
+The label and the address keep room to be read; in a narrow panel their
+buttons go under them. Any text field in the app that is too short for what
+it holds says the whole value when you point at it.
 
 Under **Probes**, click **Add probe** and set:
 

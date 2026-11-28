@@ -1839,21 +1839,23 @@ function AddressList({ nodeId }: { nodeId: string }) {
               set(next);
             }}
           />
-          <button
-            type="button"
-            className={`cv-btn cv-btn-small ${a.isPrimary ? 'is-active' : ''}`}
-            title={tr('inspector.markAsThePrimary')}
-            onClick={() => set(addresses.map((x, j) => ({ ...x, isPrimary: j === i })))}
-          >
-            Primary
-          </button>
-          <button
-            type="button"
-            className="cv-btn cv-btn-small is-danger"
-            onClick={() => set(addresses.filter((_, j) => j !== i))}
-          >
-            Remove
-          </button>
+          <span className="cv-row-actions">
+            <button
+              type="button"
+              className={`cv-btn cv-btn-small ${a.isPrimary ? 'is-active' : ''}`}
+              title={tr('inspector.markAsThePrimary')}
+              onClick={() => set(addresses.map((x, j) => ({ ...x, isPrimary: j === i })))}
+            >
+              Primary
+            </button>
+            <button
+              type="button"
+              className="cv-btn cv-btn-small is-danger"
+              onClick={() => set(addresses.filter((_, j) => j !== i))}
+            >
+              Remove
+            </button>
+          </span>
         </div>
       ))}
     </section>
@@ -1971,13 +1973,15 @@ function ProbeEditor({
             {STATUS_GLYPH[runtime.status]} {STATUS_LABEL[runtime.status]}
           </span>
         )}
-        <button type="button" className="cv-btn cv-btn-small" title={tr('inspector.saveTheseSettingsTo')}
-          onClick={() => setTemplateName(templateName === null ? probe.name : null)}>
-          {tr('inspector.saveAsTemplate')}
-        </button>
-        <button type="button" className="cv-btn cv-btn-small is-danger" onClick={onRemove}>
-          Remove
-        </button>
+        <span className="cv-row-actions">
+          <button type="button" className="cv-btn cv-btn-small" title={tr('inspector.saveTheseSettingsTo')}
+            onClick={() => setTemplateName(templateName === null ? probe.name : null)}>
+            {tr('inspector.saveAsTemplate')}
+          </button>
+          <button type="button" className="cv-btn cv-btn-small is-danger" onClick={onRemove}>
+            Remove
+          </button>
+        </span>
       </div>
       {templateName !== null && (
         <form

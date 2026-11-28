@@ -145,8 +145,13 @@ async function touchIntoLine() {
 
 // --- a link's end, its drag cancelled -----------------------------------------
 {
-  // At a point of the link that is in the open: its middle may lie under
-  // the shape palette, where a click lands on the palette.
+  // The diagram is fitted first: the drag above, held near the canvas's
+  // edge, scrolls the canvas by as much as its timing allows, which can
+  // leave the whole link off the screen. Then a point of the link that is
+  // in the open: its middle may lie under the shape palette, where a click
+  // lands on the palette.
+  await page.evaluate(() => window.__cvStore.getState().requestFit());
+  await page.waitForTimeout(600);
   const open = await page.evaluate(() => {
     const path = document.querySelector('.cv-edge-hit path[data-id="e1"]');
     const len = path.getTotalLength();

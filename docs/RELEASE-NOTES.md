@@ -2,6 +2,28 @@
 
 Newest first.
 
+## 2.22.7 — 2026-11-27
+
+**Fixed**
+- **A page's name can be typed with spaces.** The name was saved on every
+  key with the spaces at its ends removed, so a space was gone the moment it
+  was typed and "Core network east" came out as one word. A tab's name is
+  now a field only while it is being renamed — double-click the tab, press
+  `F2` on it, or choose **Rename** in its menu — and is kept as typed on
+  `Enter` or a click elsewhere; `Esc` leaves it as it was.
+- **A tab's menu is on top, and it has more in it.** The menu was drawn
+  inside the strip of tabs, and on macOS it was cut off at the strip's edge
+  with **Delete** out of reach. Every right-click menu in the app is now
+  drawn above everything else in the window. A tab's menu has **Rename**,
+  **Duplicate**, **Move left**, **Move right** and **Delete**.
+- **Tabs can be dragged into another order.** A tab was a text field from
+  edge to edge, and on macOS a drag on it selected text. A tab is now moved
+  with the pointer, with a mark where it will go; from the keyboard, `Alt`
+  with an arrow moves the page.
+- **All pages and Add a page stay at the ends of the strip** while the tabs
+  between them scroll.
+- Renaming, moving and deleting a page are each one undo.
+
 ## 2.22.6 — 2026-11-27
 
 **Fixed**
